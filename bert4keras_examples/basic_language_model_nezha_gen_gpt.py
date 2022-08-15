@@ -8,16 +8,18 @@
 # 基本测试：中文GPT模型，base版本，华为开源的
 # 权重链接: https://pan.baidu.com/s/1-FB0yl1uxYDCGIRvU1XNzQ 提取码: xynn
 # 参考项目：https://github.com/bojone/chinese-gen
+import os
 
+os.environ.setdefault("TF_KERAS", "1")
 import numpy as np
 from bert4keras.models import build_transformer_model
 from bert4keras.tokenizers import Tokenizer
 from bert4keras.snippets import AutoRegressiveDecoder
 from bert4keras.snippets import uniout
 
-config_path = '/root/kg/bert/chinese_nezha_gpt_L-12_H-768_A-12/config.json'
-checkpoint_path = '/root/kg/bert/chinese_nezha_gpt_L-12_H-768_A-12/gpt.ckpt'
-dict_path = '/root/kg/bert/chinese_nezha_gpt_L-12_H-768_A-12/vocab.txt'
+config_path = '/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_nezha_gpt_L-12_H-768_A-12/chinese_nezha_gpt_L-12_H-768_A-12/config.json'
+checkpoint_path = '/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_nezha_gpt_L-12_H-768_A-12/chinese_nezha_gpt_L-12_H-768_A-12/gpt.ckpt'
+dict_path = '/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_nezha_gpt_L-12_H-768_A-12/chinese_nezha_gpt_L-12_H-768_A-12/vocab.txt'
 
 tokenizer = Tokenizer(dict_path, do_lower_case=True)  # 建立分词器
 
