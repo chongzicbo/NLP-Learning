@@ -21,7 +21,7 @@ set_gelu('tanh')  # 切换gelu版本
 
 maxlen = 128
 batch_size = 64
-bert_dir = "E:\\working\\huada_bgi\\data\\pretrained_model\\bert\\chinese_roberta_wwm_ext_L-12_H-768_A-12\\"
+bert_dir = "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_L-12_H-768_A-12/"
 config_path = os.path.join(bert_dir, "bert_config.json")
 checkpoint_path = os.path.join(bert_dir, "bert_model.ckpt")
 dict_path = os.path.join(bert_dir, "vocab.txt")
@@ -41,7 +41,7 @@ def load_data(filename):
 
 
 # 加载数据集
-data_dir = "E:\\opensource_data\\文本匹配\\lcqmc_data-master\\lcqmc_data-master"
+data_dir = "/mnt/e/opensource_data/文本匹配/lcqmc_data-master/lcqmc_data-master"
 train_data = load_data(os.path.join(data_dir, 'train.txt'))
 valid_data = load_data(os.path.join(data_dir, 'dev.txt'))
 test_data = load_data(os.path.join(data_dir, 'test.txt'))

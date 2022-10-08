@@ -31,9 +31,10 @@ num_classes = 2
 epochs = 20
 
 # bert配置
-config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
-dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
+model_dir = "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_L-12_H-768_A-12"
+config_path = os.path.join(model_dir, 'bert_config.json')
+checkpoint_path = os.path.join(model_dir, 'bert_model.ckpt')
+dict_path = os.path.join(model_dir, 'vocab.txt')
 
 # 加载并精简词表，建立分词器
 token_dict, keep_tokens = load_vocab(
@@ -59,10 +60,11 @@ def load_data(filenames):
 
 
 # 加载数据集
+data_dir = "/mnt/e/opensource_data/分类/情感分析/sentiment/"
 data = load_data([
-    'datasets/sentiment/sentiment.train.json.data',
-    'datasets/sentiment/sentiment.valid.data',
-    'datasets/sentiment/sentiment.test.data',
+    os.path.join(data_dir, 'sentiment.train.data'),
+    os.path.join(data_dir, 'sentiment.valid.data'),
+    os.path.join(data_dir, 'sentiment.test.data')
 ])
 
 

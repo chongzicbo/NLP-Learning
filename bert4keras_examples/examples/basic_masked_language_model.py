@@ -12,6 +12,10 @@ import numpy as np
 from bert4keras.models import build_transformer_model
 from bert4keras.tokenizers import Tokenizer
 from bert4keras.snippets import to_array
+import tensorflow as tf
+
+# keras默认是执行图模式，debug困难；使用eager模式方便debug
+tf.config.run_functions_eagerly(True)
 
 bert_dir = "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_L-12_H-768_A-12/"
 config_path = os.path.join(bert_dir, "bert_config.json")
