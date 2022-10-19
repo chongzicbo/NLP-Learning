@@ -5,7 +5,13 @@
 @file: task_relation_extraction.py
 @time: 2022/7/2 18:29
 """
+import os
 
+os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
+
+import tensorflow as tf
+
+tf.config.run_functions_eagerly(True)
 import json
 import numpy as np
 from bert4keras.backend import keras, K, batch_gather
@@ -22,9 +28,11 @@ from tqdm import tqdm
 
 maxlen = 128
 batch_size = 64
-config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
-dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
+bert_dir = "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_L-12_H-768_A-12/"
+config_path = os.path.join(bert_dir, "bert_config.json")
+checkpoint_path = os.path.join(bert_dir, "bert_model.ckpt")
+dict_path = os.path.join(bert_dir, "vocab.txt")
+data_dir = "/mnt/e/opensource_data/信息抽取/关系抽取/BD_Knowledge_Extraction/"
 
 
 def load_data(filename):
@@ -33,7 +41,9 @@ def load_data(filename):
     """
     D = []
     with open(filename, encoding='utf-8') as f:
-        for l in f:
+        lines = f.readlines()
+        # 取10条样本用于debug
+        for l in lines[0:10]:
             l = json.loads(l)
             D.append({
                 'text': l['text'],
@@ -44,11 +54,11 @@ def load_data(filename):
 
 
 # 加载数据集
-train_data = load_data('/root/kg/datasets/train_data.json')
-valid_data = load_data('/root/kg/datasets/dev_data.json')
+train_data = load_data(os.path.join(data_dir, 'train_data.json'))
+valid_data = load_data(os.path.join(data_dir, 'dev_data.json'))
 predicate2id, id2predicate = {}, {}
 
-with open('/root/kg/datasets/all_50_schemas') as f:
+with open(os.path.join(data_dir, 'all_50_schemas')) as f:
     for l in f:
         l = json.loads(l)
         if l['predicate'] not in predicate2id:
@@ -56,7 +66,7 @@ with open('/root/kg/datasets/all_50_schemas') as f:
             predicate2id[l['predicate']] = len(predicate2id)
 
 # 建立分词器
-tokenizer = Tokenizer(dict_path, do_lower_case=True)
+tokenizer = Tokenizer(dict_path, do_lower_case=True)  # 转为小写
 
 
 def search(pattern, sequence):

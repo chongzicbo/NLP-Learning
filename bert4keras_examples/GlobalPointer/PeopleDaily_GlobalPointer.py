@@ -10,6 +10,11 @@
 import os
 
 os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
+
+import tensorflow as tf
+
+tf.config.run_functions_eagerly(True)
+
 import numpy as np
 from bert4keras.backend import keras, K
 from bert4keras.backend import multilabel_categorical_crossentropy
@@ -24,12 +29,12 @@ from tqdm import tqdm
 
 maxlen = 256
 epochs = 10
-batch_size = 16
+batch_size = 2
 learning_rate = 2e-5
 categories = set()
 
 # bert配置
-model_dir = "E:\\working\\huada_bgi\\data\\pretrained_model\\bert\\chinese_L-12_H-768_A-12\\"
+model_dir = "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_L-12_H-768_A-12/"
 config_path = os.path.join(model_dir, "bert_config.json")
 checkpoint_path = os.path.join(model_dir, "bert_model.ckpt")
 dict_path = os.path.join(model_dir, "vocab.txt")
@@ -56,11 +61,11 @@ def load_data(filename):
                 elif flag[0] == 'I':
                     d[-1][1] = i
             D.append(d)
-    return D
+    return D[:4]  # 取4个样本用于测试
 
 
 # 标注数据
-data_dir = "E:\\opensource_data\\信息抽取\\china-people-daily-ner-corpus\\china-people-daily-ner-corpus\\"
+data_dir = "/mnt/e/opensource_data/信息抽取/china-people-daily-ner-corpus/china-people-daily-ner-corpus/"
 train_data = load_data(os.path.join(data_dir, 'example.train'))
 valid_data = load_data(os.path.join(data_dir, 'example.dev'))
 test_data = load_data(os.path.join(data_dir, 'example.test'))
