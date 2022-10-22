@@ -5,13 +5,24 @@
 @file: task_relation_extraction.py
 @time: 2022/7/2 18:29
 """
+"""
+# 三元组抽取任务，基于“半指针-半标注”结构
+# 文章介绍：https://kexue.fm/archives/7161
+# 数据集：http://ai.baidu.com/broad/download?dataset=sked
+# 最优f1=0.82198
+# 换用RoBERTa Large可以达到f1=0.829+
+# 说明：由于使用了EMA，需要跑足够多的步数(5000步以上）才生效，如果
+#      你的数据总量比较少，那么请务必跑足够多的epoch数，或者去掉EMA。
+"""
+
 import os
 
 os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
 
 import tensorflow as tf
 
-tf.config.run_functions_eagerly(True)
+tf.config.run_functions_eagerly(True)  # 方便debug
+
 import json
 import numpy as np
 from bert4keras.backend import keras, K, batch_gather
@@ -43,7 +54,7 @@ def load_data(filename):
     with open(filename, encoding='utf-8') as f:
         lines = f.readlines()
         # 取10条样本用于debug
-        for l in lines[0:10]:
+        for l in lines:  # [0:10]
             l = json.loads(l)
             D.append({
                 'text': l['text'],
@@ -56,7 +67,7 @@ def load_data(filename):
 # 加载数据集
 train_data = load_data(os.path.join(data_dir, 'train_data.json'))
 valid_data = load_data(os.path.join(data_dir, 'dev_data.json'))
-predicate2id, id2predicate = {}, {}
+predicate2id, id2predicate = {}, {}  # 关系及其id
 
 with open(os.path.join(data_dir, 'all_50_schemas')) as f:
     for l in f:
@@ -92,33 +103,33 @@ class data_generator(DataGenerator):
             # 整理三元组 {s: [(o, p)]}
             spoes = {}
             for s, p, o in d['spo_list']:
-                s = tokenizer.encode(s)[0][1:-1]
-                p = predicate2id[p]
-                o = tokenizer.encode(o)[0][1:-1]
-                s_idx = search(s, token_ids)
-                o_idx = search(o, token_ids)
+                s = tokenizer.encode(s)[0][1:-1]  # subject token id
+                p = predicate2id[p]  # 关系 id
+                o = tokenizer.encode(o)[0][1:-1]  # object token id
+                s_idx = search(s, token_ids)  # subject  在文本中的开始位置
+                o_idx = search(o, token_ids)  # object 在文本中的开始位置
                 if s_idx != -1 and o_idx != -1:
-                    s = (s_idx, s_idx + len(s) - 1)
-                    o = (o_idx, o_idx + len(o) - 1, p)
+                    s = (s_idx, s_idx + len(s) - 1)  # subject (开始位置，结束位置)
+                    o = (o_idx, o_idx + len(o) - 1, p)  # object (开始位置，结束位置,关系)
                     if s not in spoes:
                         spoes[s] = []
-                    spoes[s].append(o)
+                    spoes[s].append(o)  # subject 可以对应多个object和关系
             if spoes:
                 # subject标签
-                subject_labels = np.zeros((len(token_ids), 2))
+                subject_labels = np.zeros((len(token_ids), 2))  # subject位置对应的标签，1或者0  [seq_len,2]
                 for s in spoes:
-                    subject_labels[s[0], 0] = 1
-                    subject_labels[s[1], 1] = 1
+                    subject_labels[s[0], 0] = 1  # subject 的开始位置设置为1
+                    subject_labels[s[1], 1] = 1  # subject的结束位置设置为1
                 # 随机选一个subject（这里没有实现错误！这就是想要的效果！！）
                 start, end = np.array(list(spoes.keys())).T
-                start = np.random.choice(start)
-                end = np.random.choice(end[end >= start])
+                start = np.random.choice(start)  # 如果有多个subject ，start
+                end = np.random.choice(end[end >= start])  # 随机选择一个end
                 subject_ids = (start, end)
                 # 对应的object标签
-                object_labels = np.zeros((len(token_ids), len(predicate2id), 2))
+                object_labels = np.zeros((len(token_ids), len(predicate2id), 2))  # [seq_len,关系数量(49)，2]
                 for o in spoes.get(subject_ids, []):
-                    object_labels[o[0], o[2], 0] = 1
-                    object_labels[o[1], o[2], 1] = 1
+                    object_labels[o[0], o[2], 0] = 1  # object开始位置对应的标签
+                    object_labels[o[1], o[2], 1] = 1  # object结束位置对应的标签
                 # 构建batch
                 batch_token_ids.append(token_ids)
                 batch_segment_ids.append(segment_ids)
@@ -146,16 +157,16 @@ def extract_subject(inputs):
     """根据subject_ids从output中取出subject的向量表征
     """
     output, subject_ids = inputs
-    start = batch_gather(output, subject_ids[:, :1])
-    end = batch_gather(output, subject_ids[:, 1:])
+    start = batch_gather(output, subject_ids[:, :1])  # subject的开始索引
+    end = batch_gather(output, subject_ids[:, 1:])  # subject的结束索引
     subject = K.concatenate([start, end], 2)
     return subject[:, 0]
 
 
 # 补充输入
-subject_labels = Input(shape=(None, 2), name='Subject-Labels')
-subject_ids = Input(shape=(2,), name='Subject-Ids')
-object_labels = Input(shape=(None, len(predicate2id), 2), name='Object-Labels')
+subject_labels = Input(shape=(None, 2), name='Subject-Labels')  # input shape [batch_size,seq_len,2]
+subject_ids = Input(shape=(2,), name='Subject-Ids')  # input shape [batch_size,2],开始位置和结束位置
+object_labels = Input(shape=(None, len(predicate2id), 2), name='Object-Labels')  # input shape [batch_size,seq_len,49,2]
 
 # 加载预训练模型
 bert = build_transformer_model(
@@ -167,8 +178,8 @@ bert = build_transformer_model(
 # 预测subject
 output = Dense(
     units=2, activation='sigmoid', kernel_initializer=bert.initializer
-)(bert.model.output)
-subject_preds = Lambda(lambda x: x ** 2)(output)
+)(bert.model.output)  # bert.model.output shape为[batch_size,seq_len,768],output shape 为[batch_size,seq_len,2]
+subject_preds = Lambda(lambda x: x ** 2)(output)  # 结果为什么要进行平方 :处理样本不平衡问题
 
 subject_model = Model(bert.model.inputs, subject_preds)
 
@@ -182,7 +193,7 @@ output = Dense(
     activation='sigmoid',
     kernel_initializer=bert.initializer
 )(output)
-output = Lambda(lambda x: x ** 4)(output)
+output = Lambda(lambda x: x ** 4)(output)  # 4次方是为了处理样本标签不平衡
 object_preds = Reshape((-1, len(predicate2id), 2))(output)
 
 object_model = Model(bert.model.inputs + [subject_ids], object_preds)

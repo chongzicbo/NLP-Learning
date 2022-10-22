@@ -56,7 +56,7 @@ def load_data(filenames):
                 text, label = l.strip().split('\t')
                 for t in text_segmentate(text, maxlen - 2, seps, strips):
                     D.append((t, int(label)))
-    return D
+    return D[:4]
 
 
 # 加载数据集
