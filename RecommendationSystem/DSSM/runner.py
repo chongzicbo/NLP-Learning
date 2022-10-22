@@ -14,6 +14,7 @@ from nlp_datasets.tokenizers import SpaceTokenizer
 from nlp_datasets.xyz_dataset import XYZSameFileDataset
 
 import models
+import torch
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
