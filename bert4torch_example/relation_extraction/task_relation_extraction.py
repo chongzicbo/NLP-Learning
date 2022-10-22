@@ -10,6 +10,8 @@
 # 数据集：http://ai.baidu.com/broad/download?dataset=sked
 
 import json
+import os.path
+
 import numpy as np
 from bert4torch.layers import LayerNorm
 from bert4torch.tokenizers import Tokenizer
@@ -21,9 +23,17 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 import torch.optim as optim
 import torch.nn as nn
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--root_model_path", help="模型保存目录")
+parser.add_argument("--data_dir", help="训练数据保存目录")
+parser.add_argument("--batch_size", default=64, help="batch_size")
+parser.add_argument("--model_save_dir", default="./", help="模型保存目录")
+args = parser.parse_args()
 
 maxlen = 128
-batch_size = 48
+batch_size = args.batch_size
 root_model_path = "/mnt/e/working/huada_bgi/data/pretrained_model/huggingface/bert-base-chinese"
 dict_path = root_model_path + "/vocab.txt"
 config_path = root_model_path + "/config.json"
@@ -31,7 +41,9 @@ checkpoint_path = root_model_path + "/bert4torch_pytorch_model.bin"
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 predicate2id, id2predicate = {}, {}
 
-with open('F:/Projects/data/corpus/relation_extraction/BD_Knowledge_Extraction/all_50_schemas', encoding='utf-8') as f:
+data_dir = "/mnt/e/opensource_data/信息抽取/关系抽取/BD_Knowledge_Extraction/"
+
+with open(os.path.join(data_dir, 'all_50_schemas'), encoding='utf-8') as f:
     for l in f:
         l = json.loads(l)
         if l['predicate'] not in predicate2id:
@@ -55,7 +67,7 @@ class MyDataset(ListDataset):
                 l = json.loads(l)
                 D.append({'text': l['text'],
                           'spo_list': [(spo['subject'], spo['predicate'], spo['object']) for spo in l['spo_list']]})
-        return D
+        return D[:4]  # 取10条用于debug
 
 
 def collate_fn(batch):
@@ -96,7 +108,7 @@ def collate_fn(batch):
             # 随机选一个subject（这里没有实现错误！这就是想要的效果！！）
             # Todo: 感觉可以对未选到的subject加个mask，这样计算loss就不会计算到，可能因为模型对prob**n正例加权重导致影响不大
             start, end = np.array(list(spoes.keys())).T
-            start = np.random.choice(start)
+            start = np.random.choice(start)  # subject的start随机选择一个
             end = np.random.choice(end[end >= start])
             subject_ids = (start, end)
             # 对应的object标签
@@ -121,9 +133,9 @@ def collate_fn(batch):
 
 
 train_dataloader = DataLoader(
-    MyDataset('F:/Projects/data/corpus/relation_extraction/BD_Knowledge_Extraction/train_data.json'),
+    MyDataset(os.path.join(data_dir, 'train_data.json')),
     batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
-valid_dataset = MyDataset('F:/Projects/data/corpus/relation_extraction/BD_Knowledge_Extraction/dev_data.json')
+valid_dataset = MyDataset(os.path.join(data_dir, 'dev_data.json'))
 valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, collate_fn=collate_fn)
 
 
@@ -141,15 +153,17 @@ class Model(BaseModel):
         """根据subject_ids从output中取出subject的向量表征
         """
         output, subject_ids = inputs
-        start = torch.gather(output, dim=1, index=subject_ids[:, :1].unsqueeze(2).expand(-1, -1, output.shape[-1]))
-        end = torch.gather(output, dim=1, index=subject_ids[:, 1:].unsqueeze(2).expand(-1, -1, output.shape[-1]))
-        subject = torch.cat([start, end], 2)
+        start = torch.gather(output, dim=1,
+                             index=subject_ids[:, :1].unsqueeze(2).expand(-1, -1, output.shape[-1]))  # 起始subject_id
+        end = torch.gather(output, dim=1,
+                           index=subject_ids[:, 1:].unsqueeze(2).expand(-1, -1, output.shape[-1]))  # 终止subject_id
+        subject = torch.cat([start, end], 2)  # 拼接起始和终止subject_id
         return subject[:, 0]
 
     def forward(self, inputs):
         # 预测subject
-        seq_output = self.bert(inputs[:2])  # [btz, seq_len, hdsz]
-        subject_preds = (torch.sigmoid(self.linear1(seq_output))) ** 2  # [btz, seq_len, 2]
+        seq_output = self.bert(inputs[:2])  # 输入[token_ids,segment_ids] 输出[btz, seq_len, hdsz]
+        subject_preds = (torch.sigmoid(self.linear1(seq_output))) ** 2  # 经过全连接层和sigmoid，输出[btz, seq_len, 2]  为什么要平方
 
         # 传入subject，预测object
         # 通过Conditional Layer Normalization将subject融入到object的预测中
@@ -209,7 +223,7 @@ def extract_spoes(text):
     """抽取输入text所包含的三元组
     """
     tokens = tokenizer.tokenize(text, maxlen=maxlen)
-    mapping = tokenizer.rematch(text, tokens)
+    mapping = tokenizer.rematch(text, tokens)  # wordpiece之后对应的id
     token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
     token_ids = torch.tensor([token_ids], dtype=torch.long, device=device)
     segment_ids = torch.tensor([segment_ids], dtype=torch.long, device=device)
@@ -217,12 +231,12 @@ def extract_spoes(text):
     # 抽取subject
     seq_output, subject_preds = train_model.predict_subject([token_ids, segment_ids])
     subject_preds[:, [0, -1]] *= 0  # 首cls, 尾sep置为0
-    start = torch.where(subject_preds[0, :, 0] > 0.6)[0]
-    end = torch.where(subject_preds[0, :, 1] > 0.5)[0]
+    start = torch.where(subject_preds[0, :, 0] > 0.6)[0]  # 概率大于0.6
+    end = torch.where(subject_preds[0, :, 1] > 0.5)[0]  # 概率大于0.5
     subjects = []
     for i in start:
-        j = end[end >= i]
-        if len(j) > 0:
+        j = end[end >= i]  # 取出所有大于start的end
+        if len(j) > 0:  # 如果有多个end，则取第一个end
             j = j[0]
             subjects.append((i.item(), j.item()))
     if subjects:
@@ -328,7 +342,7 @@ if __name__ == '__main__':
 
     evaluator = Evaluator()
 
-    train_model.fit(train_dataloader, steps_per_epoch=200, epochs=20, callbacks=[evaluator])
+    train_model.fit(train_dataloader, epochs=20, callbacks=[evaluator])
 
 else:
 

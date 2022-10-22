@@ -7,6 +7,7 @@
 """
 
 # 句子对分类任务，LCQMC数据集
+import os.path
 
 import numpy as np
 from bert4torch.tokenizers import Tokenizer
@@ -20,9 +21,15 @@ from tensorboardX import SummaryWriter
 
 maxlen = 128
 batch_size = 64
-config_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/pytorch_model.bin'
-dict_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/vocab.txt'
+root_model_path = "/mnt/e/working/huada_bgi/data/pretrained_model/huggingface/bert-base-chinese"
+dict_path = root_model_path + "/vocab.txt"
+config_path = root_model_path + "/config.json"
+checkpoint_path = root_model_path + "/bert4torch_pytorch_model.bin"
+
+data_dir = "/mnt/e/opensource_data/文本匹配/lcqmc_data-master/lcqmc_data-master/"
+train_data_path = os.path.join(data_dir, "train.txt")
+test_data_path = os.path.join(data_dir, "test.txt")
+valid_data_path = os.path.join(data_dir, "dev.txt")
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 writer = SummaryWriter(log_dir='./summary')  # prepare summary writer
@@ -39,10 +46,11 @@ class MyDataset(ListDataset):
         """
         D = []
         with open(filename, encoding='utf-8') as f:
+            f.readline()
             for l in f:
                 text1, text2, label = l.strip().split('\t')
                 D.append((text1, text2, int(label)))
-        return D
+        return D#[0:10]  # 取10条用于debug测试
 
 
 def collate_fn(batch):
@@ -60,11 +68,11 @@ def collate_fn(batch):
 
 
 # 加载数据集
-train_dataloader = DataLoader(MyDataset('F:/Projects/data/corpus/sentence_embedding/LCQMC/LCQMC.train.data'),
+train_dataloader = DataLoader(MyDataset(train_data_path),
                               batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
-valid_dataloader = DataLoader(MyDataset('F:/Projects/data/corpus/sentence_embedding/LCQMC/LCQMC.valid.data'),
+valid_dataloader = DataLoader(MyDataset(valid_data_path),
                               batch_size=batch_size, collate_fn=collate_fn)
-test_dataloader = DataLoader(MyDataset('F:/Projects/data/corpus/sentence_embedding/LCQMC/LCQMC.test.data'),
+test_dataloader = DataLoader(MyDataset(test_data_path),
                              batch_size=batch_size, collate_fn=collate_fn)
 
 
