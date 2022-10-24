@@ -5,7 +5,7 @@
 """
 
 from collections import deque
-from dialogbot.gpt.interact import Inference
+from dialogbot_cp.gpt.interact import Inference
 
 
 class GPTBot:

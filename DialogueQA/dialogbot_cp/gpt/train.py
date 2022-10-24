@@ -22,7 +22,7 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import BertTokenizerFast, GPT2LMHeadModel, GPT2Config
 
 sys.path.append('../..')
-from dialogbot.gpt.earlystop import EarlyStopping
+from dialogbot_cp.gpt.earlystop import EarlyStopping
 
 
 class MyDataset(Dataset):

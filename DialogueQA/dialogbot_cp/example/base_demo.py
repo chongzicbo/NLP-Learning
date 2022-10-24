@@ -6,7 +6,7 @@
 @time: 2022/10/22 11:53
 """
 
-from dialogbot import Bot
+from dialogbot_cp import Bot
 
 bot = Bot()
 
