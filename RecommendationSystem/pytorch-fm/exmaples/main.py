@@ -8,6 +8,7 @@
 import os.path
 import sys
 
+sys.path.append("../../pytorch-fm")
 import torch
 import tqdm
 from sklearn.metrics import roc_auc_score
@@ -166,10 +167,10 @@ def main(dataset_name,
     valid_length = int(len(dataset) * 0.1)
     test_length = len(dataset) - train_length - valid_length
     train_dataset, valid_dataset, test_dataset = torch.utils.data.random_split(
-        dataset, (train_length, valid_length, test_length))
-    train_data_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=8)
-    valid_data_loader = DataLoader(valid_dataset, batch_size=batch_size, num_workers=8)
-    test_data_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=8)
+        dataset, (train_length, valid_length, test_length))  # 数据集划分
+    train_data_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=8)  # 训练集
+    valid_data_loader = DataLoader(valid_dataset, batch_size=batch_size, num_workers=8)  # 验证集
+    test_data_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=8)  # 测试集
     model = get_model(model_name, dataset).to(device)
     criterion = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(params=model.parameters(), lr=learning_rate, weight_decay=weight_decay)

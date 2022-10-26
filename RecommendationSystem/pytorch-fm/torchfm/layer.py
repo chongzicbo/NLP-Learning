@@ -27,12 +27,15 @@ class FeaturesLinear(torch.nn.Module):
 
 
 class FeaturesEmbedding(torch.nn.Module):
+    """
+    特征嵌入
+    """
 
     def __init__(self, field_dims, embed_dim):
         super().__init__()
-        self.embedding = torch.nn.Embedding(sum(field_dims), embed_dim)
-        self.offsets = np.array((0, *np.cumsum(field_dims)[:-1]), dtype=np.long)
-        torch.nn.init.xavier_uniform_(self.embedding.weight.data)
+        self.embedding = torch.nn.Embedding(sum(field_dims), embed_dim)  # shape [用户数+电影数，embed_dim]
+        self.offsets = np.array((0, *np.cumsum(field_dims)[:-1]), dtype=np.long)  # 偏置项
+        torch.nn.init.xavier_uniform_(self.embedding.weight.data)  # embdedding初始化
 
     def forward(self, x):
         """
