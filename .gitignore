@@ -1,4 +1,4 @@
-/paddlenlp_examples/dialogue/dgu/checkpoints/atis_slot/5.pdparams
+*.pdparams
 *.log
 *.pdopt
 *.pt
@@ -11,3 +11,5 @@ events.*
 /python_learning/other/bert_wordpiece_train__fsh.txt
 /PipelineServingLogs/pipeline.tracer
 /PipelineServingLogs/pipeline.log.wf
+*.csv
+*.txt
