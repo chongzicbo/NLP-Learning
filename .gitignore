@@ -13,3 +13,4 @@ events.*
 /PipelineServingLogs/pipeline.log.wf
 *.csv
 *.txt
+*.pyc

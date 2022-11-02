@@ -11,12 +11,13 @@ from loguru import logger
 from dialogbot_cp.search.internet import html_crawler
 from dialogbot_cp.utils.tokenizer import postag
 
-baidu_url_prefix = 'https://www.baidu.com/s?ie=utf-8&wd='
+baidu_url_prefix = 'http://www.baidu.com/s?ie=utf-8&wd='
 bing_url_prefix = 'https://cn.bing.com/search?q='
 calendar_url = 'http://open.baidu.com/calendar'
 calculator_url = 'http://open.baidu.com/static/calculator/calculator.html'
 weather_url = 'http://weathernew.pae.baidu.com'
 split_symbol = ["。", "?", ".", "_", "-", ":", "！", "？"]
+baidu_url_suffix = "&usm=3&rsv_idx=2&rsv_page=1"
 
 
 def split_2_short_text(sentence):
@@ -70,7 +71,9 @@ class Engine:
         answer = []
         left_text = ''
         # 抓取百度前10条的摘要
-        soup_baidu = html_crawler.get_html_baidu(baidu_url_prefix + urllib.parse.quote(query))
+        new_query = baidu_url_prefix + urllib.parse.quote(query) + baidu_url_suffix
+        soup_baidu = html_crawler.get_html_baidu(new_query)
+
         if not soup_baidu:
             return answer, left_text
         if soup_baidu.title.get_text().__contains__('百度安全验证'):

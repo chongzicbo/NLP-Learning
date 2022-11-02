@@ -39,7 +39,7 @@ def load_dataset(vocab_path, train_path=None, vocab_size=0):
                    UNK_TOKEN: UNK_ID}
         id2word = {v: k for k, v in word2id.items()}
         cnt = 4
-        vocab_data = rfd.read().splitlines()
+        vocab_data = rfd.readlines()
         vocab_data_user = vocab_data[:vocab_size] if vocab_size > 0 else vocab_data
         for line in vocab_data_user:
             items = line.split("\t")
