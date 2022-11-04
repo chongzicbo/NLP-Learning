@@ -9,7 +9,6 @@
 
 import os
 
-
 import numpy as np
 import pandas as pd
 from keras.layers import *
@@ -33,12 +32,12 @@ train_ext_df = pd.read_csv('./data/chip2019/train.csv')
 
 train_df.dropna(axis=0, inplace=True)
 
-train_data = train_df[['query1', 'query2', 'label']].values
-valid_data = valid_df[['query1', 'query2', 'label']].values
-test_data = test_df[['query1', 'query2', 'label']].values
+train_data = train_df[['query1', 'query2', 'label']].values  # 训练集
+valid_data = valid_df[['query1', 'query2', 'label']].values  # 验证集
+test_data = test_df[['query1', 'query2', 'label']].values  # 测试集
 train_ext_data = train_ext_df[['question1', 'question2', 'label']].values
 
-train_ext_data = np.concatenate([train_data, train_ext_data], axis=0)
+train_ext_data = np.concatenate([train_data, train_ext_data], axis=0) # 增加外部的数据作为训练数据
 
 roberta_dir = "/mnt/e/opensource_data/pretrained_model/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12"
 config_path = os.path.join(roberta_dir, "bert_config.json")
@@ -112,7 +111,7 @@ class data_generator(object):
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
         for i in idxs:
             text1, text2, label = self.data[i]
-            token_ids, segment_ids = tokenizer.encode(text1, text2, max_length=64)
+            token_ids, segment_ids = tokenizer.encode(text1, text2, maxlen=64)
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
             batch_labels.append([label])
