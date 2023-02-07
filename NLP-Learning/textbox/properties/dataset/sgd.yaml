@@ -1,0 +1,13 @@
+src_len: 512
+tgt_len: 64
+truncate: head
+metrics: ['bleu', 'rouge', 'meteor']
+metrics_for_best_model: ['bleu', 'rouge-2', 'meteor']
+bleu_type: sacrebleu
+rouge_type: rouge-score
+meteor_type: pycocoevalcap
+
+train_batch_size: 12
+accumulation_steps: 16
+eval_batch_size: 24
+prefix_prompt: 'Given the dialog: '

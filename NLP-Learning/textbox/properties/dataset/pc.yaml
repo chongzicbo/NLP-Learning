@@ -1,0 +1,11 @@
+src_len: 1024
+tgt_len: 64
+truncate: head
+metrics: ['bleu', 'distinct']
+smoothing_function: 7
+metrics_for_best_model: ['bleu-1', 'bleu-2']
+
+train_batch_size: 12
+accumulation_steps: 16
+eval_batch_size: 24
+prefix_prompt: 'Given the dialog: '

@@ -1,0 +1,10 @@
+src_len: 512
+tgt_len: 128
+metrics: ['bleu']
+metrics_for_best_model: ['bleu']
+bleu_type: mt-eval
+
+train_batch_size: 12
+accumulation_steps: 16
+eval_batch_size: 24
+prefix_prompt: 'Describe the following data: '

@@ -1,0 +1,10 @@
+src_len: 16
+tgt_len: 32
+metrics: ['bleu', 'cider', 'spice']
+metrics_for_best_model: ['spice']
+bleu_type: pycocoevalcap
+
+train_batch_size: 96
+accumulation_steps: 2
+eval_batch_size: 96
+prefix_prompt: 'Describe the following data: '
