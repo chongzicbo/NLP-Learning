@@ -33,8 +33,34 @@ def print_hi(name):
 #
 # import tensorflow as tf
 # tf.config.run_functions_eagerly()
-import numpy as np
-start=[(1,4),(6,9),()]
-end=[]
-start = np.random.choice(start)  # 如果有多个subject ，start
-end = np.random.choice(end[end >= start])  # 随机选择一个end
+# import numpy as np
+# start=[(1,4),(6,9),()]
+# end=[]
+# start = np.random.choice(start)  # 如果有多个subject ，start
+# end = np.random.choice(end[end >= start])  # 随机选择一个end
+
+#
+# a = '2.11.0'
+# b = '2.3'
+# print(a < b)
+
+
+# def cmp(s1, s2):
+#     s1_list = s1.split(".")
+#     s2_list = s2.split(".")
+#     if (s1_list[0] < s2_list[0]):
+#         return True
+#     elif (s1_list[0] > s2_list[0]):
+#         return False
+#     else:
+#         if int(s1_list[1]) < int(s2_list[1]):
+#             return True
+#         else:
+#             return False
+#     return True
+#
+#
+# print(cmp(a, b))
+
+a=[[1,2,3,4],[5,6,7,8]]
+print(sum(a,[]))
