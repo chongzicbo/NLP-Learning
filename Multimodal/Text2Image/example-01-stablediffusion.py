@@ -22,3 +22,4 @@ prompt = "a beautiful japan woman"
 image = pipe(prompt).images[0]
 plt.imshow(image)
 plt.show()
+
