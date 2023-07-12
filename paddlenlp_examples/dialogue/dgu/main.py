@@ -2,7 +2,7 @@
 """
 @author: chengbo
 @software: PyCharm
-@file: main.py
+@file: hyperparam.py
 @time: 2022/7/2 16:01
 """
 import os

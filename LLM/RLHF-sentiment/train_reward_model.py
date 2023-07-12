@@ -25,14 +25,14 @@ from iTrainingLogger import iSummaryWriter
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", default='bert-base-chinese', type=str, help="backbone of encoder.")
-parser.add_argument("--train_path", default=None, type=str, help="The path of train set.")
-parser.add_argument("--dev_path", default=None, type=str, help="The path of dev set.")
+parser.add_argument("--train_path", default='data/train.tsv', type=str, help="The path of train set.")
+parser.add_argument("--dev_path", default='data/dev.tsv', type=str, help="The path of dev set.")
 parser.add_argument("--save_dir", default="./checkpoints", type=str, required=False,
                     help="The output directory where the model predictions and checkpoints will be written.")
 parser.add_argument("--max_seq_len", default=512, type=int,
                     help="The maximum total input sequence length after tokenization. Sequences longer "
                          "than this will be truncated, sequences shorter will be padded.", )
-parser.add_argument("--batch_size", default=16, type=int, help="Batch size per GPU/CPU for training.", )
+parser.add_argument("--batch_size", default=8, type=int, help="Batch size per GPU/CPU for training.", )
 parser.add_argument("--learning_rate", default=5e-5, type=float, help="The initial learning rate for Adam.")
 parser.add_argument("--weight_decay", default=0.0, type=float, help="Weight decay if we apply some.")
 parser.add_argument("--num_train_epochs", default=10, type=int, help="Total number of training epochs to perform.")

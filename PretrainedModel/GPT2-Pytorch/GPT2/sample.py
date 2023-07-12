@@ -24,7 +24,8 @@ def sample_sequence(model, length, start_token=None, batch_size=None, context=No
                     device='cuda', sample=True):
     if start_token is None:
         assert context is not None, 'Specify exactly one of start_token and context!'
-        context = torch.tensor(context, device=device, dtype=torch.long).unsqueeze(0).repeat(batch_size, 1)  # [batch_size,1]
+        context = torch.tensor(context, device=device, dtype=torch.long).unsqueeze(0).repeat(batch_size,
+                                                                                             1)  # [batch_size,1]
     else:
         assert context is None, 'Specify exactly one of start_token and context!'
         context = torch.full((batch_size, 1), start_token, device=device, dtype=torch.long)
@@ -33,7 +34,7 @@ def sample_sequence(model, length, start_token=None, batch_size=None, context=No
     past = None
     with torch.no_grad():
         for i in trange(length):
-            logits, past = model(prev, past=past)
+            logits, past = model(prev, past=past)  # 上一步保存的Block计算后的结果作为past
             logits = logits[:, -1, :] / temperature
             logits = top_k_logits(logits, k=top_k)
             log_probs = F.softmax(logits, dim=-1)

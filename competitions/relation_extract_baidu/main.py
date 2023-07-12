@@ -2,7 +2,7 @@
 """
 @author: chengbo
 @software: PyCharm
-@file: main.py
+@file: hyperparam.py
 @time: 2022/11/3 16:51
 """
 import json

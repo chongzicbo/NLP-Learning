@@ -173,7 +173,7 @@ class GPT2Model(nn.Module):
         presents = []
         for block, layer_past in zip(self.h, past):  # 12个transformer block
             hidden_states, present = block(hidden_states, layer_past)
-            presents.append(present)
+            presents.append(present)  # 保存当前block中的Attention模块所使用的key，value
         hidden_states = self.ln_f(hidden_states)
         output_shape = input_shape + (hidden_states.size(-1),)
         return hidden_states.view(*output_shape), presents
