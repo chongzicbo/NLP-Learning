@@ -38,7 +38,7 @@ class EarlyStopping:
             self.save_checkpoint(val_loss, model)
         elif score < self.best_score + self.delta:
             self.counter += 1
-            print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
+            print(f"EarlyStopping counter: {self.counter} out of {self.patience}")
             if self.counter >= self.patience:
                 self.early_stop = True
         else:
@@ -47,9 +47,11 @@ class EarlyStopping:
             self.counter = 0
 
     def save_checkpoint(self, val_loss, model):
-        '''Saves model when validation loss decrease.'''
+        """Saves model when validation loss decrease."""
         if self.verbose:
-            print(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
+            print(
+                f"Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ..."
+            )
         # save_path = join(self.save_path, "best_model")
         # if not os.path.exists(save_path):
         #     os.mkdir(save_path)

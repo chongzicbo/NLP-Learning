@@ -21,7 +21,13 @@ from cpm_kernels.kernels.base import LazyKernelCModule, KernelFunction, round_up
 
 class W8A16Linear(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, inp: torch.Tensor, quant_w: torch.Tensor, scale_w: torch.Tensor, weight_bit_width):
+    def forward(
+        ctx,
+        inp: torch.Tensor,
+        quant_w: torch.Tensor,
+        scale_w: torch.Tensor,
+        weight_bit_width,
+    ):
         ctx.inp_shape = inp.size()
         ctx.weight_shape = quant_w.size()
         ctx.weight_bit_width = weight_bit_width
@@ -82,12 +88,19 @@ def compress_int4_weight(weight: torch.Tensor):  # (n, m)
             blockDim,
             0,
             stream,
-            [ctypes.c_void_p(weight.data_ptr()), ctypes.c_void_p(out.data_ptr()), ctypes.c_int32(n), ctypes.c_int32(m)],
+            [
+                ctypes.c_void_p(weight.data_ptr()),
+                ctypes.c_void_p(out.data_ptr()),
+                ctypes.c_int32(n),
+                ctypes.c_int32(m),
+            ],
         )
         return out
 
 
-def extract_weight_to_half(weight: torch.Tensor, scale_list: torch.Tensor, source_bit_width: int):
+def extract_weight_to_half(
+    weight: torch.Tensor, scale_list: torch.Tensor, source_bit_width: int
+):
     if source_bit_width == 8:
         func = kernels.int8WeightExtractionHalf
     elif source_bit_width == 4:
@@ -97,7 +110,9 @@ def extract_weight_to_half(weight: torch.Tensor, scale_list: torch.Tensor, sourc
 
     with torch.cuda.device(weight.device):
         n, m = weight.size(0), weight.size(1)
-        out = torch.empty(n, m * (8 // source_bit_width), dtype=torch.half, device="cuda")
+        out = torch.empty(
+            n, m * (8 // source_bit_width), dtype=torch.half, device="cuda"
+        )
         stream = torch.cuda.current_stream()
 
         gridDim = (n, 1, 1)
@@ -120,7 +135,14 @@ def extract_weight_to_half(weight: torch.Tensor, scale_list: torch.Tensor, sourc
 
 
 class QuantizedLinear(Linear):
-    def __init__(self, weight_bit_width: int, weight_tensor=None, bias_tensor=None, *args, **kwargs):
+    def __init__(
+        self,
+        weight_bit_width: int,
+        weight_tensor=None,
+        bias_tensor=None,
+        *args,
+        **kwargs
+    ):
         super(QuantizedLinear, self).__init__(*args, **kwargs)
         self.weight_bit_width = weight_bit_width
 
@@ -129,21 +151,35 @@ class QuantizedLinear(Linear):
 
         if weight_tensor is None:
             self.weight = torch.empty(
-                shape[0], shape[1] * weight_bit_width // 8, dtype=torch.int8, device=kwargs["device"]
+                shape[0],
+                shape[1] * weight_bit_width // 8,
+                dtype=torch.int8,
+                device=kwargs["device"],
             )
-            self.weight_scale = torch.empty(shape[0], dtype=kwargs["params_dtype"], device=kwargs["device"])
+            self.weight_scale = torch.empty(
+                shape[0], dtype=kwargs["params_dtype"], device=kwargs["device"]
+            )
         else:
-            self.weight_scale = (weight_tensor.abs().max(dim=-1).values / ((2 ** (weight_bit_width - 1)) - 1)).half()
-            self.weight = torch.round(weight_tensor / self.weight_scale[:, None]).to(torch.int8)
+            self.weight_scale = (
+                weight_tensor.abs().max(dim=-1).values
+                / ((2 ** (weight_bit_width - 1)) - 1)
+            ).half()
+            self.weight = torch.round(weight_tensor / self.weight_scale[:, None]).to(
+                torch.int8
+            )
             if weight_bit_width == 4:
                 self.weight = compress_int4_weight(self.weight)
 
         self.weight = Parameter(self.weight.to(kwargs["device"]), requires_grad=False)
-        self.weight_scale = Parameter(self.weight_scale.to(kwargs["device"]), requires_grad=False)
+        self.weight_scale = Parameter(
+            self.weight_scale.to(kwargs["device"]), requires_grad=False
+        )
         self.bias = Parameter(bias_tensor.to(kwargs["device"]), requires_grad=False)
 
     def forward(self, input):
-        output = W8A16Linear.apply(input, self.weight, self.weight_scale, self.weight_bit_width)
+        output = W8A16Linear.apply(
+            input, self.weight, self.weight_scale, self.weight_bit_width
+        )
         if self.bias is not None:
             output = output + self.bias
         return output
@@ -155,7 +191,9 @@ def quantize(model, weight_bit_width):
     for layer in model.layers:
         layer.attention.query_key_value = QuantizedLinear(
             weight_bit_width=weight_bit_width,
-            weight_tensor=layer.attention.query_key_value.weight.to(torch.cuda.current_device()),
+            weight_tensor=layer.attention.query_key_value.weight.to(
+                torch.cuda.current_device()
+            ),
             bias_tensor=layer.attention.query_key_value.bias,
             in_features=layer.attention.query_key_value.in_features,
             out_features=layer.attention.query_key_value.out_features,
@@ -175,7 +213,9 @@ def quantize(model, weight_bit_width):
         )
         layer.mlp.dense_h_to_4h = QuantizedLinear(
             weight_bit_width=weight_bit_width,
-            weight_tensor=layer.mlp.dense_h_to_4h.weight.to(torch.cuda.current_device()),
+            weight_tensor=layer.mlp.dense_h_to_4h.weight.to(
+                torch.cuda.current_device()
+            ),
             bias_tensor=layer.mlp.dense_h_to_4h.bias,
             in_features=layer.mlp.dense_h_to_4h.in_features,
             out_features=layer.mlp.dense_h_to_4h.out_features,
@@ -185,7 +225,9 @@ def quantize(model, weight_bit_width):
         )
         layer.mlp.dense_4h_to_h = QuantizedLinear(
             weight_bit_width=weight_bit_width,
-            weight_tensor=layer.mlp.dense_4h_to_h.weight.to(torch.cuda.current_device()),
+            weight_tensor=layer.mlp.dense_4h_to_h.weight.to(
+                torch.cuda.current_device()
+            ),
             bias_tensor=layer.mlp.dense_4h_to_h.bias,
             in_features=layer.mlp.dense_4h_to_h.in_features,
             out_features=layer.mlp.dense_4h_to_h.out_features,

@@ -19,10 +19,21 @@ class SingleLinearClassifier(nn.Module):
 
 
 class MultiNonLinearClassifier(nn.Module):
-    def __init__(self, hidden_size, num_label, dropout_rate, act_func="gelu", intermediate_hidden_size=None):
+    def __init__(
+        self,
+        hidden_size,
+        num_label,
+        dropout_rate,
+        act_func="gelu",
+        intermediate_hidden_size=None,
+    ):
         super(MultiNonLinearClassifier, self).__init__()
         self.num_label = num_label
-        self.intermediate_hidden_size = hidden_size if intermediate_hidden_size is None else intermediate_hidden_size
+        self.intermediate_hidden_size = (
+            hidden_size
+            if intermediate_hidden_size is None
+            else intermediate_hidden_size
+        )
         self.classifier1 = nn.Linear(hidden_size, self.intermediate_hidden_size)
         self.classifier2 = nn.Linear(self.intermediate_hidden_size, self.num_label)
         self.dropout = nn.Dropout(dropout_rate)
@@ -44,10 +55,21 @@ class MultiNonLinearClassifier(nn.Module):
 
 
 class BERTTaggerClassifier(nn.Module):
-    def __init__(self, hidden_size, num_label, dropout_rate, act_func="gelu", intermediate_hidden_size=None):
+    def __init__(
+        self,
+        hidden_size,
+        num_label,
+        dropout_rate,
+        act_func="gelu",
+        intermediate_hidden_size=None,
+    ):
         super(BERTTaggerClassifier, self).__init__()
         self.num_label = num_label
-        self.intermediate_hidden_size = hidden_size if intermediate_hidden_size is None else intermediate_hidden_size
+        self.intermediate_hidden_size = (
+            hidden_size
+            if intermediate_hidden_size is None
+            else intermediate_hidden_size
+        )
         self.classifier1 = nn.Linear(hidden_size, self.intermediate_hidden_size)
         self.classifier2 = nn.Linear(self.intermediate_hidden_size, self.num_label)
         self.dropout = nn.Dropout(dropout_rate)

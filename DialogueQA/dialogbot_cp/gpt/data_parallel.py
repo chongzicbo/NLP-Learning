@@ -23,9 +23,9 @@ def scatter(inputs, target_gpus, chunk_sizes, dim=0):
             try:
                 return Scatter.apply(target_gpus, chunk_sizes, dim, obj)
             except:
-                print('obj', obj.size())
-                print('dim', dim)
-                print('chunk_sizes', chunk_sizes)
+                print("obj", obj.size())
+                print("dim", dim)
+                print("chunk_sizes", chunk_sizes)
                 quit()
         if isinstance(obj, tuple) and len(obj) > 0:
             return list(zip(*map(scatter_map, obj)))
@@ -76,14 +76,14 @@ class BalancedDataParallel(DataParallel):
         # print('self.device_ids[:len(inputs)]', str(self.device_ids[:len(inputs)]))
         if len(self.device_ids) == 1:
             return self.module(*inputs[0], **kwargs[0])
-        replicas = self.replicate(self.module, self.device_ids[:len(inputs)])
+        replicas = self.replicate(self.module, self.device_ids[: len(inputs)])
         if self.gpu0_bsz == 0:
             replicas = replicas[1:]
         outputs = self.parallel_apply(replicas, device_ids, inputs, kwargs)
         return self.gather(outputs, self.output_device)
 
     def parallel_apply(self, replicas, device_ids, inputs, kwargs):
-        return parallel_apply(replicas, inputs, kwargs, device_ids[:len(inputs)])
+        return parallel_apply(replicas, inputs, kwargs, device_ids[: len(inputs)])
 
     def scatter(self, inputs, kwargs, device_ids):
         bsz = inputs[0].size(self.dim)

@@ -8,5 +8,5 @@
 # Description：
 """
 from accelerate import Accelerator
-accelerator=Accelerator()
 
+accelerator = Accelerator()

@@ -23,9 +23,8 @@ maxlen = 256
 
 
 def text_split(text, limited=True):
-    """将长句按照标点分割为多个子句。
-    """
-    texts = text_segmentate(text, 1, u'\n。；：，')
+    """将长句按照标点分割为多个子句。"""
+    texts = text_segmentate(text, 1, "\n。；：，")
     if limited:
         texts = texts[-maxlen:]
     return texts
@@ -39,23 +38,20 @@ def extract_matching(texts, summaries, start_i=0, start_j=0):
     if len(texts) == 0 or len(summaries) == 0:
         return []
     i = np.argmax([len(s) for s in summaries])
-    j = np.argmax([compute_main_metric(t, summaries[i], 'char') for t in texts])
-    lm = extract_matching(texts[:j + 1], summaries[:i], start_i, start_j)
-    rm = extract_matching(
-        texts[j:], summaries[i + 1:], start_i + i + 1, start_j + j
-    )
+    j = np.argmax([compute_main_metric(t, summaries[i], "char") for t in texts])
+    lm = extract_matching(texts[: j + 1], summaries[:i], start_i, start_j)
+    rm = extract_matching(texts[j:], summaries[i + 1 :], start_i + i + 1, start_j + j)
     return lm + [(start_i + i, start_j + j)] + rm
 
 
 def extract_flow(inputs):
-    """单个样本的构建流（给parallel_apply用）
-    """
+    """单个样本的构建流（给parallel_apply用）"""
     text, summary = inputs
     texts = text_split(text, True)  # 取后maxlen句
     summaries = text_split(summary, False)
     mapping = extract_matching(texts, summaries)
     labels = sorted(set([i[1] for i in mapping]))
-    pred_summary = ''.join([texts[i] for i in labels])
+    pred_summary = "".join([texts[i] for i in labels])
     metric = compute_main_metric(pred_summary, summary)
     return texts, labels, summary, metric
 
@@ -65,33 +61,31 @@ def load_data(filename):
     返回：[(text, summary)]
     """
     D = []
-    with open(filename, encoding='utf-8') as f:
+    with open(filename, encoding="utf-8") as f:
         for l in f:
             l = json.loads(l)
-            text = '\n'.join([d['sentence'] for d in l['text']])
-            D.append((text, l['summary']))
+            text = "\n".join([d["sentence"] for d in l["text"]])
+            D.append((text, l["summary"]))
     return D
 
 
 def convert(data):
-    """分句，并转换为抽取式摘要
-    """
+    """分句，并转换为抽取式摘要"""
     D = parallel_apply(
         func=extract_flow,
-        iterable=tqdm(data, desc=u'转换数据'),
+        iterable=tqdm(data, desc="转换数据"),
         workers=100,
-        max_queue_size=200
+        max_queue_size=200,
     )
     total_metric = sum([d[3] for d in D])
     D = [d[:3] for d in D]
-    print(u'抽取结果的平均指标: %s' % (total_metric / len(D)))
+    print("抽取结果的平均指标: %s" % (total_metric / len(D)))
     return D
 
 
-if __name__ == '__main__':
-
-    data_random_order_json = data_json[:-5] + '_random_order.json'
-    data_extract_json = data_json[:-5] + '_extract.json'
+if __name__ == "__main__":
+    data_random_order_json = data_json[:-5] + "_random_order.json"
+    data_extract_json = data_json[:-5] + "_extract.json"
 
     data = load_data(data_json)
     data = convert(data)
@@ -101,14 +95,14 @@ if __name__ == '__main__':
     else:
         idxs = list(range(len(data)))
         np.random.shuffle(idxs)
-        json.dump(idxs, open(data_random_order_json, 'w'))
+        json.dump(idxs, open(data_random_order_json, "w"))
 
     data = [data[i] for i in idxs]
 
-    with open(data_extract_json, 'w', encoding='utf-8') as f:
+    with open(data_extract_json, "w", encoding="utf-8") as f:
         for d in data:
-            f.write(json.dumps(d, ensure_ascii=False) + '\n')
+            f.write(json.dumps(d, ensure_ascii=False) + "\n")
 
-    print(u'输入数据：%s' % data_json)
-    print(u'数据顺序：%s' % data_random_order_json)
-    print(u'输出路径：%s' % data_extract_json)
+    print("输入数据：%s" % data_json)
+    print("数据顺序：%s" % data_random_order_json)
+    print("输出路径：%s" % data_extract_json)

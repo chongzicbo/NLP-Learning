@@ -12,7 +12,10 @@ import codecs
 from transformers import BertTokenizer
 
 model_name_or_path = "bert-base-uncased"
-tokenizer = BertTokenizer.from_pretrained(model_name_or_path, do_lower_case=True, )
+tokenizer = BertTokenizer.from_pretrained(
+    model_name_or_path,
+    do_lower_case=True,
+)
 
 
 def countLength():
@@ -20,12 +23,12 @@ def countLength():
     with open(trainDataPath) as f:
         f = f.read()
         lens = []
-        for l in f.split('\n\n'):
+        for l in f.split("\n\n"):
             n = 0
             if not l:
                 continue
             id, label = [], []
-            for i, c in enumerate(l.split('\n')):
+            for i, c in enumerate(l.split("\n")):
                 if len(re.split("\\s", c)) != 2:
                     print("=======", c)
                     continue
@@ -52,18 +55,20 @@ Returns:
 
 
 def wordpiece():
-    file_path = "/mnt/e/working/huada_bgi/data/train_data/train_data_all/train_data_all.json1"
+    file_path = (
+        "/mnt/e/working/huada_bgi/data/train_data/train_data_all/train_data_all.json1"
+    )
     wordpiece_train_path = "./bert_wordpiece_train__fsh.txt"
     with codecs.open(wordpiece_train_path, "w", encoding="utf-8") as fw:
         with codecs.open(file_path) as f:
             f = f.read()
             # ids,labels=[],[]
-            for l in f.split('\n\n'):
+            for l in f.split("\n\n"):
                 n = 0
                 if not l:
                     continue
                 id, label = [], []
-                for i, c in enumerate(l.split('\n')):
+                for i, c in enumerate(l.split("\n")):
                     if len(re.split("\\s", c)) != 2:
                         print("=======", c)
                         continue
@@ -85,5 +90,5 @@ def wordpiece():
                 fw.write("\n")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     countLength()

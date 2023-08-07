@@ -19,19 +19,32 @@ def preprocess():
     """
     # 设置参数
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_path', default='data/train.txt', type=str, help='训练日志存放位置')
-    parser.add_argument('--save_path', default='data/train.pkl', type=str, help='tokenize的训练数据集')
-    parser.add_argument('--pretrained_model', default='uer/gpt2-distil-chinese-cluecorpussmall', type=str, help='预训练的模型的路径')
+    parser.add_argument(
+        "--train_path", default="data/train.txt", type=str, help="训练日志存放位置"
+    )
+    parser.add_argument(
+        "--save_path", default="data/train.pkl", type=str, help="tokenize的训练数据集"
+    )
+    parser.add_argument(
+        "--pretrained_model",
+        default="uer/gpt2-distil-chinese-cluecorpussmall",
+        type=str,
+        help="预训练的模型的路径",
+    )
     args = parser.parse_args()
 
     # 初始化tokenizer
     tokenizer = BertTokenizerFast.from_pretrained(args.pretrained_model)
     sep_id = tokenizer.sep_token_id
     cls_id = tokenizer.cls_token_id
-    logger.info("preprocessing data,data path:{}, save path:{}".format(args.train_path, args.save_path))
+    logger.info(
+        "preprocessing data,data path:{}, save path:{}".format(
+            args.train_path, args.save_path
+        )
+    )
 
     # 读取训练数据集
-    with open(args.train_path, 'rb') as f:
+    with open(args.train_path, "rb") as f:
         data = f.read().decode("utf-8")
 
     # 需要区分linux和windows环境下的换行符
@@ -62,9 +75,15 @@ def preprocess():
     len_max = np.max(dialogue_len)
     with open(args.save_path, "wb") as f:
         pickle.dump(dialogue_list, f)
-    logger.info("finish preprocessing data,the result is stored in {}".format(args.save_path))
-    logger.info("mean of dialogue len:{},median of dialogue len:{},max len:{}".format(len_mean, len_median, len_max))
+    logger.info(
+        "finish preprocessing data,the result is stored in {}".format(args.save_path)
+    )
+    logger.info(
+        "mean of dialogue len:{},median of dialogue len:{},max len:{}".format(
+            len_mean, len_median, len_max
+        )
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     preprocess()

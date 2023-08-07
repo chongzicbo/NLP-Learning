@@ -8,6 +8,7 @@
 # Description：
 """
 import os
+
 os.environ.setdefault("TF_KERAS", "1")
 
 import json
@@ -30,16 +31,15 @@ steps_per_epoch = 1000
 epochs = 10000
 
 # nezha配置
-config_path = '/root/kg/bert/nezha_base/bert_config.json'
-checkpoint_path = '/root/kg/bert/nezha_base/model.ckpt-900000'
-dict_path = '/root/kg/bert/nezha_base/vocab.txt'
+config_path = "/root/kg/bert/nezha_base/bert_config.json"
+checkpoint_path = "/root/kg/bert/nezha_base/model.ckpt-900000"
+dict_path = "/root/kg/bert/nezha_base/vocab.txt"
 
 
 def corpus():
-    """循环读取语料
-    """
+    """循环读取语料"""
     while True:
-        with open('LCCD-large-shuf.json') as f:
+        with open("LCCD-large-shuf.json") as f:
             for l in f:
                 l = json.loads(l)
                 yield l
@@ -49,13 +49,13 @@ def corpus():
 token_dict, keep_tokens = load_vocab(
     dict_path=dict_path,
     simplified=True,
-    startswith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
+    startswith=["[PAD]", "[UNK]", "[CLS]", "[SEP]"],
 )
 
 # 补充词表
 compound_tokens = []
-for l in open('user_tokens.csv', encoding='utf-8'):
-    token, count = l.strip().split('\t')
+for l in open("user_tokens.csv", encoding="utf-8"):
+    token, count = l.strip().split("\t")
     if int(count) >= 10 and token not in token_dict:
         token_dict[token] = len(token_dict)
         compound_tokens.append([0])
@@ -65,8 +65,8 @@ tokenizer = Tokenizer(token_dict, do_lower_case=True)
 
 
 class data_generator(DataGenerator):
-    """数据生成器
-    """
+    """数据生成器"""
+
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids = [], []
         for is_end, texts in self.sample(random):
@@ -88,8 +88,8 @@ class data_generator(DataGenerator):
 
 
 class CrossEntropy(Loss):
-    """交叉熵作为loss，并mask掉padding部分
-    """
+    """交叉熵作为loss，并mask掉padding部分"""
+
     def compute_loss(self, inputs, mask=None):
         y_true, y_pred = inputs
         y_mask = K.cast(mask[1], K.floatx())[:, 1:]
@@ -103,8 +103,8 @@ class CrossEntropy(Loss):
 model = build_transformer_model(
     config_path,
     checkpoint_path,
-    model='nezha',
-    application='lm',
+    model="nezha",
+    application="lm",
     keep_tokens=keep_tokens,  # 只保留keep_tokens中的字，精简原字表
     compound_tokens=compound_tokens,  # 要扩充的词表
 )
@@ -114,21 +114,21 @@ output = CrossEntropy(1)([model.inputs[0], model.outputs[0]])
 model = Model(model.inputs, output)
 model.summary()
 
-AdamW = extend_with_weight_decay(Adam, 'AdamW')
-AdamWG = extend_with_gradient_accumulation(AdamW, 'AdamWG')
+AdamW = extend_with_weight_decay(Adam, "AdamW")
+AdamWG = extend_with_gradient_accumulation(AdamW, "AdamWG")
 optimizer = AdamWG(
     learning_rate=2e-5,
     weight_decay_rate=0.01,
-    exclude_from_weight_decay=['Norm', 'bias'],
-    grad_accum_steps=16
+    exclude_from_weight_decay=["Norm", "bias"],
+    grad_accum_steps=16,
 )
 model.compile(optimizer=optimizer)
 
 
 class ChatBot(AutoRegressiveDecoder):
-    """基于随机采样对话机器人
-    """
-    @AutoRegressiveDecoder.wraps(default_rtype='probas')
+    """基于随机采样对话机器人"""
+
+    @AutoRegressiveDecoder.wraps(default_rtype="probas")
     def predict(self, inputs, output_ids, states):
         token_ids, segment_ids = inputs
         token_ids = np.concatenate([token_ids, output_ids], 1)
@@ -150,19 +150,18 @@ chatbot = ChatBot(start_id=None, end_id=tokenizer._token_end_id, maxlen=32)
 
 
 class Evaluator(keras.callbacks.Callback):
-    """保存模型权重
-    """
+    """保存模型权重"""
+
     def on_epoch_end(self, epoch, logs=None):
         while True:
             try:
-                model.save_weights('./latest_model.weights')
+                model.save_weights("./latest_model.weights")
                 break
             except:
-                print(u'保存失败，正在重试...')
+                print("保存失败，正在重试...")
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
     train_generator = data_generator(corpus(), batch_size)
 
@@ -170,9 +169,8 @@ if __name__ == '__main__':
         train_generator.forfit(),
         steps_per_epoch=steps_per_epoch,
         epochs=epochs,
-        callbacks=[evaluator]
+        callbacks=[evaluator],
     )
 
 else:
-
-    model.load_weights('./latest_model.weights')
+    model.load_weights("./latest_model.weights")

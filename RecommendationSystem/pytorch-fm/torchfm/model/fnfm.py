@@ -7,7 +7,11 @@
 """
 import torch
 
-from torchfm.layer import FieldAwareFactorizationMachine, MultiLayerPerceptron, FeaturesLinear
+from torchfm.layer import (
+    FieldAwareFactorizationMachine,
+    MultiLayerPerceptron,
+    FeaturesLinear,
+)
 
 
 class FieldAwareNeuralFactorizationMachineModel(torch.nn.Module):

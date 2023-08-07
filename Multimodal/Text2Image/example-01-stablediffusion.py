@@ -10,6 +10,7 @@
 import torch
 from diffusers import StableDiffusionPipeline
 import matplotlib.pyplot as plt
+
 print(torch.cuda.is_available())
 
 model_id = "CompVis/stable-diffusion-v1-4"
@@ -22,4 +23,3 @@ prompt = "a beautiful japan woman"
 image = pipe(prompt).images[0]
 plt.imshow(image)
 plt.show()
-

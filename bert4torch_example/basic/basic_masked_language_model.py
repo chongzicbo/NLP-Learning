@@ -10,18 +10,22 @@ from bert4torch.tokenizers import Tokenizer
 import torch
 
 # 加载模型，请更新成自己的路径
-root_model_path = "/mnt/e/working/huada_bgi/data/pretrained_model/huggingface/bert-base-chinese"
+root_model_path = (
+    "/mnt/e/working/huada_bgi/data/pretrained_model/huggingface/bert-base-chinese"
+)
 vocab_path = root_model_path + "/vocab.txt"
 config_path = root_model_path + "/config.json"
 checkpoint_path = root_model_path + "/bert4torch_pytorch_model.bin"
 
 # 建立分词器
 tokenizer = Tokenizer(vocab_path, do_lower_case=True)
-model = build_transformer_model(config_path, checkpoint_path, with_mlm='softmax')  # 建立模型，加载权重
+model = build_transformer_model(
+    config_path, checkpoint_path, with_mlm="softmax"
+)  # 建立模型，加载权重
 
 token_ids, segments_ids = tokenizer.encode("科学技术是第一生产力")
 token_ids[3] = token_ids[4] = tokenizer._token_mask_id
-print(''.join(tokenizer.ids_to_tokens(token_ids)))
+print("".join(tokenizer.ids_to_tokens(token_ids)))
 
 tokens_ids_tensor = torch.tensor([token_ids])
 segment_ids_tensor = torch.tensor([segments_ids])

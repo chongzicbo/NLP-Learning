@@ -31,7 +31,11 @@ class BERT(nn.Module):
 
         self.embedding = BERTEmbedding(vocab_size=vocab_size, embed_size=hidden)
         self.transformer_blocks = nn.ModuleList(
-            [TransformerBlock(hidden, attn_heads, hidden * 4, dropout) for _ in range(n_layers)])  # 12层transformer
+            [
+                TransformerBlock(hidden, attn_heads, hidden * 4, dropout)
+                for _ in range(n_layers)
+            ]
+        )  # 12层transformer
 
     def forward(self, x, segment_info):
         # attention masking for padded token

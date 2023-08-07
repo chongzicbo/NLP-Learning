@@ -22,4 +22,6 @@ class LayerNorm(nn.Module):
         # x[batch_size,seq_len,embedding_size]
         mean = x.mean(-1, keepdim=True)  # x[batch_size,seq_len,1]
         std = x.std(-1, keepdim=True)  # x[batch_size,seq_len,1]
-        return self.a_2 * (x - mean) / (std + self.eps) + self.b_2 ## x[batch_size,seq_len,1]
+        return (
+            self.a_2 * (x - mean) / (std + self.eps) + self.b_2
+        )  ## x[batch_size,seq_len,1]

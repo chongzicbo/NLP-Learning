@@ -53,7 +53,8 @@ def predict(model, data_loader):
             token_type_ids = paddle.to_tensor(token_type_ids)
 
             batch_prob = model.predict(
-                input_ids=input_ids, token_type_ids=token_type_ids).numpy()
+                input_ids=input_ids, token_type_ids=token_type_ids
+            ).numpy()
 
             batch_probs.append(batch_prob)
 
@@ -70,30 +71,31 @@ if __name__ == "__main__":
     # pretrained_model = ppnlp.transformers.ErnieModel.from_pretrained("ernie-1.0")
 
     pretrained_model = ppnlp.transformers.ErnieGramModel.from_pretrained(
-        'ernie-gram-zh')
-    tokenizer = ppnlp.transformers.ErnieGramTokenizer.from_pretrained(
-        'ernie-gram-zh')
+        "ernie-gram-zh"
+    )
+    tokenizer = ppnlp.transformers.ErnieGramTokenizer.from_pretrained("ernie-gram-zh")
 
     trans_func = partial(
         convert_example,
         tokenizer=tokenizer,
         max_seq_length=args.max_seq_length,
-        phase="predict")
+        phase="predict",
+    )
 
     batchify_fn = lambda samples, fn=Tuple(
         Pad(axis=0, pad_val=tokenizer.pad_token_id),  # input_ids
         Pad(axis=0, pad_val=tokenizer.pad_token_type_id),  # segment_ids
     ): [data for data in fn(samples)]
 
-    valid_ds = load_dataset(
-        read_text_pair, data_path=args.input_file, lazy=False)
+    valid_ds = load_dataset(read_text_pair, data_path=args.input_file, lazy=False)
 
     valid_data_loader = create_dataloader(
         valid_ds,
-        mode='predict',
+        mode="predict",
         batch_size=args.batch_size,
         batchify_fn=batchify_fn,
-        trans_fn=trans_func)
+        trans_fn=trans_func,
+    )
 
     model = PairwiseMatching(pretrained_model)
 
@@ -102,13 +104,11 @@ if __name__ == "__main__":
         model.set_dict(state_dict)
         print("Loaded parameters from %s" % args.params_path)
     else:
-        raise ValueError(
-            "Please set --params_path with correct pretrained model file")
+        raise ValueError("Please set --params_path with correct pretrained model file")
 
     y_probs = predict(model, valid_data_loader)
 
-    valid_ds = load_dataset(
-        read_text_pair, data_path=args.input_file, lazy=False)
+    valid_ds = load_dataset(read_text_pair, data_path=args.input_file, lazy=False)
 
     for idx, prob in enumerate(y_probs):
         text_pair = valid_ds[idx]

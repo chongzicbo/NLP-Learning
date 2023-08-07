@@ -27,37 +27,43 @@ from torch.utils.data import DataLoader
 num_classes = 2
 maxlen = 256
 batch_size = 16
-config_path = 'F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/config.json'
-checkpoint_path = 'F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/pytorch_model.bin'
-dict_path = 'F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/vocab.txt'
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-choice = 'semi-sup'  # zero-shot1, zero-shot2, few-shot, semi-sup
+config_path = "F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/config.json"
+checkpoint_path = "F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/pytorch_model.bin"
+dict_path = "F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/vocab.txt"
+device = "cuda" if torch.cuda.is_available() else "cpu"
+choice = "semi-sup"  # zero-shot1, zero-shot2, few-shot, semi-sup
 
 
 def load_data(filename):
     D = []
-    with open(filename, encoding='utf-8') as f:
+    with open(filename, encoding="utf-8") as f:
         for l in f:
-            text, label = l.strip().split('\t')
+            text, label = l.strip().split("\t")
             D.append((text, int(label)))
     return D
 
 
 # 加载数据集
-train_data = load_data('F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.train.data')
-valid_data = load_data('F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.valid.data')
-test_data = load_data('F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.test.data')
+train_data = load_data(
+    "F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.train.data"
+)
+valid_data = load_data(
+    "F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.valid.data"
+)
+test_data = load_data(
+    "F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.test.data"
+)
 
 # 模拟标注和非标注数据
 train_frac = 0.01  # 标注数据的比例
 num_labeled = int(len(train_data) * train_frac)
 unlabeled_data = [(t, 2) for t, l in train_data[num_labeled:]]
 
-if choice == 'zero-shot2':
+if choice == "zero-shot2":
     train_data = unlabeled_data  # 仅使用无监督数据继续mlm预训练
-elif choice == 'few-shot':
+elif choice == "few-shot":
     train_data = train_data[:num_labeled]  # 仅使用少量监督数据
-elif choice == 'semi-sup':  # 少量监督数据和全量无监督数据做半监督
+elif choice == "semi-sup":  # 少量监督数据和全量无监督数据做半监督
     train_data = train_data[:num_labeled]
     train_data = train_data + unlabeled_data
 
@@ -65,15 +71,14 @@ elif choice == 'semi-sup':  # 少量监督数据和全量无监督数据做半�
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
 # 对应的任务描述
-prefix = u'很满意。'
+prefix = "很满意。"
 mask_idx = 1
-pos_id = tokenizer.token_to_id(u'很')
-neg_id = tokenizer.token_to_id(u'不')
+pos_id = tokenizer.token_to_id("很")
+neg_id = tokenizer.token_to_id("不")
 
 
 def random_masking(token_ids):
-    """对输入进行随机mask
-    """
+    """对输入进行随机mask"""
     rands = np.random.random(len(token_ids))
     source, target = [], []
     for r, t in zip(rands, token_ids):
@@ -99,7 +104,7 @@ class MyDataset(ListDataset):
             if label != 2:
                 text = prefix + text
             token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
-            if self.kwargs['random']:
+            if self.kwargs["random"]:
                 source_ids, target_ids = random_masking(token_ids)
             else:
                 source_ids, target_ids = token_ids[:], token_ids[:]
@@ -112,9 +117,15 @@ class MyDataset(ListDataset):
             batch_token_ids.append(source_ids)
             batch_segment_ids.append(segment_ids)
             batch_output_ids.append(target_ids)
-        batch_token_ids = torch.tensor(sequence_padding(batch_token_ids), dtype=torch.long, device=device)
-        batch_segment_ids = torch.tensor(sequence_padding(batch_segment_ids), dtype=torch.long, device=device)
-        batch_output_ids = torch.tensor(sequence_padding(batch_output_ids), dtype=torch.long, device=device)
+        batch_token_ids = torch.tensor(
+            sequence_padding(batch_token_ids), dtype=torch.long, device=device
+        )
+        batch_segment_ids = torch.tensor(
+            sequence_padding(batch_segment_ids), dtype=torch.long, device=device
+        )
+        batch_output_ids = torch.tensor(
+            sequence_padding(batch_output_ids), dtype=torch.long, device=device
+        )
         return [batch_token_ids, batch_segment_ids], batch_output_ids
 
 
@@ -122,12 +133,23 @@ class MyDataset(ListDataset):
 train_dataset = MyDataset(data=train_data, random=True)
 valid_dataset = MyDataset(data=valid_data, random=False)
 test_dataset = MyDataset(data=test_data, random=False)
-train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=train_dataset.collate_fn)
-valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, collate_fn=valid_dataset.collate_fn)
-test_dataloader = DataLoader(test_dataset, batch_size=batch_size, collate_fn=test_dataset.collate_fn)
+train_dataloader = DataLoader(
+    train_dataset,
+    batch_size=batch_size,
+    shuffle=True,
+    collate_fn=train_dataset.collate_fn,
+)
+valid_dataloader = DataLoader(
+    valid_dataset, batch_size=batch_size, collate_fn=valid_dataset.collate_fn
+)
+test_dataloader = DataLoader(
+    test_dataset, batch_size=batch_size, collate_fn=test_dataset.collate_fn
+)
 
 # 加载预训练模型
-model = build_transformer_model(config_path=config_path, checkpoint_path=checkpoint_path, with_mlm=True).to(device)
+model = build_transformer_model(
+    config_path=config_path, checkpoint_path=checkpoint_path, with_mlm=True
+).to(device)
 
 
 class MyLoss(nn.CrossEntropyLoss):
@@ -149,11 +171,10 @@ model.compile(
 
 
 class Evaluator(Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
-        self.best_val_acc = 0.
+        self.best_val_acc = 0.0
 
     def on_epoch_end(self, global_step, epoch, logs=None):
         val_acc = self.evaluate(valid_dataloader)
@@ -162,11 +183,12 @@ class Evaluator(Callback):
             self.best_val_acc = val_acc
             # model.save_weights('best_model.pt')
         print(
-            f'[{choice}]  valid_acc: {val_acc:.4f}, test_acc: {test_acc:.4f}, best_val_acc: {self.best_val_acc:.4f}\n')
+            f"[{choice}]  valid_acc: {val_acc:.4f}, test_acc: {test_acc:.4f}, best_val_acc: {self.best_val_acc:.4f}\n"
+        )
 
     @staticmethod
     def evaluate(data):
-        total, right = 0., 0.
+        total, right = 0.0, 0.0
         for x_true, y_true in data:
             y_pred = F.softmax(model.predict(x_true)[1], dim=-1)
             y_pred = y_pred[:, mask_idx, [neg_id, pos_id]].argmax(axis=1)
@@ -176,13 +198,15 @@ class Evaluator(Callback):
         return right / total
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     evaluator = Evaluator()
-    if choice == 'zero-shot1':
+    if choice == "zero-shot1":
         valid_acc = evaluator.evaluate(valid_dataloader)
         test_acc = evaluator.evaluate(test_dataloader)
-        print(f'[{choice}]  valid_acc: {valid_acc:.4f}, test_acc: {test_acc:.4f}')
+        print(f"[{choice}]  valid_acc: {valid_acc:.4f}, test_acc: {test_acc:.4f}")
     else:
-        model.fit(train_dataloader, epochs=10, steps_per_epoch=None, callbacks=[evaluator])
+        model.fit(
+            train_dataloader, epochs=10, steps_per_epoch=None, callbacks=[evaluator]
+        )
 else:
-    model.load_weights('best_model.pt')
+    model.load_weights("best_model.pt")

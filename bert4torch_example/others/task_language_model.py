@@ -12,7 +12,12 @@ import glob, re
 from tqdm import tqdm
 from bert4torch.models import build_transformer_model
 from bert4torch.tokenizers import Tokenizer, load_vocab
-from bert4torch.snippets import sequence_padding, AutoRegressiveDecoder, Callback, ListDataset
+from bert4torch.snippets import (
+    sequence_padding,
+    AutoRegressiveDecoder,
+    Callback,
+    ListDataset,
+)
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchinfo import summary
@@ -24,16 +29,18 @@ batch_size = 8
 epochs = 10000
 
 # bert配置
-config_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/pytorch_model.bin'
-dict_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/vocab.txt'
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+config_path = "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/bert_config.json"
+checkpoint_path = "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/pytorch_model.bin"
+dict_path = (
+    "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/vocab.txt"
+)
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # 加载并精简词表，建立分词器
 token_dict, keep_tokens = load_vocab(
     dict_path=dict_path,
     simplified=True,
-    startswith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
+    startswith=["[PAD]", "[UNK]", "[CLS]", "[SEP]"],
 )
 tokenizer = Tokenizer(token_dict, do_lower_case=True)
 
@@ -42,32 +49,31 @@ tokenizer = Tokenizer(token_dict, do_lower_case=True)
 class MyDataset(ListDataset):
     @staticmethod
     def load_data(filenames):
-        """加载数据，并尽量划分为不超过maxlen的句子
-        """
+        """加载数据，并尽量划分为不超过maxlen的句子"""
         novels = []
 
         for txt in glob.glob(filenames):
-            txt = open(txt, encoding='utf-8').read()
-            txt = txt.replace('\r', '').replace('\n', '')
-            txt = txt.replace(u'整理制作，并提供下载', '')
-            txt = re.sub(u'www.*?com', '', txt)
-            txt = txt.replace(u'\u3000', ' ')
+            txt = open(txt, encoding="utf-8").read()
+            txt = txt.replace("\r", "").replace("\n", "")
+            txt = txt.replace("整理制作，并提供下载", "")
+            txt = re.sub("www.*?com", "", txt)
+            txt = txt.replace("\u3000", " ")
             sents = []
-            for t in txt.split('  '):
-                for s in re.findall(u'.*?。', t):
+            for t in txt.split("  "):
+                for s in re.findall(".*?。", t):
                     if len(s) <= maxlen - 2:
                         sents.append(s)
             novels.append(sents)
         data = []
-        pbar = tqdm(desc=u'构建语料中', total=sum(len(n) for n in novels))
+        pbar = tqdm(desc="构建语料中", total=sum(len(n) for n in novels))
 
         for novel in novels:
-            s = u''
+            s = ""
             for i in range(len(novel)):
                 for j in range(len(novel) - i):
                     if len(s) + len(novel[i + j]) > maxlen - 2:
                         data.append(s)
-                        s = u''
+                        s = ""
                         break
                     else:
                         s += novel[i + j]
@@ -88,21 +94,29 @@ def collate_fn(batch):
         batch_token_ids.append(token_ids)
         batch_segment_ids.append(segment_ids)
 
-    batch_token_ids = torch.tensor(sequence_padding(batch_token_ids), dtype=torch.long, device=device)
-    batch_segment_ids = torch.tensor(sequence_padding(batch_segment_ids), dtype=torch.long, device=device)
+    batch_token_ids = torch.tensor(
+        sequence_padding(batch_token_ids), dtype=torch.long, device=device
+    )
+    batch_segment_ids = torch.tensor(
+        sequence_padding(batch_segment_ids), dtype=torch.long, device=device
+    )
     return [batch_token_ids, batch_segment_ids], batch_token_ids
 
 
 # 加载数据集
-train_dataloader = DataLoader(MyDataset('F:/Projects/data/corpus/pretrain/金庸小说/*.txt'),
-                              batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+train_dataloader = DataLoader(
+    MyDataset("F:/Projects/data/corpus/pretrain/金庸小说/*.txt"),
+    batch_size=batch_size,
+    shuffle=True,
+    collate_fn=collate_fn,
+)
 
 # 建模
 model = build_transformer_model(
     config_path,
     checkpoint_path,
     with_mlm=True,
-    application='lm',
+    application="lm",
     keep_tokens=keep_tokens,  # 只保留keep_tokens中的字，精简原字表
 ).to(device)
 summary(model, input_data=[next(iter(train_dataloader))[0]])
@@ -119,15 +133,17 @@ class CrossEntropyLoss(nn.CrossEntropyLoss):
         return super().forward(mlm_scores, target)
 
 
-model.compile(loss=CrossEntropyLoss(ignore_index=0), optimizer=optim.Adam(model.parameters(), 1e-5))
+model.compile(
+    loss=CrossEntropyLoss(ignore_index=0),
+    optimizer=optim.Adam(model.parameters(), 1e-5),
+)
 
 
 # 随机采样
 class StoryCompletion(AutoRegressiveDecoder):
-    """基于随机采样的故事续写
-    """
+    """基于随机采样的故事续写"""
 
-    @AutoRegressiveDecoder.wraps(default_rtype='logits')
+    @AutoRegressiveDecoder.wraps(default_rtype="logits")
     def predict(self, inputs, output_ids, states):
         token_ids = inputs[0]
         token_ids = torch.cat([token_ids, output_ids], 1)
@@ -141,44 +157,45 @@ class StoryCompletion(AutoRegressiveDecoder):
         return [text + tokenizer.decode(ids.cpu().numpy()) for ids in results]
 
 
-story_completion = StoryCompletion(start_id=None, end_id=tokenizer._token_end_id, maxlen=maxlen, device=device)
+story_completion = StoryCompletion(
+    start_id=None, end_id=tokenizer._token_end_id, maxlen=maxlen, device=device
+)
 
 
 def just_show():
-    s1 = u'当晚两人在一家小客店中宿歇。张无忌躺在炕上，越想越是担心，走到赵敏窗外，但听她呼吸调匀，正自香梦沉酣。'
-    s2 = u'虚竹飞身跃上松树的枝干，只见段延庆的钢杖深深嵌在树枝之中，全凭一股内力粘劲，挂住了下面四人，内力之深厚，实是非同小可。虚竹伸左手抓住钢杖，提将上来。'
-    s3 = u'杨过居住在侠客岛，是令狐冲的弟子，武器是金蛇剑。'
+    s1 = "当晚两人在一家小客店中宿歇。张无忌躺在炕上，越想越是担心，走到赵敏窗外，但听她呼吸调匀，正自香梦沉酣。"
+    s2 = "虚竹飞身跃上松树的枝干，只见段延庆的钢杖深深嵌在树枝之中，全凭一股内力粘劲，挂住了下面四人，内力之深厚，实是非同小可。虚竹伸左手抓住钢杖，提将上来。"
+    s3 = "杨过居住在侠客岛，是令狐冲的弟子，武器是金蛇剑。"
     for s in [s1, s2, s3]:
         t = story_completion.generate(s)
-        print(u'输入: %s' % s)
-        print(u'结果: %s\n' % ('\n'.join(t)))
+        print("输入: %s" % s)
+        print("结果: %s\n" % ("\n".join(t)))
 
 
 class Evaluator(Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
         self.lowest = 1e10
 
     def on_epoch_end(self, steps, epoch, logs=None):
         # 保存最优
-        if logs['loss'] <= self.lowest:
-            self.lowest = logs['loss']
+        if logs["loss"] <= self.lowest:
+            self.lowest = logs["loss"]
             # model.save_weights('./best_model.pt')
         # 演示效果
         just_show()
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
 
-    model.fit(train_dataloader, epochs=epochs, steps_per_epoch=100, callbacks=[evaluator])
+    model.fit(
+        train_dataloader, epochs=epochs, steps_per_epoch=100, callbacks=[evaluator]
+    )
 
 else:
-
-    model.load_weights('./best_model.weights')
+    model.load_weights("./best_model.weights")
 """
 效果：
 输入: 当晚两人在一家小客店中宿歇。张无忌躺在炕上，越想越是担心，走到赵敏窗外，但听她呼吸调匀，正自香梦沉酣。

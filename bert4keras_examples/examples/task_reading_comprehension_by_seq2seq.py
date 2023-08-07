@@ -31,7 +31,9 @@ batch_size = 32
 epochs = 8
 
 # bert配置
-bert_dir = "E:\\working\\huada_bgi\\data\\pretrained_model\\bert\\chinese_L-12_H-768_A-12\\"
+bert_dir = (
+    "E:\\working\\huada_bgi\\data\\pretrained_model\\bert\\chinese_L-12_H-768_A-12\\"
+)
 config_path = os.path.join(bert_dir, "bert_config.json")
 checkpoint_path = os.path.join(bert_dir, "bert_model.ckpt")
 dict_path = os.path.join(bert_dir, "vocab.txt")
@@ -56,8 +58,11 @@ train_data.extend(train_data)
 train_data.extend(webqa_data)  # 将SogouQA和WebQA按2:1的比例混合
 
 # 加载并精简词表，建立分词器
-token_dict, keep_tokens = load_vocab(dict_path=dict_path, simplified=True,
-                                     startswith=["[PAD]", "[UNK]", "[CLS]", "[SEP]"], )
+token_dict, keep_tokens = load_vocab(
+    dict_path=dict_path,
+    simplified=True,
+    startswith=["[PAD]", "[UNK]", "[CLS]", "[SEP]"],
+)
 tokenizer = Tokenizer(token_dict, do_lower_case=True)
 
 
@@ -76,14 +81,16 @@ class data_generator(DataGenerator):
         for is_end, D in self.sample(random):
             question = D["question"]
             answers = [p["answer"] for p in D["passages"] if p["answer"]]
-            passage = np.random.choice(D['passages'])['passage']
-            passage = re.sub(u' |、|；|，', ',', passage)
-            final_answer = ''
+            passage = np.random.choice(D["passages"])["passage"]
+            passage = re.sub(" |、|；|，", ",", passage)
+            final_answer = ""
             for answer in answers:
-                if all([a in passage[:max_p_len - 2] for a in answer.split(" ")]):
+                if all([a in passage[: max_p_len - 2] for a in answer.split(" ")]):
                     final_answer = answer.replace(" ", ",")
                     break
-            qa_token_ids, qa_segment_ids = tokenizer.encode(question, final_answer, maxlen=max_qa_len + 1)
+            qa_token_ids, qa_segment_ids = tokenizer.encode(
+                question, final_answer, maxlen=max_qa_len + 1
+            )
             p_token_ids, p_segment_ids = tokenizer.encode(passage, maxlen=max_p_len)
             token_ids = p_token_ids + qa_token_ids[1:]
             segment_ids = p_segment_ids + qa_segment_ids[1:]
@@ -111,7 +118,9 @@ class CrossEntropy(Loss):
         return loss
 
 
-model = build_transformer_model(config_path, checkpoint_path, application="unilm", keep_tokens=keep_tokens)
+model = build_transformer_model(
+    config_path, checkpoint_path, application="unilm", keep_tokens=keep_tokens
+)
 
 output = CrossEntropy(2)(model.inputs + model.outputs)
 model = Model(model.inputs, output)
@@ -140,13 +149,13 @@ class ReadingComprehension(AutoRegressiveDecoder):
         """
         result = {}
         for i in range(len(x) - n + 1):
-            k = tuple(x[i:i + n])
+            k = tuple(x[i : i + n])
             if k[:-1] not in result:
                 result[k[:-1]] = set()
             result[k[:-1]].add(k[-1])
         return result
 
-    @AutoRegressiveDecoder.wraps(default_rtype='probas', use_states=True)
+    @AutoRegressiveDecoder.wraps(default_rtype="probas", use_states=True)
     def predict(self, inputs, output_ids, states):
         inputs = [i for i in inputs if i[0, 0] > -1]  # 过滤掉无答案篇章
         topk = len(inputs[0])
@@ -155,15 +164,13 @@ class ReadingComprehension(AutoRegressiveDecoder):
             token_ids = np.concatenate([token_ids, output_ids], 1)
             segment_ids = np.zeros_like(token_ids)
             if states > 0:
-                segment_ids[:, -output_ids.shape[1]:] = 1
+                segment_ids[:, -output_ids.shape[1] :] = 1
             all_token_ids.extend(token_ids)
             all_segment_ids.extend(segment_ids)
         padded_all_token_ids = sequence_padding(all_token_ids)
         padded_all_segment_ids = sequence_padding(all_segment_ids)
         probas = model.predict([padded_all_token_ids, padded_all_segment_ids])
-        probas = [
-            probas[i, len(ids) - 1] for i, ids in enumerate(all_token_ids)
-        ]
+        probas = [probas[i, len(ids) - 1] for i, ids in enumerate(all_token_ids)]
         probas = np.array(probas).reshape((len(inputs), topk, -1))
         if states == 0:
             # 这一步主要是排除没有答案的篇章
@@ -194,61 +201,53 @@ class ReadingComprehension(AutoRegressiveDecoder):
                 available_idxs = list(available_idxs)
                 new_probas[:, i, available_idxs] = probas[:, i, available_idxs]
             probas = new_probas
-        return (probas ** 2).sum(0) / (probas.sum(0) + 1), states + 1  # 某种平均投票方式
+        return (probas**2).sum(0) / (probas.sum(0) + 1), states + 1  # 某种平均投票方式
 
     def answer(self, question, passages, topk=1):
         token_ids = []
         for passage in passages:
-            passage = re.sub(u' |、|；|，', ',', passage)
+            passage = re.sub(" |、|；|，", ",", passage)
             p_token_ids = tokenizer.encode(passage, maxlen=max_p_len)[0]
             q_token_ids = tokenizer.encode(question, maxlen=max_q_len + 1)[0]
             token_ids.append(p_token_ids + q_token_ids[1:])
-        output_ids = self.beam_search(
-            token_ids, topk=topk, states=0
-        )  # 基于beam search
+        output_ids = self.beam_search(token_ids, topk=topk, states=0)  # 基于beam search
         return tokenizer.decode(output_ids)
 
 
 reader = ReadingComprehension(
-    start_id=None,
-    end_id=tokenizer._token_end_id,
-    maxlen=max_a_len,
-    mode='extractive'
+    start_id=None, end_id=tokenizer._token_end_id, maxlen=max_a_len, mode="extractive"
 )
 
 
 def predict_to_file(data, filename, topk=1):
-    """将预测结果输出到文件，方便评估
-    """
-    with open(filename, 'w', encoding='utf-8') as f:
-        for d in tqdm(iter(data), desc=u'正在预测(共%s条样本)' % len(data)):
-            q_text = d['question']
-            p_texts = [p['passage'] for p in d['passages']]
+    """将预测结果输出到文件，方便评估"""
+    with open(filename, "w", encoding="utf-8") as f:
+        for d in tqdm(iter(data), desc="正在预测(共%s条样本)" % len(data)):
+            q_text = d["question"]
+            p_texts = [p["passage"] for p in d["passages"]]
             a = reader.answer(q_text, p_texts, topk)
             if a:
-                s = u'%s\t%s\n' % (d['id'], a)
+                s = "%s\t%s\n" % (d["id"], a)
             else:
-                s = u'%s\t\n' % (d['id'])
+                s = "%s\t\n" % (d["id"])
             f.write(s)
             f.flush()
 
 
 class Evaluator(keras.callbacks.Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
         self.lowest = 1e10
 
     def on_epoch_end(self, epoch, logs=None):
         # 保存最优
-        if logs['loss'] <= self.lowest:
-            self.lowest = logs['loss']
-            model.save_weights('./best_model.weights')
+        if logs["loss"] <= self.lowest:
+            self.lowest = logs["loss"]
+            model.save_weights("./best_model.weights")
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
     train_generator = data_generator(train_data, batch_size)
 
@@ -256,9 +255,8 @@ if __name__ == '__main__':
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=epochs,
-        callbacks=[evaluator]
+        callbacks=[evaluator],
     )
 
 else:
-
-    model.load_weights('./best_model.weights')
+    model.load_weights("./best_model.weights")

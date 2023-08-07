@@ -16,11 +16,12 @@ from transformers import (
     get_linear_schedule_with_warmup,
 )
 from torch.utils.data import DataLoader
+
 model_name_or_path = "uer/gpt2-chinese-cluecorpussmall"
-tokenizer=AutoTokenizer.from_pretrained(model_name_or_path)
-text="你今天还好吗"
-tokenizerd_text=tokenizer(text, add_special_tokens=False, truncation=True)
+tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+text = "你今天还好吗"
+tokenizerd_text = tokenizer(text, add_special_tokens=False, truncation=True)
 print(tokenizerd_text)
 
-tokenizerd_text=tokenizer(text, truncation=True)
+tokenizerd_text = tokenizer(text, truncation=True)
 print(tokenizerd_text)

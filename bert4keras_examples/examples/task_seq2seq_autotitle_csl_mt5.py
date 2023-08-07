@@ -38,10 +38,10 @@ batch_size = 16
 epochs = 40
 
 # 模型路径
-config_path = '/root/kg/bert/mt5/mt5_base/mt5_base_config.json'
-checkpoint_path = '/root/kg/bert/mt5/mt5_base/model.ckpt-1000000'
-spm_path = '/root/kg/bert/mt5/sentencepiece_cn.model'
-keep_tokens_path = '/root/kg/bert/mt5/sentencepiece_cn_keep_tokens.json'
+config_path = "/root/kg/bert/mt5/mt5_base/mt5_base_config.json"
+checkpoint_path = "/root/kg/bert/mt5/mt5_base/model.ckpt-1000000"
+spm_path = "/root/kg/bert/mt5/sentencepiece_cn.model"
+keep_tokens_path = "/root/kg/bert/mt5/sentencepiece_cn_keep_tokens.json"
 
 
 def load_data(filename):
@@ -49,26 +49,25 @@ def load_data(filename):
     单条格式：(标题, 正文)
     """
     D = []
-    with open(filename, encoding='utf-8') as f:
+    with open(filename, encoding="utf-8") as f:
         for l in f:
-            title, content = l.strip().split('\t')
+            title, content = l.strip().split("\t")
             D.append((title, content))
     return D
 
 
 # 加载数据集
-train_data = load_data('/root/csl/train.json.tsv')
-valid_data = load_data('/root/csl/val.tsv')
-test_data = load_data('/root/csl/test.tsv')
+train_data = load_data("/root/csl/train.json.tsv")
+valid_data = load_data("/root/csl/val.tsv")
+test_data = load_data("/root/csl/test.tsv")
 
 # 加载分词器
-tokenizer = SpTokenizer(spm_path, token_start=None, token_end='</s>')
+tokenizer = SpTokenizer(spm_path, token_start=None, token_end="</s>")
 keep_tokens = json.load(open(keep_tokens_path))
 
 
 class data_generator(DataGenerator):
-    """数据生成器
-    """
+    """数据生成器"""
 
     def __iter__(self, random=False):
         batch_c_token_ids, batch_t_token_ids = [], []
@@ -85,8 +84,7 @@ class data_generator(DataGenerator):
 
 
 class CrossEntropy(Loss):
-    """交叉熵作为loss，并mask掉输入部分
-    """
+    """交叉熵作为loss，并mask掉输入部分"""
 
     def compute_loss(self, inputs, mask=None):
         y_true, y_pred = inputs
@@ -102,9 +100,9 @@ t5 = build_transformer_model(
     config_path=config_path,
     checkpoint_path=checkpoint_path,
     keep_tokens=keep_tokens,
-    model='mt5.1.1',
+    model="mt5.1.1",
     return_keras_model=False,
-    name='T5',
+    name="T5",
 )
 
 encoder = t5.encoder
@@ -119,10 +117,9 @@ model.compile(optimizer=Adam(2e-4))
 
 
 class AutoTitle(AutoRegressiveDecoder):
-    """seq2seq解码器
-    """
+    """seq2seq解码器"""
 
-    @AutoRegressiveDecoder.wraps(default_rtype='probas')
+    @AutoRegressiveDecoder.wraps(default_rtype="probas")
     def predict(self, inputs, output_ids, states):
         c_encoded = inputs[0]
         return self.last_token(decoder).predict([c_encoded, output_ids])
@@ -135,60 +132,55 @@ class AutoTitle(AutoRegressiveDecoder):
 
 
 # 注：T5有一个很让人不解的设置，它的<bos>标记id是0，即<bos>和<pad>其实都是0
-autotitle = AutoTitle(
-    start_id=0, end_id=tokenizer._token_end_id, maxlen=max_t_len
-)
+autotitle = AutoTitle(start_id=0, end_id=tokenizer._token_end_id, maxlen=max_t_len)
 
 
 class Evaluator(keras.callbacks.Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
         self.rouge = Rouge()
         self.smooth = SmoothingFunction().method1
-        self.best_bleu = 0.
+        self.best_bleu = 0.0
 
     def on_epoch_end(self, epoch, logs=None):
         metrics = self.evaluate(valid_data)  # 评测模型
-        if metrics['bleu'] > self.best_bleu:
-            self.best_bleu = metrics['bleu']
-            model.save_weights('./best_model.weights')  # 保存模型
-        metrics['best_bleu'] = self.best_bleu
-        print('valid_data:', metrics)
+        if metrics["bleu"] > self.best_bleu:
+            self.best_bleu = metrics["bleu"]
+            model.save_weights("./best_model.weights")  # 保存模型
+        metrics["best_bleu"] = self.best_bleu
+        print("valid_data:", metrics)
 
     def evaluate(self, data, topk=1):
         total = 0
         rouge_1, rouge_2, rouge_l, bleu = 0, 0, 0, 0
         for title, content in tqdm(data):
             total += 1
-            title = ' '.join(title).lower()
-            pred_title = ' '.join(autotitle.generate(content,
-                                                     topk=topk)).lower()
+            title = " ".join(title).lower()
+            pred_title = " ".join(autotitle.generate(content, topk=topk)).lower()
             if pred_title.strip():
                 scores = self.rouge.get_scores(hyps=pred_title, refs=title)
-                rouge_1 += scores[0]['rouge-1']['f']
-                rouge_2 += scores[0]['rouge-2']['f']
-                rouge_l += scores[0]['rouge-l']['f']
+                rouge_1 += scores[0]["rouge-1"]["f"]
+                rouge_2 += scores[0]["rouge-2"]["f"]
+                rouge_l += scores[0]["rouge-l"]["f"]
                 bleu += sentence_bleu(
-                    references=[title.split(' ')],
-                    hypothesis=pred_title.split(' '),
-                    smoothing_function=self.smooth
+                    references=[title.split(" ")],
+                    hypothesis=pred_title.split(" "),
+                    smoothing_function=self.smooth,
                 )
         rouge_1 /= total
         rouge_2 /= total
         rouge_l /= total
         bleu /= total
         return {
-            'rouge-1': rouge_1,
-            'rouge-2': rouge_2,
-            'rouge-l': rouge_l,
-            'bleu': bleu,
+            "rouge-1": rouge_1,
+            "rouge-2": rouge_2,
+            "rouge-l": rouge_l,
+            "bleu": bleu,
         }
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
     train_generator = data_generator(train_data, batch_size)
 
@@ -196,9 +188,8 @@ if __name__ == '__main__':
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=epochs,
-        callbacks=[evaluator]
+        callbacks=[evaluator],
     )
 
 else:
-
-    model.load_weights('./best_model.weights')
+    model.load_weights("./best_model.weights")

@@ -51,7 +51,9 @@ def count_entity_with_mrc_ner_format(data_path):
             else:
                 entity_counter[tmp_entity_type] += len(data_item["end_position"])
 
-    print(f"mrc: the number of sentences is : {len(data_lst)/len(entity_counter.keys())}")
+    print(
+        f"mrc: the number of sentences is : {len(data_lst)/len(entity_counter.keys())}"
+    )
     print("UNDER MRC-NER format -> ")
     print(entity_counter)
 
@@ -65,7 +67,7 @@ def count_entity_with_sequence_ner_format(data_path, is_nested=False):
         for label_item in label_lst:
             tmp_entity_lst = get_entity_from_bmes_lst(label_item)
             for tmp_entity in tmp_entity_lst:
-                tmp_entity_type = tmp_entity[tmp_entity.index("]")+1:]
+                tmp_entity_type = tmp_entity[tmp_entity.index("]") + 1 :]
                 if tmp_entity_type not in entity_counter.keys():
                     entity_counter[tmp_entity_type] = 1
                 else:
@@ -82,9 +84,9 @@ def main(mrc_data_dir, seq_data_dir, seq_data_suffix="char.bmes", is_nested=Fals
         mrc_data_path = os.path.join(mrc_data_dir, f"mrc-ner.{data_type}")
         seq_data_path = os.path.join(seq_data_dir, f"{data_type}.{seq_data_suffix}")
 
-        print("$"*10)
+        print("$" * 10)
         print(f"{data_type}")
-        print("$"*10)
+        print("$" * 10)
         count_entity_with_mrc_ner_format(mrc_data_path)
         count_entity_with_sequence_ner_format(seq_data_path, is_nested=is_nested)
         print("\n")
@@ -95,4 +97,6 @@ if __name__ == "__main__":
     seq_data_dir = "/data/lixiaoya/datasets/bmes_ner/en_conll03"
     seq_data_suffix = "word.bmes"
     is_nested = False
-    main(mrc_data_dir, seq_data_dir, seq_data_suffix=seq_data_suffix, is_nested=is_nested)
+    main(
+        mrc_data_dir, seq_data_dir, seq_data_suffix=seq_data_suffix, is_nested=is_nested
+    )

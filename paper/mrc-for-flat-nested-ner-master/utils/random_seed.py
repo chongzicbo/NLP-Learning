@@ -14,6 +14,7 @@ import torch
 import numpy as np
 from pytorch_lightning import seed_everything
 
+
 def set_random_seed(seed: int):
     """set seeds for reproducibility"""
     random.seed(seed)
@@ -25,7 +26,7 @@ def set_random_seed(seed: int):
     torch.backends.cudnn.benchmark = False
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # without this line, x would be different in every execution.
     set_random_seed(0)
 

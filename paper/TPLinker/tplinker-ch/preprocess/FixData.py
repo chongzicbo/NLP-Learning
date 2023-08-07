@@ -1,4 +1,3 @@
-
 # coding: utf-8
 
 # In[16]:
@@ -57,8 +56,9 @@ nyt_test_data_path = os.path.join(nyt_data_dir, "raw_test.json")
 
 # In[3]:
 
+
 def get_data(path):
-    with open(path, "r", encoding = "utf-8") as file:
+    with open(path, "r", encoding="utf-8") as file:
         data = [json.loads(line) for line in file]
     return data
 
@@ -72,8 +72,15 @@ nyt_test_data = get_data(nyt_test_data_path)
 
 # In[7]:
 
+
 def remove_stress_mark(text):
-    text = "".join([c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn"])
+    text = "".join(
+        [
+            c
+            for c in unicodedata.normalize("NFD", text)
+            if unicodedata.category(c) != "Mn"
+        ]
+    )
     return text
 
 
@@ -104,10 +111,21 @@ if not os.path.exists(test_data_dir):
     os.mkdir(test_data_dir)
 test_data_path = os.path.join(test_data_dir, "test_data.json")
 
-json.dump(nyt_train_data, open(train_data_path, "w", encoding="utf-8"),
-          ensure_ascii=False, indent=2)
-json.dump(nyt_valid_data, open(valid_data_path, "w", encoding="utf-8"),
-          ensure_ascii=False, indent=2)
-json.dump(nyt_test_data, open(test_data_path, "w", encoding="utf-8"),
-          ensure_ascii=False, indent=2)
-
+json.dump(
+    nyt_train_data,
+    open(train_data_path, "w", encoding="utf-8"),
+    ensure_ascii=False,
+    indent=2,
+)
+json.dump(
+    nyt_valid_data,
+    open(valid_data_path, "w", encoding="utf-8"),
+    ensure_ascii=False,
+    indent=2,
+)
+json.dump(
+    nyt_test_data,
+    open(test_data_path, "w", encoding="utf-8"),
+    ensure_ascii=False,
+    indent=2,
+)

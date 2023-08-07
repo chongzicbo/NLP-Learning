@@ -21,8 +21,7 @@ from snippets import *
 
 
 class GlobalAveragePooling1D(keras.layers.GlobalAveragePooling1D):
-    """自定义全局池化
-    """
+    """自定义全局池化"""
 
     def call(self, inputs, mask=None):
         if mask is not None:
@@ -57,8 +56,7 @@ def load_data(filename):
 
 
 def predict(texts):
-    """句子列表转换为句向量
-    """
+    """句子列表转换为句向量"""
     batch_token_ids, batch_segment_ids = [], []
     for text in texts:
         token_ids, segment_ids = tokenizer.encode(text, maxlen=512)
@@ -71,21 +69,20 @@ def predict(texts):
 
 
 def convert(data):
-    """转换所有样本
-    """
+    """转换所有样本"""
     embeddings = []
-    for texts in tqdm(data, desc=u'向量化'):
+    for texts in tqdm(data, desc="向量化"):
         outputs = predict(texts)
         embeddings.append(outputs)
     embeddings = sequence_padding(embeddings)
     return embeddings
 
 
-if __name__ == '__main__':
-    data_extract_json = data_json[:-5] + '_extract.json'
-    data_extract_npy = data_json[:-5] + '_extract'
+if __name__ == "__main__":
+    data_extract_json = data_json[:-5] + "_extract.json"
+    data_extract_npy = data_json[:-5] + "_extract"
 
     data = load_data(data_extract_json)
     embeddings = convert(data)
     np.save(data_extract_npy, embeddings)
-    print(u'输出路径：%s.npy' % data_extract_npy)
+    print("输出路径：%s.npy" % data_extract_npy)

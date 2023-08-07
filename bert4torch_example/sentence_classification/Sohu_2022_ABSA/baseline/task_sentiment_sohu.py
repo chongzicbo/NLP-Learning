@@ -29,25 +29,25 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-parser = argparse.ArgumentParser(description='交叉验证')
-parser.add_argument('--fileid', default=0)
-parser.add_argument('--gpuid', default=0)
+parser = argparse.ArgumentParser(description="交叉验证")
+parser.add_argument("--fileid", default=0)
+parser.add_argument("--gpuid", default=0)
 args = parser.parse_args()
 fileid = args.fileid
 gpuid = args.gpuid
 
 # 配置设置
-config_path = 'F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/config.json'
-checkpoint_path = 'F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/pytorch_model.bin'
-dict_path = 'F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/vocab.txt'
-data_dir = 'E:/Github/Sohu2022/Sohu2022_data/nlp_data'
+config_path = "F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/config.json"
+checkpoint_path = "F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/pytorch_model.bin"
+dict_path = "F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/vocab.txt"
+data_dir = "E:/Github/Sohu2022/Sohu2022_data/nlp_data"
 
-choice = 'train'
-prefix = f'_char_512_cv_{fileid}'
-save_path = f'./output/section1{prefix}.txt'
-save_path_dev = f'./output/dev{prefix}.txt'
-ckpt_path = f'./ckpt/best_model{prefix}.pt'
-device = f'cuda:{gpuid}' if torch.cuda.is_available() else 'cpu'
+choice = "train"
+prefix = f"_char_512_cv_{fileid}"
+save_path = f"./output/section1{prefix}.txt"
+save_path_dev = f"./output/dev{prefix}.txt"
+ckpt_path = f"./ckpt/best_model{prefix}.pt"
+device = f"cuda:{gpuid}" if torch.cuda.is_available() else "cpu"
 seed = 42
 
 # 模型设置
@@ -62,7 +62,7 @@ categories_count = {k + 1: 0 for k in range(len(categories))}
 
 # 固定seed
 random.seed(seed)
-os.environ['PYTHONHASHSEED'] = str(seed)
+os.environ["PYTHONHASHSEED"] = str(seed)
 np.random.seed(seed)
 torch.manual_seed(seed)
 torch.cuda.manual_seed(seed)
@@ -70,31 +70,33 @@ torch.cuda.manual_seed(seed)
 
 # 加载数据集
 class MyDataset(ListDataset):
-    def __init__(self, file_path=None, data=None, mode='train'):
+    def __init__(self, file_path=None, data=None, mode="train"):
         self.mode = mode
         super().__init__(file_path, data)
 
     def load_data(self, filename):
         D = []
-        seps, strips = u'\n。！？!?；;，, ', u'；;，, '
-        with open(filename, encoding='utf-8') as f:
-            for l in tqdm(f, desc=f'[Loading {self.mode} data]'):
+        seps, strips = "\n。！？!?；;，, ", "；;，, "
+        with open(filename, encoding="utf-8") as f:
+            for l in tqdm(f, desc=f"[Loading {self.mode} data]"):
                 taskData = json.loads(l.strip())
-                id = taskData['id']
+                id = taskData["id"]
                 # 按照最长长度和标点符号切分
-                for t in text_segmentate(taskData['content'], maxlen - 2, seps, strips):
+                for t in text_segmentate(taskData["content"], maxlen - 2, seps, strips):
                     entitys = []
                     # train
-                    if isinstance(taskData['entity'], dict):
-                        for ent, label in taskData['entity'].items():
+                    if isinstance(taskData["entity"], dict):
+                        for ent, label in taskData["entity"].items():
                             start = self.search(ent, t)
                             if start != -1:
                                 label = categories.index(label) + 1
-                                entitys.append((ent, start, start + len(ent) - 1, label))  # +1是为了padding
+                                entitys.append(
+                                    (ent, start, start + len(ent) - 1, label)
+                                )  # +1是为了padding
                                 categories_count[label] += 1
                     # test
-                    elif isinstance(taskData['entity'], list):
-                        for ent in taskData['entity']:
+                    elif isinstance(taskData["entity"], list):
+                        for ent in taskData["entity"]:
                             start = self.search(ent, t)
                             if start != -1:
                                 entitys.append((ent, start, start + len(ent) - 1, 0))
@@ -108,7 +110,7 @@ class MyDataset(ListDataset):
         """
         n = len(pattern)
         for i in range(len(sequence)):
-            if sequence[i:i + n] == pattern:
+            if sequence[i : i + n] == pattern:
                 return i
         return -1
 
@@ -122,7 +124,7 @@ def collate_fn(batch):
     for d in batch:
         id, contents, entities = d[0], d[1], d[2:]
         tokens = tokenizer.tokenize(contents, maxlen=maxlen)[1:-1]
-        tokens = ['[CLS]'] + [j for i in tokens for j in i] + ['[SEP]']  # 转成char为单位的
+        tokens = ["[CLS]"] + [j for i in tokens for j in i] + ["[SEP]"]  # 转成char为单位的
         mapping = tokenizer.rematch(contents, tokens)
         start_mapping = {j[0]: i for i, j in enumerate(mapping) if j}
         end_mapping = {j[-1]: i for i, j in enumerate(mapping) if j}
@@ -148,30 +150,52 @@ def collate_fn(batch):
         batch_entity_ids.append(entity_ids)
         batch_entity_labels.append(entity_labels)
 
-    batch_token_ids = torch.tensor(sequence_padding(batch_token_ids), dtype=torch.long, device=device)
-    batch_entity_ids = torch.tensor(sequence_padding(batch_entity_ids), dtype=torch.long,
-                                    device=device)  # [btz, 实体个数，start/end]
-    batch_entity_labels = torch.tensor(sequence_padding(batch_entity_labels), dtype=torch.long,
-                                       device=device)  # [btz, 实体个数]
+    batch_token_ids = torch.tensor(
+        sequence_padding(batch_token_ids), dtype=torch.long, device=device
+    )
+    batch_entity_ids = torch.tensor(
+        sequence_padding(batch_entity_ids), dtype=torch.long, device=device
+    )  # [btz, 实体个数，start/end]
+    batch_entity_labels = torch.tensor(
+        sequence_padding(batch_entity_labels), dtype=torch.long, device=device
+    )  # [btz, 实体个数]
     return [batch_token_ids, batch_entity_ids, batch_extra], batch_entity_labels
 
 
 # 转换数据集
-train_dataloader = DataLoader(MyDataset(f'{data_dir}/train_{fileid}.txt'), batch_size=batch_size, shuffle=True,
-                              collate_fn=collate_fn)
-valid_dataloader = DataLoader(MyDataset(f'{data_dir}/dev_{fileid}.txt', mode='dev'), batch_size=batch_size_eval,
-                              collate_fn=collate_fn)
-test_dataloader = DataLoader(MyDataset(f'{data_dir}/test.txt', mode='test'), batch_size=batch_size_eval,
-                             collate_fn=collate_fn)
+train_dataloader = DataLoader(
+    MyDataset(f"{data_dir}/train_{fileid}.txt"),
+    batch_size=batch_size,
+    shuffle=True,
+    collate_fn=collate_fn,
+)
+valid_dataloader = DataLoader(
+    MyDataset(f"{data_dir}/dev_{fileid}.txt", mode="dev"),
+    batch_size=batch_size_eval,
+    collate_fn=collate_fn,
+)
+test_dataloader = DataLoader(
+    MyDataset(f"{data_dir}/test.txt", mode="test"),
+    batch_size=batch_size_eval,
+    collate_fn=collate_fn,
+)
 
 
 # 定义bert上的模型结构
 class Model(BaseModel):
     def __init__(self):
         super().__init__()
-        self.bert = build_transformer_model(config_path=config_path, checkpoint_path=checkpoint_path,
-                                            segment_vocab_size=0)
-        self.dropout = [nn.Dropout(0.1), nn.Dropout(0.3), nn.Dropout(0.5), nn.Dropout(0.7)]
+        self.bert = build_transformer_model(
+            config_path=config_path,
+            checkpoint_path=checkpoint_path,
+            segment_vocab_size=0,
+        )
+        self.dropout = [
+            nn.Dropout(0.1),
+            nn.Dropout(0.3),
+            nn.Dropout(0.5),
+            nn.Dropout(0.7),
+        ]
         self.dense = nn.Linear(768, 5 + 1)  # 包含padding
 
     def forward(self, inputs):
@@ -181,8 +205,9 @@ class Model(BaseModel):
         btz, entity_count, _ = entity_ids.shape
         hidden_size = last_hidden_state.shape[-1]
         entity_ids = entity_ids.reshape(btz, -1, 1).repeat(1, 1, hidden_size)
-        entity_states = torch.gather(last_hidden_state, dim=1, index=entity_ids).reshape(btz, entity_count, -1,
-                                                                                         hidden_size)
+        entity_states = torch.gather(
+            last_hidden_state, dim=1, index=entity_ids
+        ).reshape(btz, entity_count, -1, hidden_size)
         entity_states = torch.mean(entity_states, dim=2)  # 取实体首尾hidden_states的均值
         entity_logits = []
         for dropout in self.dropout:
@@ -203,11 +228,17 @@ class Loss(nn.Module):
     def forward(self, entity_logits, labels):
         loss = 0
         for entity_logit in entity_logits:
-            loss += self.loss_fn(entity_logit.reshape(-1, entity_logit.shape[-1]), labels.flatten())
+            loss += self.loss_fn(
+                entity_logit.reshape(-1, entity_logit.shape[-1]), labels.flatten()
+            )
         return loss
 
 
-model.compile(loss=Loss(), optimizer=optim.Adam(model.parameters(), lr=1e-5), adversarial_train={'name': 'fgm'})
+model.compile(
+    loss=Loss(),
+    optimizer=optim.Adam(model.parameters(), lr=1e-5),
+    adversarial_train={"name": "fgm"},
+)
 
 
 def evaluate(data):
@@ -230,7 +261,7 @@ def evaluate(data):
             smp_id, s_e_ents = extra[id_][0], extra[id_][1]
 
             if (start, end) not in s_e_ents:
-                raise ValueError('entity missing')
+                raise ValueError("entity missing")
             if smp_id not in result:
                 result[smp_id], result_prob[smp_id] = {}, {}
             ent_name = s_e_ents[(start, end)][0]
@@ -249,7 +280,7 @@ def evaluate(data):
 
     valid_true = np.array(valid_true)
     valid_pred = np.array(valid_pred)
-    f1 = f1_score(valid_true, valid_pred, average='macro')
+    f1 = f1_score(valid_true, valid_pred, average="macro")
     acc = accuracy_score(valid_true, valid_pred)
     print(classification_report(valid_true, valid_pred))
     # 只保留label，不需要prob
@@ -259,24 +290,24 @@ def evaluate(data):
 
 
 def trans_entity2tuple(entity_ids, entity_labels, entity_probs=None):
-    '''把tensor转为(样本id, start, end, 实体类型, 实体概率值)的tuple用于计算指标
-    '''
+    """把tensor转为(样本id, start, end, 实体类型, 实体概率值)的tuple用于计算指标"""
     y, ent_tuple = [], []
     for i, one_sample in enumerate(entity_ids):  # 遍历样本
         for j, item in enumerate(one_sample):  # 遍历实体
             if item[0].item() * item[1].item() != 0:
                 tmp = (i, j, item[0].item(), item[1].item(), entity_labels[i, j].item())
                 y.append(entity_labels[i, j].item())
-                ent_tuple.append(tmp if entity_probs is None else tmp + (entity_probs[i, j].item(),))
+                ent_tuple.append(
+                    tmp if entity_probs is None else tmp + (entity_probs[i, j].item(),)
+                )
     return y, ent_tuple
 
 
 class Evaluator(Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
-        self.best_val_f1 = 0.
+        self.best_val_f1 = 0.0
 
     def on_epoch_end(self, steps, epoch, logs=None):
         f1, acc, pred_result, pred_result_prob = evaluate(valid_dataloader)
@@ -284,26 +315,33 @@ class Evaluator(Callback):
             self.best_val_f1 = f1
             model.save_weights(ckpt_path)
             # save_result(pred_result, pred_result_prob, save_path=save_path_dev)
-        print(f'[val-entity] f1: {f1:.5f}, acc: {acc:.5f} best_f1: {self.best_val_f1:.5f}\n')
+        print(
+            f"[val-entity] f1: {f1:.5f}, acc: {acc:.5f} best_f1: {self.best_val_f1:.5f}\n"
+        )
 
 
 def save_result(result, result_prob, save_path):
     result = [(key, value) for key, value in result.items()]
     result.sort(key=lambda x: x[0])
-    result_str = 'id\tresult\n'
+    result_str = "id\tresult\n"
     for key, value in result:
-        result_str += f'{key}\t{value}\n'
-    with open(save_path, 'w', encoding='utf-8') as f:
+        result_str += f"{key}\t{value}\n"
+    with open(save_path, "w", encoding="utf-8") as f:
         f.write(result_str)
     # 保存概率
-    with open(save_path[:-4] + '_prob.pkl', 'wb') as f:
+    with open(save_path[:-4] + "_prob.pkl", "wb") as f:
         pickle.dump(result_prob, f)
 
 
-if __name__ == '__main__':
-    if choice == 'train':
+if __name__ == "__main__":
+    if choice == "train":
         evaluator = Evaluator()
-        model.fit(train_dataloader, epochs=epochs, steps_per_epoch=steps_per_epoch, callbacks=[evaluator])
+        model.fit(
+            train_dataloader,
+            epochs=epochs,
+            steps_per_epoch=steps_per_epoch,
+            callbacks=[evaluator],
+        )
 
     model.load_weights(ckpt_path)
     f1, acc, pred_result, pred_result_prob = evaluate(test_dataloader)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Author: XuMing(xuming624@qq.com)
-# Brief: 
+# Brief:
 import time
 from loguru import logger
 from dialogbot.reader.data_helper import load_corpus_file
@@ -10,7 +10,10 @@ class OneHotModel:
     def __init__(self, corpus_file, word2id):
         time_s = time.time()
         self.contexts, self.responses = load_corpus_file(corpus_file, word2id)
-        logger.debug("Time to build onehot model by %s : %2.f seconds." % (corpus_file, time.time() - time_s))
+        logger.debug(
+            "Time to build onehot model by %s : %2.f seconds."
+            % (corpus_file, time.time() - time_s)
+        )
 
     def score(self, l1, l2):
         """
@@ -38,7 +41,9 @@ class OneHotModel:
         for question in self.contexts:
             score = self.score(query, question)
             scores.append(score)
-        scores_sort = sorted(list(enumerate(scores)), key=lambda item: item[1], reverse=True)
+        scores_sort = sorted(
+            list(enumerate(scores)), key=lambda item: item[1], reverse=True
+        )
         return scores_sort[:size]
 
     def get_docs(self, sim_items):

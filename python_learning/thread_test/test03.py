@@ -23,7 +23,7 @@ def add(n):
     print(f"sum={sum}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     start = time.time()
     # add(500000000)
     n = 500000000

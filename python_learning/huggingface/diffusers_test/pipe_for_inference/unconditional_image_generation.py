@@ -8,10 +8,12 @@
 # Description：
 """
 from diffusers import DiffusionPipeline
+
 generator = DiffusionPipeline.from_pretrained("google/ddpm-celebahq-256")
 generator.to("cuda")
-image=generator().images[0]
+image = generator().images[0]
 
 from matplotlib import pyplot as plt
+
 plt.imshow(image)
 plt.show()

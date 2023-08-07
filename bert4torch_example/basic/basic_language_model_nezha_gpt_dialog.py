@@ -15,9 +15,13 @@ from bert4torch.snippets import AutoRegressiveDecoder
 import torch
 
 # nezha配置
-config_path = 'F:/Projects/pretrain_ckpt/nezha/[sushen_tf_base]--nezha_gpt_dialog/config.json'
-checkpoint_path = 'F:/Projects/pretrain_ckpt/nezha/[sushen_tf_base]--nezha_gpt_dialog/pytorch_model.bin'
-dict_path = 'F:/Projects/pretrain_ckpt/nezha/[sushen_tf_base]--nezha_gpt_dialog/vocab.txt'
+config_path = (
+    "F:/Projects/pretrain_ckpt/nezha/[sushen_tf_base]--nezha_gpt_dialog/config.json"
+)
+checkpoint_path = "F:/Projects/pretrain_ckpt/nezha/[sushen_tf_base]--nezha_gpt_dialog/pytorch_model.bin"
+dict_path = (
+    "F:/Projects/pretrain_ckpt/nezha/[sushen_tf_base]--nezha_gpt_dialog/vocab.txt"
+)
 
 # 建立分词器
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
@@ -26,16 +30,15 @@ tokenizer = Tokenizer(dict_path, do_lower_case=True)
 model = build_transformer_model(
     config_path,
     checkpoint_path,
-    model='nezha',
-    application='lm',
+    model="nezha",
+    application="lm",
 )
 
 
 class ChatBot(AutoRegressiveDecoder):
-    """基于随机采样对话机器人
-    """
+    """基于随机采样对话机器人"""
 
-    @AutoRegressiveDecoder.wraps(default_rtype='logits')
+    @AutoRegressiveDecoder.wraps(default_rtype="logits")
     def predict(self, inputs, output_ids, states):
         token_ids, segment_ids = inputs
         token_ids = torch.concat([token_ids, output_ids], 1)
@@ -54,7 +57,7 @@ class ChatBot(AutoRegressiveDecoder):
 
 
 chatbot = ChatBot(start_id=None, end_id=tokenizer._token_end_id, maxlen=32)
-print(chatbot.response([u'别爱我没结果', u'你这样会失去我的', u'失去了又能怎样']))
+print(chatbot.response(["别爱我没结果", "你这样会失去我的", "失去了又能怎样"]))
 """
 回复是随机的，例如：那你还爱我吗 | 不知道 | 爱情是不是不能因为一点小事就否定了 | 我会一直爱你，你一个人会很辛苦 | 等等。
 """

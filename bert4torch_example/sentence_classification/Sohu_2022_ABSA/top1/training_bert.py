@@ -16,7 +16,13 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from bert4torch.snippets import sequence_padding, Callback, ListDataset, text_segmentate, seed_everything
+from bert4torch.snippets import (
+    sequence_padding,
+    Callback,
+    ListDataset,
+    text_segmentate,
+    seed_everything,
+)
 from bert4torch.optimizers import get_linear_schedule_with_warmup
 from bert4torch.tokenizers import Tokenizer
 from bert4torch.models import build_transformer_model, BaseModel
@@ -27,17 +33,17 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # 配置设置
-config_path = 'F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/config.json'
-checkpoint_path = 'F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/pytorch_model.bin'
-dict_path = 'F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/vocab.txt'
-data_dir = 'E:/Github/Sohu2022/Sohu2022_data/nlp_data'
+config_path = "F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/config.json"
+checkpoint_path = "F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/pytorch_model.bin"
+dict_path = "F:/Projects/pretrain_ckpt/robert/[hit_torch_base]--chinese-roberta-wwm-ext-base/vocab.txt"
+data_dir = "E:/Github/Sohu2022/Sohu2022_data/nlp_data"
 
-choice = 'train'
-prefix = f'_char_512'
-save_path = f'./section1{prefix}.txt'
-save_path_dev = f'./dev{prefix}.txt'
-ckpt_path = f'./best_model{prefix}.pt'
-device = f'cuda' if torch.cuda.is_available() else 'cpu'
+choice = "train"
+prefix = f"_char_512"
+save_path = f"./section1{prefix}.txt"
+save_path_dev = f"./dev{prefix}.txt"
+ckpt_path = f"./best_model{prefix}.pt"
+device = f"cuda" if torch.cuda.is_available() else "cpu"
 use_swa = True
 
 # 模型设置
@@ -56,21 +62,25 @@ seed_everything(42)  # 估计随机数
 # 加载数据集
 def load_data(filename):
     D = []
-    seps, strips = u'\n。！？!?；;，, ', u'；;，, '
-    with open(filename, encoding='utf-8') as f:
+    seps, strips = "\n。！？!?；;，, ", "；;，, "
+    with open(filename, encoding="utf-8") as f:
         for l in tqdm(f.readlines(), desc="Loading data"):
             taskData = json.loads(l.strip())
-            text2 = ''.join([ent + '[MASK]' for ent in taskData['entity'].keys()]) + '[SEP]'
-            text2_len = sum([len(ent) + 1 for ent in taskData['entity'].keys()]) + 1
-            for t in text_segmentate(taskData['content'], maxlen - text2_len - 2, seps, strips):
-                D.append((t, text2, taskData['entity']))
+            text2 = (
+                "".join([ent + "[MASK]" for ent in taskData["entity"].keys()]) + "[SEP]"
+            )
+            text2_len = sum([len(ent) + 1 for ent in taskData["entity"].keys()]) + 1
+            for t in text_segmentate(
+                taskData["content"], maxlen - text2_len - 2, seps, strips
+            ):
+                D.append((t, text2, taskData["entity"]))
     return D
 
 
 def search(tokens, start_idx=0):
     mask_idxs = []
     for i in range(len(tokens)):
-        if tokens[i] == '[MASK]':
+        if tokens[i] == "[MASK]":
             mask_idxs.append(i + start_idx)
     return mask_idxs
 
@@ -90,7 +100,7 @@ def collate_fn(batch):
         ent_labels, ent_ids = [], []
         for i, (ent, label) in enumerate(entity.items()):
             if ent in text1:
-                assert tokens2[ent_ids_raw[i] - len(token_ids1)] == '[MASK]'
+                assert tokens2[ent_ids_raw[i] - len(token_ids1)] == "[MASK]"
                 ent_ids.append(ent_ids_raw[i])
                 ent_labels.append(categories.index(label))
 
@@ -98,33 +108,48 @@ def collate_fn(batch):
         batch_entity_ids.append(ent_ids)
         batch_entity_labels.append(ent_labels)
 
-    batch_token_ids = torch.tensor(sequence_padding(batch_token_ids), dtype=torch.long, device=device)
-    batch_entity_ids = torch.tensor(sequence_padding(batch_entity_ids), dtype=torch.long, device=device)
-    batch_entity_labels = torch.tensor(sequence_padding(batch_entity_labels, value=-1), dtype=torch.long,
-                                       device=device)  # [btz, 实体个数]
+    batch_token_ids = torch.tensor(
+        sequence_padding(batch_token_ids), dtype=torch.long, device=device
+    )
+    batch_entity_ids = torch.tensor(
+        sequence_padding(batch_entity_ids), dtype=torch.long, device=device
+    )
+    batch_entity_labels = torch.tensor(
+        sequence_padding(batch_entity_labels, value=-1), dtype=torch.long, device=device
+    )  # [btz, 实体个数]
     return [batch_token_ids, batch_entity_ids], batch_entity_labels
 
 
 # 转换数据集
-all_data = load_data(f'{data_dir}/train.txt')
+all_data = load_data(f"{data_dir}/train.txt")
 split_index = int(len(all_data) * 0.9)
-train_dataloader = DataLoader(ListDataset(data=all_data[:split_index]), batch_size=batch_size, collate_fn=collate_fn)
-valid_dataloader = DataLoader(ListDataset(data=all_data[split_index:]), batch_size=batch_size_eval,
-                              collate_fn=collate_fn)
+train_dataloader = DataLoader(
+    ListDataset(data=all_data[:split_index]),
+    batch_size=batch_size,
+    collate_fn=collate_fn,
+)
+valid_dataloader = DataLoader(
+    ListDataset(data=all_data[split_index:]),
+    batch_size=batch_size_eval,
+    collate_fn=collate_fn,
+)
 
 
 # 定义bert上的模型结构
 class Model(BaseModel):
     def __init__(self):
         super().__init__()
-        self.bert = build_transformer_model(config_path=config_path, checkpoint_path=checkpoint_path,
-                                            segment_vocab_size=0)
-        hidden_size = self.bert.configs['hidden_size']
+        self.bert = build_transformer_model(
+            config_path=config_path,
+            checkpoint_path=checkpoint_path,
+            segment_vocab_size=0,
+        )
+        hidden_size = self.bert.configs["hidden_size"]
         self.classifier = nn.Sequential(
             nn.Linear(hidden_size, hidden_size),
             nn.LeakyReLU(),
             nn.Dropout(0.1),
-            nn.Linear(hidden_size, 5)
+            nn.Linear(hidden_size, 5),
         )
 
     def forward(self, inputs):
@@ -143,36 +168,48 @@ model = Model().to(device)
 
 class Loss(nn.CrossEntropyLoss):
     def forward(self, entity_logit, labels):
-        loss = super().forward(entity_logit.reshape(-1, entity_logit.shape[-1]), labels.flatten())
+        loss = super().forward(
+            entity_logit.reshape(-1, entity_logit.shape[-1]), labels.flatten()
+        )
         return loss
 
 
 optimizer = optim.Adam(model.parameters(), lr=2e-5)
-scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps,
-                                            num_training_steps=len(train_dataloader) * epochs, last_epoch=-1)
-model.compile(loss=Loss(ignore_index=-1), optimizer=optimizer, scheduler=scheduler, adversarial_train={'name': 'fgm'})
+scheduler = get_linear_schedule_with_warmup(
+    optimizer,
+    num_warmup_steps,
+    num_training_steps=len(train_dataloader) * epochs,
+    last_epoch=-1,
+)
+model.compile(
+    loss=Loss(ignore_index=-1),
+    optimizer=optimizer,
+    scheduler=scheduler,
+    adversarial_train={"name": "fgm"},
+)
 # swa
 if use_swa:
+
     def average_function(ax: torch.Tensor, x: torch.Tensor, num: int) -> torch.Tensor:
         return ax + (x - ax) / (num + 1)
-
 
     swa_model = torch.optim.swa_utils.AveragedModel(model, avg_fn=average_function)
 
 
 class Evaluator(Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
-        self.best_val_f1 = 0.
+        self.best_val_f1 = 0.0
 
     def on_epoch_end(self, steps, epoch, logs=None):
         f1, acc, pred_result = self.evaluate(valid_dataloader)
         if f1 > self.best_val_f1:
             self.best_val_f1 = f1
             model.save_weights(ckpt_path)
-        print(f'[val-entity] f1: {f1:.5f}, acc: {acc:.5f} best_f1: {self.best_val_f1:.5f}\n')
+        print(
+            f"[val-entity] f1: {f1:.5f}, acc: {acc:.5f} best_f1: {self.best_val_f1:.5f}\n"
+        )
         if use_swa:
             swa_model.update_parameters(model)
 
@@ -185,9 +222,13 @@ class Evaluator(Callback):
             if use_swa:
                 swa_model.eval()
                 with torch.no_grad():
-                    entity_logit = F.softmax(swa_model([token_ids, entity_ids]), dim=-1)  # [btz, 实体个数, 实体类别数]
+                    entity_logit = F.softmax(
+                        swa_model([token_ids, entity_ids]), dim=-1
+                    )  # [btz, 实体个数, 实体类别数]
             else:
-                entity_logit = F.softmax(model.predict([token_ids, entity_ids]), dim=-1)  # [btz, 实体个数, 实体类别数]
+                entity_logit = F.softmax(
+                    model.predict([token_ids, entity_ids]), dim=-1
+                )  # [btz, 实体个数, 实体类别数]
             _, entity_pred = torch.max(entity_logit, dim=-1)  # [btz, 实体个数]
             # v_pred和v_true是实体的预测结果
             valid_index = (entity_ids.flatten() > 0).nonzero().squeeze(-1)
@@ -200,7 +241,7 @@ class Evaluator(Callback):
 
         valid_true = np.array(valid_true)
         valid_pred = np.array(valid_pred)
-        f1 = f1_score(valid_true, valid_pred, average='macro')
+        f1 = f1_score(valid_true, valid_pred, average="macro")
         acc = accuracy_score(valid_true, valid_pred)
         print(classification_report(valid_true, valid_pred))
         # 只保留label，不需要prob
@@ -209,10 +250,15 @@ class Evaluator(Callback):
         return f1, acc, result
 
 
-if __name__ == '__main__':
-    if choice == 'train':
+if __name__ == "__main__":
+    if choice == "train":
         evaluator = Evaluator()
-        model.fit(train_dataloader, epochs=epochs, steps_per_epoch=steps_per_epoch, callbacks=[evaluator])
+        model.fit(
+            train_dataloader,
+            epochs=epochs,
+            steps_per_epoch=steps_per_epoch,
+            callbacks=[evaluator],
+        )
 
     model.load_weights(ckpt_path)
     f1, acc, pred_result = Evaluator.evaluate(valid_dataloader)

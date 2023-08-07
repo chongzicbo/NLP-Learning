@@ -26,10 +26,12 @@ categories_label2id = {"LOC": 0, "ORG": 1, "PER": 2}
 categories_id2label = dict((value, key) for key, value in categories_label2id.items())
 
 # BERT base
-config_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/pytorch_model.bin'
-dict_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/vocab.txt'
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+config_path = "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/bert_config.json"
+checkpoint_path = "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/pytorch_model.bin"
+dict_path = (
+    "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/vocab.txt"
+)
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # 固定seed
 seed_everything(42)
@@ -40,18 +42,18 @@ class MyDataset(ListDataset):
     @staticmethod
     def load_data(filename):
         data = []
-        with open(filename, encoding='utf-8') as f:
+        with open(filename, encoding="utf-8") as f:
             f = f.read()
-            for l in f.split('\n\n'):
+            for l in f.split("\n\n"):
                 if not l:
                     continue
-                text, label = '', []
-                for i, c in enumerate(l.split('\n')):
-                    char, flag = c.split(' ')
+                text, label = "", []
+                for i, c in enumerate(l.split("\n")):
+                    char, flag = c.split(" ")
                     text += char
-                    if flag[0] == 'B':
+                    if flag[0] == "B":
                         label.append([i, i, flag[2:]])
-                    elif flag[0] == 'I':
+                    elif flag[0] == "I":
                         label[-1][1] = i
                 text_list = tokenizer.tokenize(text)[1:-1]  # 不保留首位[CLS]和末位[SEP]
                 tokens = [j for i in text_list for j in i][:maxlen]  # 以char为单位
@@ -60,20 +62,23 @@ class MyDataset(ListDataset):
 
 
 def trans_ij2k(seq_len, i, j):
-    '''把第i行，第j列转化成上三角flat后的序号
-    '''
+    """把第i行，第j列转化成上三角flat后的序号"""
     if (i > seq_len - 1) or (j > seq_len - 1) or (i > j):
         return 0
     return int(0.5 * (2 * seq_len - i + 1) * i + (j - i))
 
 
-map_ij2k = {(i, j): trans_ij2k(maxlen, i, j) for i in range(maxlen) for j in range(maxlen) if j >= i}
+map_ij2k = {
+    (i, j): trans_ij2k(maxlen, i, j)
+    for i in range(maxlen)
+    for j in range(maxlen)
+    if j >= i
+}
 map_k2ij = {v: k for k, v in map_ij2k.items()}
 
 
 def tran_ent_rel2id():
-    '''获取最后一个分类层的的映射关系
-    '''
+    """获取最后一个分类层的的映射关系"""
     tag2id = {}
     for p in categories_label2id.keys():
         tag2id[p] = len(tag2id)
@@ -90,7 +95,9 @@ tokenizer = Tokenizer(dict_path, do_lower_case=True)
 def collate_fn(batch):
     pair_len = maxlen * (maxlen + 1) // 2
     # batch_head_labels: [btz, pair_len, tag2id_len]
-    batch_labels = torch.zeros((len(batch), pair_len, len(tag2id)), dtype=torch.long, device=device)
+    batch_labels = torch.zeros(
+        (len(batch), pair_len, len(tag2id)), dtype=torch.long, device=device
+    )
 
     batch_token_ids = []
     for i, (tokens, labels) in enumerate(batch):
@@ -99,25 +106,43 @@ def collate_fn(batch):
             if s_i[1] >= len(tokens):  # 实体的结尾超过文本长度，则不标记
                 continue
             batch_labels[i, map_ij2k[s_i[0], s_i[1]], tag2id[s_i[2]]] = 1
-    batch_token_ids = torch.tensor(sequence_padding(batch_token_ids, length=maxlen), dtype=torch.long, device=device)
+    batch_token_ids = torch.tensor(
+        sequence_padding(batch_token_ids, length=maxlen),
+        dtype=torch.long,
+        device=device,
+    )
     return [batch_token_ids], batch_labels
 
 
 # 转换数据集
-train_dataloader = DataLoader(MyDataset('F:/Projects/data/corpus/ner/china-people-daily-ner-corpus/example.train'),
-                              batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
-valid_dataloader = DataLoader(MyDataset('F:/Projects/data/corpus/ner/china-people-daily-ner-corpus/example.dev'),
-                              batch_size=batch_size, collate_fn=collate_fn)
+train_dataloader = DataLoader(
+    MyDataset(
+        "F:/Projects/data/corpus/ner/china-people-daily-ner-corpus/example.train"
+    ),
+    batch_size=batch_size,
+    shuffle=True,
+    collate_fn=collate_fn,
+)
+valid_dataloader = DataLoader(
+    MyDataset("F:/Projects/data/corpus/ner/china-people-daily-ner-corpus/example.dev"),
+    batch_size=batch_size,
+    collate_fn=collate_fn,
+)
 
 
 # 定义bert上的模型结构
 class Model(BaseModel):
     def __init__(self):
         super().__init__()
-        self.bert = build_transformer_model(config_path=config_path, checkpoint_path=checkpoint_path,
-                                            segment_vocab_size=0)
+        self.bert = build_transformer_model(
+            config_path=config_path,
+            checkpoint_path=checkpoint_path,
+            segment_vocab_size=0,
+        )
         self.fc = nn.Linear(768, len(tag2id))
-        self.handshaking_kernel = TplinkerHandshakingKernel(768, shaking_type='cln_plus', inner_enc_type='lstm')
+        self.handshaking_kernel = TplinkerHandshakingKernel(
+            768, shaking_type="cln_plus", inner_enc_type="lstm"
+        )
 
     def forward(self, inputs):
         last_hidden_state = self.bert(inputs)  # [btz, seq_len, hdsz]
@@ -127,7 +152,10 @@ class Model(BaseModel):
 
 
 model = Model().to(device)
-model.compile(loss=MultilabelCategoricalCrossentropy(), optimizer=optim.Adam(model.parameters(), lr=2e-5))
+model.compile(
+    loss=MultilabelCategoricalCrossentropy(),
+    optimizer=optim.Adam(model.parameters(), lr=2e-5),
+)
 
 
 def evaluate(data, threshold=0):
@@ -152,22 +180,23 @@ def evaluate(data, threshold=0):
 
 
 class Evaluator(Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
-        self.best_val_f1 = 0.
+        self.best_val_f1 = 0.0
 
     def on_epoch_end(self, steps, epoch, logs=None):
         f1, precision, recall = evaluate(valid_dataloader)
         if f1 > self.best_val_f1:
             self.best_val_f1 = f1
             # model.save_weights('best_model.pt')
-        print(f'[val] f1: {f1:.5f}, p: {precision:.5f} r: {recall:.5f} best_f1: {self.best_val_f1:.5f}')
+        print(
+            f"[val] f1: {f1:.5f}, p: {precision:.5f} r: {recall:.5f} best_f1: {self.best_val_f1:.5f}"
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     evaluator = Evaluator()
     model.fit(train_dataloader, epochs=20, steps_per_epoch=None, callbacks=[evaluator])
 else:
-    model.load_weights('best_model.pt')
+    model.load_weights("best_model.pt")

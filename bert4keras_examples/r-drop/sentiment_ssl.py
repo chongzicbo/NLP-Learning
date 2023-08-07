@@ -23,6 +23,7 @@ from keras.utils import to_categorical
 from tqdm import tqdm
 from keras.losses import kullback_leibler_divergence as kld
 import warnings
+
 warnings.filterwarnings("ignore")
 
 # 配置信息
@@ -33,9 +34,9 @@ train_frac = 0.01  # 标注数据的比例
 use_rdrop = True  # 可以比较True/False的效果
 
 # BERT base
-config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
-dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
+config_path = "/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json"
+checkpoint_path = "/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt"
+dict_path = "/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt"
 
 
 def load_data(filename):
@@ -43,17 +44,17 @@ def load_data(filename):
     单条格式：(文本, 标签id)
     """
     D = []
-    with open(filename, encoding='utf-8') as f:
+    with open(filename, encoding="utf-8") as f:
         for l in f:
-            text, label = l.strip().split('\t')
+            text, label = l.strip().split("\t")
             D.append((text, int(label)))
     return D
 
 
 # 加载数据集
-train_data = load_data('datasets/sentiment/sentiment.train.json.data')
-valid_data = load_data('datasets/sentiment/sentiment.valid.data')
-test_data = load_data('datasets/sentiment/sentiment.test.data')
+train_data = load_data("datasets/sentiment/sentiment.train.json.data")
+valid_data = load_data("datasets/sentiment/sentiment.valid.data")
+test_data = load_data("datasets/sentiment/sentiment.test.data")
 
 # 模拟标注和非标注数据
 num_labeled = int(len(train_data) * train_frac)
@@ -65,8 +66,8 @@ tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
 
 class data_generator(DataGenerator):
-    """数据生成器
-    """
+    """数据生成器"""
+
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
         for is_end, (text, label) in self.sample(random):
@@ -83,8 +84,8 @@ class data_generator(DataGenerator):
 
 
 class data_generator_rdrop(DataGenerator):
-    """数据生成器
-    """
+    """数据生成器"""
+
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
         for is_end, (text, label) in self.sample(random):
@@ -116,9 +117,7 @@ bert = build_transformer_model(
 
 output = Lambda(lambda x: x[:, 0])(bert.model.output)
 output = Dense(
-    units=num_classes,
-    activation='softmax',
-    kernel_initializer=bert.initializer
+    units=num_classes, activation="softmax", kernel_initializer=bert.initializer
 )(output)
 
 # 用于正常训练的模型
@@ -126,15 +125,14 @@ model = keras.models.Model(bert.model.input, output)
 model.summary()
 
 model.compile(
-    loss='categorical_crossentropy',
+    loss="categorical_crossentropy",
     optimizer=Adam(2e-5),
-    metrics=['categorical_accuracy'],
+    metrics=["categorical_accuracy"],
 )
 
 
 def kld_rdrop(y_true, y_pred):
-    """无监督部分只需训练KL散度项
-    """
+    """无监督部分只需训练KL散度项"""
     loss = kld(y_pred[::2], y_pred[1::2]) + kld(y_pred[1::2], y_pred[::2])
     return K.mean(loss)
 
@@ -148,7 +146,7 @@ model_rdrop.compile(
 
 
 def evaluate(data):
-    total, right = 0., 0.
+    total, right = 0.0, 0.0
     for x_true, y_true in data:
         y_pred = model.predict(x_true).argmax(axis=1)
         y_true = y_true.argmax(axis=1)
@@ -158,21 +156,21 @@ def evaluate(data):
 
 
 class Evaluator(keras.callbacks.Callback):
-    """评估与保存
-    """
+    """评估与保存"""
+
     def __init__(self):
-        self.best_val_acc = 0.
+        self.best_val_acc = 0.0
         self.data = data_generator_rdrop(unlabeled_data, batch_size).forfit()
 
     def on_epoch_end(self, epoch, logs=None):
         val_acc = evaluate(valid_generator)
         if val_acc > self.best_val_acc:
             self.best_val_acc = val_acc
-            model.save_weights('best_model.weights')
+            model.save_weights("best_model.weights")
         test_acc = evaluate(test_generator)
         print(
-            u'val_acc: %.5f, best_val_acc: %.5f, test_acc: %.5f\n' %
-            (val_acc, self.best_val_acc, test_acc)
+            "val_acc: %.5f, best_val_acc: %.5f, test_acc: %.5f\n"
+            % (val_acc, self.best_val_acc, test_acc)
         )
 
     def on_batch_end(self, batch, logs=None):
@@ -181,17 +179,12 @@ class Evaluator(keras.callbacks.Callback):
             model_rdrop.train_on_batch(dx, dy)
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
 
     model.fit(
-        train_generator.forfit(),
-        steps_per_epoch=30,
-        epochs=100,
-        callbacks=[evaluator]
+        train_generator.forfit(), steps_per_epoch=30, epochs=100, callbacks=[evaluator]
     )
 
 else:
-
-    model.load_weights('best_model.weights')
+    model.load_weights("best_model.weights")

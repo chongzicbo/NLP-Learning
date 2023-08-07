@@ -29,13 +29,15 @@ def convert_file(input_file, output_file, tag2query_file):
                 "query": query,
                 "start_position": [int(x.split(";")[0]) for x in positions],
                 "end_position": [int(x.split(";")[1]) for x in positions],
-                "qas_id": f"{origin_count}.{tag_idx}"
+                "qas_id": f"{origin_count}.{tag_idx}",
             }
             output.append(mrc_sample)
             new_count += 1
 
     json.dump(output, open(output_file, "w"), ensure_ascii=False, indent=2)
-    print(f"Convert {origin_count} samples to {new_count} samples and save to {output_file}")
+    print(
+        f"Convert {origin_count} samples to {new_count} samples and save to {output_file}"
+    )
 
 
 def main():
@@ -49,5 +51,5 @@ def main():
         convert_file(old_file, new_file, tag2query_file)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

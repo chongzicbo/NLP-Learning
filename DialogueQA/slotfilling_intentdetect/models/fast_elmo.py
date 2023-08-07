@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-'''
+"""
 @Time   : 2019-08-01 22:42:29
 @Author : su.zhu
 @Desc   : 
-'''
+"""
 
 import torch
 
@@ -12,15 +12,17 @@ from allennlp.modules.elmo import Elmo
 from typing import Union, List, Dict, Any
 from allennlp.nn.util import remove_sentence_boundaries
 
+
 class FastElmo(Elmo):
-    
     def __init__(self, *args, **kargs) -> None:
         super(FastElmo, self).__init__(*args, **kargs)
 
     # rewrite forward function
-    def forward(self,    # pylint: disable=arguments-differ
-                inputs: torch.Tensor,
-                word_inputs: torch.Tensor = None) -> Dict[str, Union[torch.Tensor, List[torch.Tensor]]]:
+    def forward(
+        self,  # pylint: disable=arguments-differ
+        inputs: torch.Tensor,
+        word_inputs: torch.Tensor = None,
+    ) -> Dict[str, Union[torch.Tensor, List[torch.Tensor]]]:
         """
         Parameters
         ----------
@@ -51,7 +53,9 @@ class FastElmo(Elmo):
             if self._has_cached_vocab and len(original_word_size) > 2:
                 reshaped_word_inputs = word_inputs.view(-1, original_word_size[-1])
             elif not self._has_cached_vocab:
-                logger.warning("Word inputs were passed to ELMo but it does not have a cached vocab.")
+                logger.warning(
+                    "Word inputs were passed to ELMo but it does not have a cached vocab."
+                )
                 reshaped_word_inputs = None
             else:
                 reshaped_word_inputs = word_inputs
@@ -60,20 +64,28 @@ class FastElmo(Elmo):
 
         # run the biLM
         bilm_output = self._elmo_lstm(reshaped_inputs, reshaped_word_inputs)
-        layer_activations = [embeddings.detach() for embeddings in bilm_output['activations']]
-        mask_with_bos_eos = bilm_output['mask']
+        layer_activations = [
+            embeddings.detach() for embeddings in bilm_output["activations"]
+        ]
+        mask_with_bos_eos = bilm_output["mask"]
 
         # compute the elmo representations
         representations = []
         for i in range(len(self._scalar_mixes)):
-            scalar_mix = getattr(self, 'scalar_mix_{}'.format(i))
-            representation_with_bos_eos = scalar_mix(layer_activations, mask_with_bos_eos)
+            scalar_mix = getattr(self, "scalar_mix_{}".format(i))
+            representation_with_bos_eos = scalar_mix(
+                layer_activations, mask_with_bos_eos
+            )
             if self._keep_sentence_boundaries:
                 processed_representation = representation_with_bos_eos
                 processed_mask = mask_with_bos_eos
             else:
-                representation_without_bos_eos, mask_without_bos_eos = remove_sentence_boundaries(
-                        representation_with_bos_eos, mask_with_bos_eos)
+                (
+                    representation_without_bos_eos,
+                    mask_without_bos_eos,
+                ) = remove_sentence_boundaries(
+                    representation_with_bos_eos, mask_with_bos_eos
+                )
                 processed_representation = representation_without_bos_eos
                 processed_mask = mask_without_bos_eos
             representations.append(self._dropout(processed_representation))
@@ -81,14 +93,18 @@ class FastElmo(Elmo):
         # reshape if necessary
         if word_inputs is not None and len(original_word_size) > 2:
             mask = processed_mask.view(original_word_size)
-            elmo_representations = [representation.view(original_word_size + (-1, ))
-                                    for representation in representations]
+            elmo_representations = [
+                representation.view(original_word_size + (-1,))
+                for representation in representations
+            ]
         elif len(original_shape) > 3:
             mask = processed_mask.view(original_shape[:-1])
-            elmo_representations = [representation.view(original_shape[:-1] + (-1, ))
-                                    for representation in representations]
+            elmo_representations = [
+                representation.view(original_shape[:-1] + (-1,))
+                for representation in representations
+            ]
         else:
             mask = processed_mask
             elmo_representations = representations
 
-        return {'elmo_representations': elmo_representations, 'mask': mask}
+        return {"elmo_representations": elmo_representations, "mask": mask}

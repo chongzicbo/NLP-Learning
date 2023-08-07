@@ -11,8 +11,8 @@ from nltk.translate.bleu_score import sentence_bleu
 
 
 def bleu(answer_file, standard_answer_file):
-    rf_answer = open(answer_file, 'r', "utf-8")
-    rf_standard_answer = open(standard_answer_file, 'r', "utf-8")
+    rf_answer = open(answer_file, "r", "utf-8")
+    rf_standard_answer = open(standard_answer_file, "r", "utf-8")
     answer_lines = rf_answer.readlines()
     standard_answer_lines = rf_standard_answer.readlines()
     # compute score
@@ -22,11 +22,15 @@ def bleu(answer_file, standard_answer_file):
         each_score = 0
         for j in range(10):
             references = []
-            standard_answer_line = standard_answer_lines[i * 11 + j].strip().split('\t')
+            standard_answer_line = standard_answer_lines[i * 11 + j].strip().split("\t")
             references.append(list(standard_answer_line[0].strip()))
             standard_score = standard_answer_line[1]
-            bleu_score = sentence_bleu(references, candidate, weights=(0.35, 0.45, 0.1, 0.1),
-                                       smoothing_function=SmoothingFunction().method1)
+            bleu_score = sentence_bleu(
+                references,
+                candidate,
+                weights=(0.35, 0.45, 0.1, 0.1),
+                smoothing_function=SmoothingFunction().method1,
+            )
             each_score = bleu_score * float(standard_score) + each_score
         scores.append(each_score / 10)
     rf_answer.close()
@@ -38,15 +42,16 @@ def bleu(answer_file, standard_answer_file):
 
 def bleu_score(candidate, reference):
     score = sentence_bleu(
-        [list(reference)], list(candidate),
+        [list(reference)],
+        list(candidate),
         weights=(0.25, 0.25, 0.25, 0.25),
-        smoothing_function=SmoothingFunction().method1)
+        smoothing_function=SmoothingFunction().method1,
+    )
     return score
 
 
 def bleu_similarity(query, docs):
-    scores = [(idx, bleu_score(doc, query))
-              for idx, doc in enumerate(docs)]
+    scores = [(idx, bleu_score(doc, query)) for idx, doc in enumerate(docs)]
     scores.sort(key=lambda x: x[1], reverse=True)
     return scores
 
@@ -54,8 +59,8 @@ def bleu_similarity(query, docs):
 if __name__ == "__main__":
     c = "我爱你中国，不爱美国"
     t = "中国我爱你，美国我不爱"
-    r = '我爱美国，不爱你中国'
-    o = '我不爱中国，我也不爱美国'
+    r = "我爱美国，不爱你中国"
+    o = "我不爱中国，我也不爱美国"
     a = bleu_score(c, t)
     print(a)
 
@@ -71,4 +76,3 @@ if __name__ == "__main__":
 
     print(bleu_similarity(c, [c]))
     print(bleu_similarity(c, [c, t]))
-

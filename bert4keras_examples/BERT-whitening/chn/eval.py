@@ -16,63 +16,74 @@ jieba.initialize()
 # 基本参数
 model_type, pooling, task_name, n_components = sys.argv[1:]
 assert model_type in [
-    'BERT', 'RoBERTa', 'NEZHA', 'WoBERT', 'RoFormer', 'BERT-large',
-    'RoBERTa-large', 'NEZHA-large', 'SimBERT', 'SimBERT-tiny', 'SimBERT-small'
+    "BERT",
+    "RoBERTa",
+    "NEZHA",
+    "WoBERT",
+    "RoFormer",
+    "BERT-large",
+    "RoBERTa-large",
+    "NEZHA-large",
+    "SimBERT",
+    "SimBERT-tiny",
+    "SimBERT-small",
 ]
-assert pooling in ['first-last-avg', 'last-avg', 'cls', 'pooler']
-assert task_name in ['ATEC', 'BQ', 'LCQMC', 'PAWSX', 'STS-B']
+assert pooling in ["first-last-avg", "last-avg", "cls", "pooler"]
+assert task_name in ["ATEC", "BQ", "LCQMC", "PAWSX", "STS-B"]
 
 n_components = int(n_components)
 if n_components < 0:
-    if model_type.endswith('large'):
+    if model_type.endswith("large"):
         n_components = 1024
-    elif model_type.endswith('tiny'):
+    elif model_type.endswith("tiny"):
         n_components = 312
-    elif model_type.endswith('small'):
+    elif model_type.endswith("small"):
         n_components = 384
     else:
         n_components = 768
 
-if task_name == 'PAWSX':
+if task_name == "PAWSX":
     maxlen = 128
 else:
     maxlen = 64
 
 # 加载数据集
-data_path = '/root/senteval_cn/'
+data_path = "/root/senteval_cn/"
 
 datasets = {
-    '%s-%s' % (task_name, f):
-    load_data('%s%s/%s.%s.data' % (data_path, task_name, task_name, f))
-    for f in ['train', 'valid', 'test']
+    "%s-%s"
+    % (task_name, f): load_data(
+        "%s%s/%s.%s.data" % (data_path, task_name, task_name, f)
+    )
+    for f in ["train", "valid", "test"]
 }
 
 # bert配置
 model_name = {
-    'BERT': 'chinese_L-12_H-768_A-12',
-    'RoBERTa': 'chinese_roberta_wwm_ext_L-12_H-768_A-12',
-    'WoBERT': 'chinese_wobert_plus_L-12_H-768_A-12',
-    'NEZHA': 'nezha_base_wwm',
-    'RoFormer': 'chinese_roformer_L-12_H-768_A-12',
-    'BERT-large': 'uer/mixed_corpus_bert_large_model',
-    'RoBERTa-large': 'chinese_roberta_wwm_large_ext_L-24_H-1024_A-16',
-    'NEZHA-large': 'nezha_large_wwm',
-    'SimBERT': 'chinese_simbert_L-12_H-768_A-12',
-    'SimBERT-tiny': 'chinese_simbert_L-4_H-312_A-12',
-    'SimBERT-small': 'chinese_simbert_L-6_H-384_A-12'
+    "BERT": "chinese_L-12_H-768_A-12",
+    "RoBERTa": "chinese_roberta_wwm_ext_L-12_H-768_A-12",
+    "WoBERT": "chinese_wobert_plus_L-12_H-768_A-12",
+    "NEZHA": "nezha_base_wwm",
+    "RoFormer": "chinese_roformer_L-12_H-768_A-12",
+    "BERT-large": "uer/mixed_corpus_bert_large_model",
+    "RoBERTa-large": "chinese_roberta_wwm_large_ext_L-24_H-1024_A-16",
+    "NEZHA-large": "nezha_large_wwm",
+    "SimBERT": "chinese_simbert_L-12_H-768_A-12",
+    "SimBERT-tiny": "chinese_simbert_L-4_H-312_A-12",
+    "SimBERT-small": "chinese_simbert_L-6_H-384_A-12",
 }[model_type]
 
-config_path = '/root/kg/bert/%s/bert_config.json' % model_name
-if model_type == 'NEZHA':
-    checkpoint_path = '/root/kg/bert/%s/model.ckpt-691689' % model_name
-elif model_type == 'NEZHA-large':
-    checkpoint_path = '/root/kg/bert/%s/model.ckpt-346400' % model_name
+config_path = "/root/kg/bert/%s/bert_config.json" % model_name
+if model_type == "NEZHA":
+    checkpoint_path = "/root/kg/bert/%s/model.ckpt-691689" % model_name
+elif model_type == "NEZHA-large":
+    checkpoint_path = "/root/kg/bert/%s/model.ckpt-346400" % model_name
 else:
-    checkpoint_path = '/root/kg/bert/%s/bert_model.ckpt' % model_name
-dict_path = '/root/kg/bert/%s/vocab.txt' % model_name
+    checkpoint_path = "/root/kg/bert/%s/bert_model.ckpt" % model_name
+dict_path = "/root/kg/bert/%s/vocab.txt" % model_name
 
 # 建立分词器
-if model_type in ['WoBERT', 'RoFormer']:
+if model_type in ["WoBERT", "RoFormer"]:
     tokenizer = get_tokenizer(
         dict_path, pre_tokenize=lambda s: jieba.lcut(s, HMM=False)
     )
@@ -80,14 +91,12 @@ else:
     tokenizer = get_tokenizer(dict_path)
 
 # 建立模型
-if model_type == 'RoFormer':
+if model_type == "RoFormer":
     encoder = get_encoder(
-        config_path, checkpoint_path, model='roformer', pooling=pooling
+        config_path, checkpoint_path, model="roformer", pooling=pooling
     )
-elif 'NEZHA' in model_type:
-    encoder = get_encoder(
-        config_path, checkpoint_path, model='nezha', pooling=pooling
-    )
+elif "NEZHA" in model_type:
+    encoder = get_encoder(config_path, checkpoint_path, model="nezha", pooling=pooling)
 else:
     encoder = get_encoder(config_path, checkpoint_path, pooling=pooling)
 
@@ -116,10 +125,9 @@ for (a_vecs, b_vecs), labels in zip(all_vecs, all_labels):
     corrcoef = compute_corrcoef(labels, sims)
     all_corrcoefs.append(corrcoef)
 
-all_corrcoefs.extend([
-    np.average(all_corrcoefs),
-    np.average(all_corrcoefs, weights=all_weights)
-])
+all_corrcoefs.extend(
+    [np.average(all_corrcoefs), np.average(all_corrcoefs, weights=all_weights)]
+)
 
-for name, corrcoef in zip(all_names + ['avg', 'w-avg'], all_corrcoefs):
-    print('%s: %s' % (name, corrcoef))
+for name, corrcoef in zip(all_names + ["avg", "w-avg"], all_corrcoefs):
+    print("%s: %s" % (name, corrcoef))

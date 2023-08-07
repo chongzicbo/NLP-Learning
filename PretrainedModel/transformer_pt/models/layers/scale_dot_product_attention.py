@@ -44,5 +44,6 @@ class ScaleDotProductAttention(nn.Module):
         v = score @ v
         return v, score
 
-if __name__ == '__main__':
-    a=torch.randint()
+
+if __name__ == "__main__":
+    a = torch.randint()

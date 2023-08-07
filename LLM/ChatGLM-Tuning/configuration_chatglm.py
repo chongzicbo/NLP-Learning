@@ -42,25 +42,24 @@ class ChatGLMConfig(PretrainedConfig):
             The epsilon used by the layer normalization layers.
         use_cache (`bool`, *optional*, defaults to `True`):
             Whether the model should return the last key/values attentions (not used by all models).
-        Example:
-"""
+        Example:"""
     model_type = "chatglm"
 
     def __init__(
-            self,
-            vocab_size=150528,
-            hidden_size=4096,
-            num_layers=28,
-            num_attention_heads=32,
-            layernorm_epsilon=1e-5,
-            use_cache=False,
-            bos_token_id=150004,
-            eos_token_id=150005,
-            pad_token_id=0,
-            max_sequence_length=2048,
-            inner_hidden_size=16384,
-            position_encoding_2d=True,
-            **kwargs
+        self,
+        vocab_size=150528,
+        hidden_size=4096,
+        num_layers=28,
+        num_attention_heads=32,
+        layernorm_epsilon=1e-5,
+        use_cache=False,
+        bos_token_id=150004,
+        eos_token_id=150005,
+        pad_token_id=0,
+        max_sequence_length=2048,
+        inner_hidden_size=16384,
+        position_encoding_2d=True,
+        **kwargs
     ):
         self.num_layers = num_layers
         self.vocab_size = vocab_size

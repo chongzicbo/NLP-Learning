@@ -12,31 +12,33 @@ from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 import pymongo
 
+
 class ProcessIntoES:
     def __init__(self):
         self._index = "crime_data"
         self.es = Elasticsearch([{"host": "127.0.0.1", "port": 9200}])
         self.doc_type = "crime"
-        cur = '/'.join(os.path.abspath(__file__).split('/')[:-1])
-        self.music_file = os.path.join(cur, 'qa_corpus.json')
+        cur = "/".join(os.path.abspath(__file__).split("/")[:-1])
+        self.music_file = os.path.join(cur, "qa_corpus.json")
 
-    '''创建ES索引，确定分词类型'''
+    """创建ES索引，确定分词类型"""
+
     def create_mapping(self):
         node_mappings = {
             "mappings": {
-                self.doc_type: {    # type
+                self.doc_type: {  # type
                     "properties": {
-                        "question": {    # field: 问题
-                            "type": "text",    # lxw NOTE: cannot be string
+                        "question": {  # field: 问题
+                            "type": "text",  # lxw NOTE: cannot be string
                             "analyzer": "ik_max_word",
                             "search_analyzer": "ik_smart",
-                            "index": "true"    # The index option controls whether field values are indexed.
+                            "index": "true",  # The index option controls whether field values are indexed.
                         },
                         "answers": {  # field: 问题
                             "type": "text",  # lxw NOTE: cannot be string
                             "analyzer": "ik_max_word",
                             "search_analyzer": "ik_smart",
-                            "index": "true"  # The index option controls whether field values are indexed.
+                            "index": "true",  # The index option controls whether field values are indexed.
                         },
                     }
                 }
@@ -48,13 +50,16 @@ class ProcessIntoES:
         else:
             print("index({}) already exists.".format(self._index))
 
-    '''批量插入数据'''
+    """批量插入数据"""
+
     def insert_data_bulk(self, action_list):
         success, _ = bulk(self.es, action_list, index=self._index, raise_on_error=True)
         print("Performed {0} actions. _: {1}".format(success, _))
 
 
-'''初始化ES，将数据插入到ES数据库当中'''
+"""初始化ES，将数据插入到ES数据库当中"""
+
+
 def init_ES():
     pie = ProcessIntoES()
     # 创建ES的index
@@ -74,9 +79,9 @@ def init_ES():
             "_index": pie._index,
             "_type": pie.doc_type,
             "_source": {
-                "question": item['question'],
-                "answers": '\n'.join(item['answers']),
-            }
+                "question": item["question"],
+                "answers": "\n".join(item["answers"]),
+            },
         }
         action_list.append(action)
         if index > BULK_COUNT:
@@ -94,5 +99,4 @@ if __name__ == "__main__":
     # 将数据库插入到elasticsearch当中
     # init_ES()
     # 按照标题进行查询
-    question = '我老公要起诉离婚 我不想离婚怎么办'
-
+    question = "我老公要起诉离婚 我不想离婚怎么办"

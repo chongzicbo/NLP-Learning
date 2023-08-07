@@ -19,7 +19,7 @@ def long_time_task(name):
     print("task %s (%s) run time: %s" % (name, os.getpid(), (end - start)))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("Parent process id: %s" % (os.getpid()))
     p = Pool(processes=5)
     for i in range(5):

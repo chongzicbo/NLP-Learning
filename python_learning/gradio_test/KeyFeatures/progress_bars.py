@@ -10,6 +10,7 @@
 import gradio as gr
 import time
 
+
 def slowly_reverse(word, progress=gr.Progress()):
     progress(0, desc="Starting")
     time.sleep(1)
@@ -20,7 +21,10 @@ def slowly_reverse(word, progress=gr.Progress()):
         new_string = letter + new_string
     return new_string
 
+
 demo = gr.Interface(slowly_reverse, gr.Text(), gr.Text())
 
 if __name__ == "__main__":
-    demo.queue(concurrency_count=10).launch(server_name='188.188.1.250',server_port=9988)
+    demo.queue(concurrency_count=10).launch(
+        server_name="188.188.1.250", server_port=9988
+    )

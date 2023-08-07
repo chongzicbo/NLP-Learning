@@ -25,7 +25,7 @@ class KBQA:
         if not final_answer:
             return answer
         else:
-            return '\n'.join(final_answer)
+            return "\n".join(final_answer)
 
 
 if __name__ == "__main__":

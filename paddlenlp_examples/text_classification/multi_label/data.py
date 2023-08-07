@@ -23,24 +23,28 @@ def convert_example(example, tokenizer, max_seq_length=512, is_test=False):
     return input_ids, token_type_ids
 
 
-def create_dataloader(dataset, mode="train.json", batch_size=1, batchify_fn=None, trans_fn=None):
+def create_dataloader(
+    dataset, mode="train.json", batch_size=1, batchify_fn=None, trans_fn=None
+):
     if trans_fn:
         dataset = dataset.map(trans_fn)
 
     shuffle = True if mode == "train.json" else False
 
     if mode == "train.json":
-        batch_sampler = paddle.io.DistributedBatchSampler(dataset,
-                                                          batch_size=batch_size,
-                                                          shuffle=shuffle)
+        batch_sampler = paddle.io.DistributedBatchSampler(
+            dataset, batch_size=batch_size, shuffle=shuffle
+        )
     else:
-        batch_sampler = paddle.io.BatchSampler(dataset,
-                                               batch_size=batch_size,
-                                               shuffle=shuffle)
-    return paddle.io.DataLoader(dataset=dataset,
-                                batch_sampler=batch_sampler,
-                                collate_fn=batchify_fn,
-                                return_list=True)
+        batch_sampler = paddle.io.BatchSampler(
+            dataset, batch_size=batch_size, shuffle=shuffle
+        )
+    return paddle.io.DataLoader(
+        dataset=dataset,
+        batch_sampler=batch_sampler,
+        collate_fn=batchify_fn,
+        return_list=True,
+    )
 
 
 def read_custom_data(filename, is_test=False):

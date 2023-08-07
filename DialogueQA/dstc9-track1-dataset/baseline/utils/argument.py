@@ -27,13 +27,15 @@ def update_additional_params(params, args):
 
     if args.get("knowledge_file"):
         params["dataset_args"]["knowledge_file"] = args["knowledge_file"]
-    
+
     if args.get("negative_sample_method", ""):
-        params["dataset_args"]["negative_sample_method"] = args["negative_sample_method"]
-    
+        params["dataset_args"]["negative_sample_method"] = args[
+            "negative_sample_method"
+        ]
+
     if args.get("eval_all_snippets", False):
         params["dataset_args"]["eval_all_snippets"] = args["eval_all_snippets"]
-    
+
     for key in ["history_max_tokens", "knowledge_max_tokens"]:
         if args.get(key, -1) > -1:
             params["dataset_args"][key] = args[key]

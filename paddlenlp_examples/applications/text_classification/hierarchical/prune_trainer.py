@@ -1,11 +1,11 @@
 # -*- encoding: utf-8 -*-
-'''
+"""
 @File    :   prune_trainer.py
 @Time    :   2022/08/01 15:30:33
 @Author  :   chengbo 
 @Version :   1.0
 @Desc    :   None
-'''
+"""
 
 # here put the import lib
 
@@ -39,8 +39,7 @@ def try_import_paddleslim():
     try:
         import paddleslim
     except ImportError:
-        raise ImportError(
-            'Cannot import paddleslim, please install paddleslim.')
+        raise ImportError("Cannot import paddleslim, please install paddleslim.")
 
 
 class DynabertConfig(object):
@@ -56,7 +55,7 @@ class DynabertConfig(object):
                 Width mult for DynaBERT.
                 Defaults to `2/3`.
             output_filename_prefix (str):
-                Prefix of pruned model's filename. 
+                Prefix of pruned model's filename.
                 Defaults to `float32`.
         """
         self.compress_type = "dynabert"
@@ -74,8 +73,9 @@ def prune(self, output_dir, prune_config):
             Prune config instance to pass parameters for pruning.
             Defaults to `DynabertConfig()`.
     """
-    assert isinstance(prune_config, (DynabertConfig)), \
-        "`prune_config` should be an instance of `DynabertConfig`."
+    assert isinstance(
+        prune_config, (DynabertConfig)
+    ), "`prune_config` should be an instance of `DynabertConfig`."
     try_import_paddleslim()
     logger.info("Pruning starts.")
     if prune_config.compress_type == "dynabert":
@@ -90,21 +90,28 @@ def _dynabert(self, model, output_dir, dynabert_config):
     train_dataloader = self.get_train_dataloader()
     eval_dataloader = self.get_eval_dataloader(self.eval_dataset)
 
-    ofa_model, teacher_model = _dynabert_init(model, eval_dataloader,
-                                              self.criterion,
-                                              dynabert_config.width_mult)
+    ofa_model, teacher_model = _dynabert_init(
+        model, eval_dataloader, self.criterion, dynabert_config.width_mult
+    )
 
     args = self.args
     args.num_training_steps = len(train_dataloader) * args.num_train_epochs
     args.num_train_epochs = args.num_train_epochs
 
-    self.create_optimizer_and_scheduler(
-        num_training_steps=args.num_training_steps)
+    self.create_optimizer_and_scheduler(num_training_steps=args.num_training_steps)
 
-    ofa_model = _dynabert_training(self, ofa_model, model, teacher_model,
-                                   train_dataloader, eval_dataloader,
-                                   dynabert_config.width_mult, self.criterion,
-                                   args.num_train_epochs, output_dir)
+    ofa_model = _dynabert_training(
+        self,
+        ofa_model,
+        model,
+        teacher_model,
+        train_dataloader,
+        eval_dataloader,
+        dynabert_config.width_mult,
+        self.criterion,
+        args.num_train_epochs,
+        output_dir,
+    )
 
     # Each width_mult best model would be exported.
     _dynabert_export(ofa_model, dynabert_config, output_dir)
@@ -135,21 +142,20 @@ def _dynabert_init(model, eval_dataloader, criterion, width_mult):
     utils.set_state_dict(model, origin_weights)
     del origin_weights
 
-    mapping_layers = [model.base_model_prefix + '.embeddings']
-    for idx in range(model.base_model.config['num_hidden_layers']):
-        mapping_layers.append(model.base_model_prefix +
-                              '.encoder.layers.{}'.format(idx))
+    mapping_layers = [model.base_model_prefix + ".embeddings"]
+    for idx in range(model.base_model.config["num_hidden_layers"]):
+        mapping_layers.append(
+            model.base_model_prefix + ".encoder.layers.{}".format(idx)
+        )
 
     default_distill_config = {
-        'lambda_distill': 0.1,
-        'teacher_model': teacher_model,
-        'mapping_layers': mapping_layers,
+        "lambda_distill": 0.1,
+        "teacher_model": teacher_model,
+        "mapping_layers": mapping_layers,
     }
     distill_config = DistillConfig(**default_distill_config)
 
-    ofa_model = OFA(model,
-                    distill_config=distill_config,
-                    elastic_order=['width'])
+    ofa_model = OFA(model, distill_config=distill_config, elastic_order=["width"])
 
     # NOTE: Importing `nlp_utils` would rewrite `forward` function of
     # TransformerEncoder, TransformerEncoderLayer, MultiHeadAttention and
@@ -160,8 +166,9 @@ def _dynabert_init(model, eval_dataloader, criterion, width_mult):
         model=ofa_model.model,
         data_loader=eval_dataloader,
         loss_fct=criterion,
-        num_layers=model.base_model.config['num_hidden_layers'],
-        num_heads=model.base_model.config['num_attention_heads'])
+        num_layers=model.base_model.config["num_hidden_layers"],
+        num_heads=model.base_model.config["num_attention_heads"],
+    )
 
     reorder_neuron_head(ofa_model.model, head_importance, neuron_importance)
 
@@ -171,9 +178,18 @@ def _dynabert_init(model, eval_dataloader, criterion, width_mult):
     return ofa_model, teacher_model
 
 
-def _dynabert_training(self, ofa_model, model, teacher_model, train_dataloader,
-                       eval_dataloader, width_mult, criterion, num_train_epochs,
-                       output_dir):
+def _dynabert_training(
+    self,
+    ofa_model,
+    model,
+    teacher_model,
+    train_dataloader,
+    eval_dataloader,
+    width_mult,
+    criterion,
+    num_train_epochs,
+    output_dir,
+):
     metric = MetricReport()
 
     @paddle.no_grad()
@@ -190,9 +206,11 @@ def _dynabert_training(self, ofa_model, model, teacher_model, train_dataloader,
         metric.reset()
         losses = []
         for batch in data_loader:
-
-            input_ids, segment_ids, labels = batch['input_ids'], batch[
-                'token_type_ids'], batch['labels']
+            input_ids, segment_ids, labels = (
+                batch["input_ids"],
+                batch["token_type_ids"],
+                batch["labels"],
+            )
             logits = model(input_ids, segment_ids, attention_mask=[None, None])
             if isinstance(logits, tuple):
                 logits = logits[0]
@@ -206,16 +224,18 @@ def _dynabert_training(self, ofa_model, model, teacher_model, train_dataloader,
         if width_mult == 100:
             logger.info(
                 "teacher model, eval loss: %.5f, micro f1 score: %.5f, macro f1 score: %.5f"
-                % (np.mean(losses), micro_f1_score, macro_f1_score))
+                % (np.mean(losses), micro_f1_score, macro_f1_score)
+            )
         else:
             logger.info(
                 "width_mult: %s, eval loss: %.5f, micro f1 score: %.5f, macro f1 score: %.5f"
-                % (str(width_mult), np.mean(losses), micro_f1_score,
-                   macro_f1_score))
+                % (str(width_mult), np.mean(losses), micro_f1_score, macro_f1_score)
+            )
         model.train()
         return macro_f1_score
 
     from paddleslim.nas.ofa import OFA, DistillConfig, utils
+
     global_step = 0
     lambda_logit = 1.0
     tic_train = time.time()
@@ -223,19 +243,22 @@ def _dynabert_training(self, ofa_model, model, teacher_model, train_dataloader,
     logger.info("DynaBERT training starts. This period will cost some time.")
     for epoch in range(num_train_epochs):
         ofa_model.set_epoch(epoch)
-        ofa_model.set_task('width')
+        ofa_model.set_task("width")
 
         for step, batch in enumerate(train_dataloader):
             global_step += 1
-            input_ids, token_type_ids, labels = batch['input_ids'], batch[
-                'token_type_ids'], batch['labels']
+            input_ids, token_type_ids, labels = (
+                batch["input_ids"],
+                batch["token_type_ids"],
+                batch["labels"],
+            )
 
             net_config = utils.dynabert_config(ofa_model, width_mult)
 
             ofa_model.set_net_config(net_config)
-            logits, teacher_logits = ofa_model(input_ids,
-                                               token_type_ids,
-                                               attention_mask=[None, None])
+            logits, teacher_logits = ofa_model(
+                input_ids, token_type_ids, attention_mask=[None, None]
+            )
             rep_loss = ofa_model.calc_distill_loss()
             logit_loss = soft_cross_entropy(logits, teacher_logits.detach())
             loss = rep_loss + lambda_logit * logit_loss
@@ -248,34 +271,40 @@ def _dynabert_training(self, ofa_model, model, teacher_model, train_dataloader,
                 if paddle.distributed.get_rank() == 0:
                     logger.info(
                         "global step %d, epoch: %d, batch: %d, loss: %f, speed: %.2f step/s"
-                        % (global_step, epoch, step, loss,
-                           self.args.logging_steps / (time.time() - tic_train)))
+                        % (
+                            global_step,
+                            epoch,
+                            step,
+                            loss,
+                            self.args.logging_steps / (time.time() - tic_train),
+                        )
+                    )
                 tic_train = time.time()
 
             if global_step % self.args.save_steps == 0:
                 tic_eval = time.time()
 
-                evaluate(teacher_model,
-                         criterion,
-                         eval_dataloader,
-                         width_mult=100)
+                evaluate(teacher_model, criterion, eval_dataloader, width_mult=100)
                 logger.info("eval done total : %s s" % (time.time() - tic_eval))
 
                 net_config = utils.dynabert_config(ofa_model, width_mult)
                 ofa_model.set_net_config(net_config)
                 tic_eval = time.time()
-                macro_f1_score = evaluate(ofa_model, criterion, eval_dataloader,
-                                          width_mult)
+                macro_f1_score = evaluate(
+                    ofa_model, criterion, eval_dataloader, width_mult
+                )
                 if macro_f1_score > best_macro_f1_score:
                     best_macro_f1_score = macro_f1_score
                     if paddle.distributed.get_rank() == 0:
-                        output_dir_width = os.path.join(output_dir,
-                                                        str(width_mult))
+                        output_dir_width = os.path.join(output_dir, str(width_mult))
                         if not os.path.exists(output_dir_width):
                             os.makedirs(output_dir_width)
                         # need better way to get inner model of DataParallel
-                        model_to_save = model._layers if isinstance(
-                            model, paddle.DataParallel) else model
+                        model_to_save = (
+                            model._layers
+                            if isinstance(model, paddle.DataParallel)
+                            else model
+                        )
                         model_to_save.save_pretrained(output_dir_width)
                 logger.info("eval done total : %s s" % (time.time() - tic_eval))
 
@@ -285,19 +314,25 @@ def _dynabert_training(self, ofa_model, model, teacher_model, train_dataloader,
                     if not os.path.exists(output_dir_width):
                         os.makedirs(output_dir_width)
                     # need better way to get inner model of DataParallel
-                    model_to_save = model._layers if isinstance(
-                        model, paddle.DataParallel) else model
+                    model_to_save = (
+                        model._layers
+                        if isinstance(model, paddle.DataParallel)
+                        else model
+                    )
                     model_to_save.save_pretrained(output_dir_width)
                 logger.info("Best macro_f1_score: %.4f" % (best_macro_f1_score))
                 return ofa_model
 
-    logger.info("width_mult: %s, Best macro f1 score: %.4f" %
-                (str(width_mult), best_macro_f1_score))
+    logger.info(
+        "width_mult: %s, Best macro f1 score: %.4f"
+        % (str(width_mult), best_macro_f1_score)
+    )
     return ofa_model
 
 
 def _dynabert_export(ofa_model, dynabert_config, output_dir):
     from paddleslim.nas.ofa import OFA, DistillConfig, utils
+
     ofa_model.model.base_model_class.forward = auto_model_forward
     ofa_model._add_teacher = False
     _recover_transormer_func()
@@ -309,44 +344,50 @@ def _dynabert_export(ofa_model, dynabert_config, output_dir):
     ofa_model.model.set_state_dict(state_dict)
     best_config = utils.dynabert_config(ofa_model, width_mult)
 
-    origin_model_new = ofa_model.export(best_config,
-                                        input_shapes=[[1, 1], [1, 1]],
-                                        input_dtypes=['int64', 'int64'],
-                                        origin_model=origin_model)
+    origin_model_new = ofa_model.export(
+        best_config,
+        input_shapes=[[1, 1], [1, 1]],
+        input_dtypes=["int64", "int64"],
+        origin_model=origin_model,
+    )
 
     for name, sublayer in origin_model_new.named_sublayers():
         if isinstance(sublayer, paddle.nn.MultiHeadAttention):
             sublayer.num_heads = int(width_mult * sublayer.num_heads)
 
     input_shape = [
-        paddle.static.InputSpec(shape=[None, None], dtype='int64'),
-        paddle.static.InputSpec(shape=[None, None], dtype='int64')
+        paddle.static.InputSpec(shape=[None, None], dtype="int64"),
+        paddle.static.InputSpec(shape=[None, None], dtype="int64"),
     ]
     pruned_infer_model_dir = os.path.join(
-        model_dir, dynabert_config.output_filename_prefix)
+        model_dir, dynabert_config.output_filename_prefix
+    )
     net = paddle.jit.to_static(origin_model_new, input_spec=input_shape)
     paddle.jit.save(net, pruned_infer_model_dir)
 
 
-def auto_model_forward(self,
-                       input_ids,
-                       token_type_ids=None,
-                       position_ids=None,
-                       attention_mask=[None, None]):
+def auto_model_forward(
+    self, input_ids, token_type_ids=None, position_ids=None, attention_mask=[None, None]
+):
     """
     auto model forward
     """
-    wtype = self.pooler.dense.fn.weight.dtype if hasattr(
-        self.pooler.dense, 'fn') else self.pooler.dense.weight.dtype
+    wtype = (
+        self.pooler.dense.fn.weight.dtype
+        if hasattr(self.pooler.dense, "fn")
+        else self.pooler.dense.weight.dtype
+    )
     if attention_mask is None:
         attention_mask = paddle.unsqueeze(
-            (input_ids == self.pad_token_id).astype(wtype) * -1e9, axis=[1, 2])
+            (input_ids == self.pad_token_id).astype(wtype) * -1e9, axis=[1, 2]
+        )
     if attention_mask[0] is None:
         attention_mask[0] = paddle.unsqueeze(
-            (input_ids == self.pad_token_id).astype(wtype) * -1e9, axis=[1, 2])
-    embedding_output = self.embeddings(input_ids=input_ids,
-                                       position_ids=position_ids,
-                                       token_type_ids=token_type_ids)
+            (input_ids == self.pad_token_id).astype(wtype) * -1e9, axis=[1, 2]
+        )
+    embedding_output = self.embeddings(
+        input_ids=input_ids, position_ids=position_ids, token_type_ids=token_type_ids
+    )
     encoder_outputs = self.encoder(embedding_output, attention_mask)
     sequence_output = encoder_outputs
     pooled_output = self.pooler(sequence_output)
@@ -358,29 +399,32 @@ def reorder_neuron_head(model, head_importance, neuron_importance):
     Reorders weights according head importance and neuron importance
     """
     from paddleslim.nas.ofa.utils import nlp_utils
+
     # Reorders heads and ffn neurons
     for layer, current_importance in enumerate(neuron_importance):
         # Reorders heads
         idx = paddle.argsort(head_importance[layer], descending=True)
-        nlp_utils.reorder_head(model.base_model.encoder.layers[layer].self_attn,
-                               idx)
+        nlp_utils.reorder_head(model.base_model.encoder.layers[layer].self_attn, idx)
         # Reorders neurons
-        idx = paddle.argsort(paddle.to_tensor(current_importance),
-                             descending=True)
+        idx = paddle.argsort(paddle.to_tensor(current_importance), descending=True)
         nlp_utils.reorder_neuron(
-            model.base_model.encoder.layers[layer].linear1.fn, idx, dim=1)
+            model.base_model.encoder.layers[layer].linear1.fn, idx, dim=1
+        )
 
         nlp_utils.reorder_neuron(
-            model.base_model.encoder.layers[layer].linear2.fn, idx, dim=0)
+            model.base_model.encoder.layers[layer].linear2.fn, idx, dim=0
+        )
 
 
-def compute_neuron_head_importance(model,
-                                   data_loader,
-                                   num_layers,
-                                   num_heads,
-                                   loss_fct,
-                                   intermediate_name='linear1',
-                                   output_name='linear2'):
+def compute_neuron_head_importance(
+    model,
+    data_loader,
+    num_layers,
+    num_heads,
+    loss_fct,
+    intermediate_name="linear1",
+    output_name="linear2",
+):
     """
     Compute the importance of multi-head attention and feed-forward  neuron in
     each transformer layer.
@@ -403,9 +447,8 @@ def compute_neuron_head_importance(model,
             The name of output `Linear` layer in feed-forward.
             Defaults to `linear2`.
     """
-    head_importance = paddle.zeros(shape=[num_layers, num_heads],
-                                   dtype='float32')
-    head_mask = paddle.ones(shape=[num_layers, num_heads], dtype='float32')
+    head_importance = paddle.zeros(shape=[num_layers, num_heads], dtype="float32")
+    head_mask = paddle.ones(shape=[num_layers, num_heads], dtype="float32")
     head_mask.stop_gradient = False
 
     intermediate_weight = []
@@ -425,33 +468,34 @@ def compute_neuron_head_importance(model,
 
     neuron_importance = []
     for w in intermediate_weight:
-        neuron_importance.append(np.zeros(shape=[w.shape[1]], dtype='float32'))
+        neuron_importance.append(np.zeros(shape=[w.shape[1]], dtype="float32"))
 
-    data_loader = (data_loader, )
+    data_loader = (data_loader,)
     for data in data_loader:
         for batch in data:
             if isinstance(batch, dict):
-                input_ids, segment_ids, labels = batch['input_ids'], batch[
-                    'token_type_ids'], batch['labels']
+                input_ids, segment_ids, labels = (
+                    batch["input_ids"],
+                    batch["token_type_ids"],
+                    batch["labels"],
+                )
             else:
                 input_ids, segment_ids, labels = batch
-            logits = model(input_ids,
-                           segment_ids,
-                           attention_mask=[None, head_mask])
+            logits = model(input_ids, segment_ids, attention_mask=[None, head_mask])
             loss = loss_fct(logits, labels)
             loss.backward()
-            head_importance += paddle.abs(paddle.to_tensor(
-                head_mask.gradient()))
+            head_importance += paddle.abs(paddle.to_tensor(head_mask.gradient()))
 
-            for w1, b1, w2, current_importance in zip(intermediate_weight,
-                                                      intermediate_bias,
-                                                      output_weight,
-                                                      neuron_importance):
+            for w1, b1, w2, current_importance in zip(
+                intermediate_weight, intermediate_bias, output_weight, neuron_importance
+            ):
                 current_importance += np.abs(
-                    (np.sum(w1.numpy() * w1.gradient(), axis=0) +
-                     b1.numpy() * b1.gradient()))
-                current_importance += np.abs(
-                    np.sum(w2.numpy() * w2.gradient(), axis=1))
+                    (
+                        np.sum(w1.numpy() * w1.gradient(), axis=0)
+                        + b1.numpy() * b1.gradient()
+                    )
+                )
+                current_importance += np.abs(np.sum(w2.numpy() * w2.gradient(), axis=1))
 
     return head_importance, neuron_importance
 
@@ -462,7 +506,7 @@ def soft_cross_entropy(inp, target):
     """
     inp_likelihood = F.log_softmax(inp, axis=-1)
     target_prob = F.softmax(target, axis=-1)
-    return -1. * paddle.mean(paddle.sum(inp_likelihood * target_prob, axis=-1))
+    return -1.0 * paddle.mean(paddle.sum(inp_likelihood * target_prob, axis=-1))
 
 
 Trainer.prune = prune

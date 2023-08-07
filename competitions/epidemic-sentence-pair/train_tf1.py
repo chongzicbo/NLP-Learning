@@ -25,19 +25,19 @@ import datetime
 
 np.random.seed(2020)
 
-train_df = pd.read_csv('./data/train.csv')
-valid_df = pd.read_csv('./data/dev.csv')
-test_df = pd.read_csv('./data/test.csv')
-train_ext_df = pd.read_csv('./data/chip2019/train.csv')
+train_df = pd.read_csv("./data/train.csv")
+valid_df = pd.read_csv("./data/dev.csv")
+test_df = pd.read_csv("./data/test.csv")
+train_ext_df = pd.read_csv("./data/chip2019/train.csv")
 
 train_df.dropna(axis=0, inplace=True)
 
-train_data = train_df[['query1', 'query2', 'label']].values  # 训练集
-valid_data = valid_df[['query1', 'query2', 'label']].values  # 验证集
-test_data = test_df[['query1', 'query2', 'label']].values  # 测试集
-train_ext_data = train_ext_df[['question1', 'question2', 'label']].values
+train_data = train_df[["query1", "query2", "label"]].values  # 训练集
+valid_data = valid_df[["query1", "query2", "label"]].values  # 验证集
+test_data = test_df[["query1", "query2", "label"]].values  # 测试集
+train_ext_data = train_ext_df[["question1", "question2", "label"]].values
 
-train_ext_data = np.concatenate([train_data, train_ext_data], axis=0) # 增加外部的数据作为训练数据
+train_ext_data = np.concatenate([train_data, train_ext_data], axis=0)  # 增加外部的数据作为训练数据
 
 roberta_dir = "/mnt/e/opensource_data/pretrained_model/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12"
 config_path = os.path.join(roberta_dir, "bert_config.json")
@@ -45,7 +45,7 @@ checkpoint_path = os.path.join(roberta_dir, "bert_model.ckpt")
 dict_path = os.path.join(roberta_dir, "vocab.txt")
 
 
-def build_model(mode='bert', lastfour=False, LR=1e-5, DR=0.2):
+def build_model(mode="bert", lastfour=False, LR=1e-5, DR=0.2):
     global tokenizer
     tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
@@ -64,13 +64,13 @@ def build_model(mode='bert', lastfour=False, LR=1e-5, DR=0.2):
                 bert.model.layers[-11].get_output_at(0),
                 bert.model.layers[-19].get_output_at(0),
                 bert.model.layers[-27].get_output_at(0),
-            ]
+            ],
         )
         output = model.outputs
-        output1 = Lambda(lambda x: x[:, 0], name='Pooler1')(output[0])
-        output2 = Lambda(lambda x: x[:, 0], name='Pooler2')(output[1])
-        output3 = Lambda(lambda x: x[:, 0], name='Pooler3')(output[2])
-        output4 = Lambda(lambda x: x[:, 0], name='Pooler4')(output[3])
+        output1 = Lambda(lambda x: x[:, 0], name="Pooler1")(output[0])
+        output2 = Lambda(lambda x: x[:, 0], name="Pooler2")(output[1])
+        output3 = Lambda(lambda x: x[:, 0], name="Pooler3")(output[2])
+        output4 = Lambda(lambda x: x[:, 0], name="Pooler4")(output[3])
 
         output = Concatenate(axis=1)([output1, output2, output3, output4])
 
@@ -78,16 +78,16 @@ def build_model(mode='bert', lastfour=False, LR=1e-5, DR=0.2):
         output = bert.model.output
 
     output = Dropout(rate=DR)(output)
-    output = Dense(units=2,
-                   activation='softmax',
-                   kernel_initializer=bert.initializer)(output)
+    output = Dense(units=2, activation="softmax", kernel_initializer=bert.initializer)(
+        output
+    )
 
     model = Model(bert.model.input, output)
 
     model.compile(
-        loss='sparse_categorical_crossentropy',
+        loss="sparse_categorical_crossentropy",
         optimizer=Adam(LR),
-        metrics=['accuracy'],
+        metrics=["accuracy"],
     )
     return model
 
@@ -143,7 +143,7 @@ def adversarial_training(model, embedding_name, epsilon=1):
         if embedding_layer is not None:
             break
     if embedding_layer is None:
-        raise Exception('Embedding layer not found')
+        raise Exception("Embedding layer not found")
 
     # 求Embedding梯度
     embeddings = embedding_layer.embeddings  # Embedding矩阵
@@ -153,17 +153,17 @@ def adversarial_training(model, embedding_name, epsilon=1):
 
     # 封装为函数
     inputs = (
-            model._feed_inputs + model._feed_targets + model._feed_sample_weights
+        model._feed_inputs + model._feed_targets + model._feed_sample_weights
     )  # 所有输入层
     embedding_gradients = K.function(
         inputs=inputs,
         outputs=[gradients],
-        name='embedding_gradients',
+        name="embedding_gradients",
     )  # 封装为函数
 
     def train_function(inputs):  # 重新定义训练函数
         grads = embedding_gradients(inputs)[0]  # Embedding梯度
-        delta = epsilon * grads / (np.sqrt((grads ** 2).sum()) + 1e-8)  # 计算扰动
+        delta = epsilon * grads / (np.sqrt((grads**2).sum()) + 1e-8)  # 计算扰动
         K.set_value(embeddings, K.eval(embeddings) + delta)  # 注入扰动
         outputs = old_train_function(inputs)  # 梯度下降
         K.set_value(embeddings, K.eval(embeddings) - delta)  # 删除扰动
@@ -172,16 +172,16 @@ def adversarial_training(model, embedding_name, epsilon=1):
     model.train_function = train_function  # 覆盖原训练函数
 
 
-def do_train(mode='bert', lastfour=False, LR=1e-5, DR=0.2, ext=False, batch_size=16):
+def do_train(mode="bert", lastfour=False, LR=1e-5, DR=0.2, ext=False, batch_size=16):
     skf = StratifiedKFold(5, shuffle=True, random_state=2020)
     nfold = 1
 
-    if (ext):
+    if ext:
         data = np.concatenate([train_ext_data, valid_data], axis=0)
     else:
         data = np.concatenate([train_data, valid_data], axis=0)
 
-    for train_index, valid_index in skf.split(data[:, :2], data[:, 2:].astype('int')):
+    for train_index, valid_index in skf.split(data[:, :2], data[:, 2:].astype("int")):
         train = data[train_index, :]
         valid = data[valid_index, :]
 
@@ -191,25 +191,36 @@ def do_train(mode='bert', lastfour=False, LR=1e-5, DR=0.2, ext=False, batch_size
         model = build_model(mode=mode, lastfour=lastfour, LR=LR, DR=DR)
 
         # 启用对抗训练只需要一行代码
-        adversarial_training(model, 'Embedding-Token', 0.5)
+        adversarial_training(model, "Embedding-Token", 0.5)
 
-        early_stopping = EarlyStopping(monitor='val_loss', patience=1, verbose=1)
+        early_stopping = EarlyStopping(monitor="val_loss", patience=1, verbose=1)
 
-        if (ext):
-            checkpoint = ModelCheckpoint('./checkpoint/' + "roberta" + '_weights/' + str(nfold) + '_ext.weights',
-                                         monitor='val_loss', save_weights_only=True, save_best_only=True, verbose=1)
+        if ext:
+            checkpoint = ModelCheckpoint(
+                "./checkpoint/" + "roberta" + "_weights/" + str(nfold) + "_ext.weights",
+                monitor="val_loss",
+                save_weights_only=True,
+                save_best_only=True,
+                verbose=1,
+            )
         else:
-            checkpoint = ModelCheckpoint('./checkpoint/' + "roberta" + '_weights/' + str(nfold) + '.weights',
-                                         monitor='val_loss', save_weights_only=True, save_best_only=True, verbose=1)
+            checkpoint = ModelCheckpoint(
+                "./checkpoint/" + "roberta" + "_weights/" + str(nfold) + ".weights",
+                monitor="val_loss",
+                save_weights_only=True,
+                save_best_only=True,
+                verbose=1,
+            )
 
-        model.fit_generator(train_generator.forfit(),
-                            steps_per_epoch=len(train_generator),
-                            epochs=5,
-                            validation_data=valid_generator.forfit(),
-                            validation_steps=len(valid_generator),
-                            callbacks=[early_stopping, checkpoint],
-                            verbose=2,
-                            )
+        model.fit_generator(
+            train_generator.forfit(),
+            steps_per_epoch=len(train_generator),
+            epochs=5,
+            validation_data=valid_generator.forfit(),
+            validation_steps=len(valid_generator),
+            callbacks=[early_stopping, checkpoint],
+            verbose=2,
+        )
 
         del model
         K.clear_session()
@@ -217,7 +228,7 @@ def do_train(mode='bert', lastfour=False, LR=1e-5, DR=0.2, ext=False, batch_size
 
 
 # model = build_model(mode='bert', lastfour=False)
-do_train(mode='bert', lastfour=False, LR=1e-5)
+do_train(mode="bert", lastfour=False, LR=1e-5)
 # do_train(mode='bert', lastfour=False, LR=1e-5, ext=True)
 #
 # model = build_model(mode='bert', lastfour=False)

@@ -4,9 +4,10 @@
 # Author: lhy<lhy_in_blcu@126.com,https://huangyong.github.io>
 # Date: 18-3-26
 
+
 class CutWords:
     def __init__(self):
-        dict_path = './disease.txt'
+        dict_path = "./disease.txt"
         self.word_dict, self.max_wordlen = self.load_words(dict_path)
 
     # 加载词典
@@ -31,7 +32,7 @@ class CutWords:
         while index < len(sent):
             matched = False
             for i in range(self.max_wordlen, 0, -1):
-                cand_word = sent[index: index + i]
+                cand_word = sent[index : index + i]
                 if cand_word in self.word_dict:
                     cutlist.append(cand_word)
                     matched = True
@@ -54,8 +55,8 @@ class CutWords:
         while index > 0:
             matched = False
             for i in range(self.max_wordlen, 0, -1):
-                tmp = (i + 1)
-                cand_word = sent[index - tmp: index]
+                tmp = i + 1
+                cand_word = sent[index - tmp : index]
                 # 如果匹配上，则将字典中的字符加入到切分字符中
                 if cand_word in self.word_dict:
                     cutlist.append(cand_word)
@@ -99,4 +100,3 @@ class CutWords:
 
         else:
             return backward_cutlist
-

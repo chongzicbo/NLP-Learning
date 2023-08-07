@@ -50,18 +50,17 @@ args = parser.parse_args()
 
 @paddle.no_grad()
 def batch_predict(
-        model,
-        data_loader,
-        rel_vocab,
-        word_pad_index,
-        word_bos_index,
-        word_eos_index,
+    model,
+    data_loader,
+    rel_vocab,
+    word_pad_index,
+    word_bos_index,
+    word_eos_index,
 ):
     model.eval()
     arcs, rels = [], []
     for inputs in data_loader():
-        if args.encoding_model.startswith(
-                "ernie") or args.encoding_model == "lstm-pe":
+        if args.encoding_model.startswith("ernie") or args.encoding_model == "lstm-pe":
             words = inputs[0]
             words, feats = flat_words(words)
             s_arc, s_rel, words = model(words, feats)
@@ -70,19 +69,18 @@ def batch_predict(
             s_arc, s_rel, words = model(words, feats)
 
         mask = paddle.logical_and(
-            paddle.logical_and(words != word_pad_index,
-                               words != word_bos_index),
+            paddle.logical_and(words != word_pad_index, words != word_bos_index),
             words != word_eos_index,
         )
 
         lens = paddle.sum(paddle.cast(mask, "int32"), axis=-1)
         arc_preds, rel_preds = decode(s_arc, s_rel, mask)
         arcs.extend(
-            paddle.split(paddle.masked_select(arc_preds, mask),
-                         lens.numpy().tolist()))
+            paddle.split(paddle.masked_select(arc_preds, mask), lens.numpy().tolist())
+        )
         rels.extend(
-            paddle.split(paddle.masked_select(rel_preds, mask),
-                         lens.numpy().tolist()))
+            paddle.split(paddle.masked_select(rel_preds, mask), lens.numpy().tolist())
+        )
 
     arcs = [[str(s) for s in seq.numpy().tolist()] for seq in arcs]
     rels = [rel_vocab.to_tokens(seq.numpy().tolist()) for seq in rels]
@@ -95,13 +93,14 @@ def do_predict(args):
 
     if args.encoding_model == "ernie-gram-zh":
         tokenizer = ppnlp.transformers.ErnieGramTokenizer.from_pretrained(
-            args.encoding_model)
+            args.encoding_model
+        )
     elif args.encoding_model.startswith("ernie"):
         tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained(
-            args.encoding_model)
+            args.encoding_model
+        )
     elif args.encoding_model == "lstm-pe":
-        tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained(
-            "ernie-1.0")
+        tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained("ernie-1.0")
     else:
         tokenizer = None
 
@@ -143,10 +142,12 @@ def do_predict(args):
     # Load pretrained model if encoding model is ernie-1.0, ernie-tiny or ernie-gram-zh
     if args.encoding_model in ["ernie-1.0", "ernie-tiny"]:
         pretrained_model = ppnlp.transformers.ErnieModel.from_pretrained(
-            args.encoding_model)
+            args.encoding_model
+        )
     elif args.encoding_model == "ernie-gram-zh":
         pretrained_model = ppnlp.transformers.ErnieGramModel.from_pretrained(
-            args.encoding_model)
+            args.encoding_model
+        )
     else:
         pretrained_model = None
 
@@ -183,18 +184,21 @@ def do_predict(args):
     # Restore the order of sentences in the buckets
     if buckets:
         indices = np.argsort(
-            np.array([i for bucket in buckets.values() for i in bucket]))
+            np.array([i for bucket in buckets.values() for i in bucket])
+        )
     else:
         indices = range(len(pred_arcs))
     pred_heads = [pred_arcs[i] for i in indices]
     pred_deprels = [pred_rels[i] for i in indices]
 
-    with open(args.infer_output_file, 'w', encoding='utf-8') as out_file:
+    with open(args.infer_output_file, "w", encoding="utf-8") as out_file:
         for res, head, rel in zip(test_ds_copy, pred_heads, pred_deprels):
             res["HEAD"] = tuple(head)
             res["DEPREL"] = tuple(rel)
-            res = '\n'.join('\t'.join(map(str, line))
-                            for line in zip(*res.values())) + '\n'
+            res = (
+                "\n".join("\t".join(map(str, line)) for line in zip(*res.values()))
+                + "\n"
+            )
             out_file.write("{}\n".format(res))
     out_file.close()
     print("Results saved!")

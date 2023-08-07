@@ -108,6 +108,7 @@ for k, v in data["article"][0].items():
 **Format and split into train and validation sets**
 """
 
+
 def flatten(example):
     return {
         "document": example["article"]["document"],
@@ -131,6 +132,7 @@ dataset = dataset.map(list2samples, batched=True)
 train_data_txt, validation_data_txt = dataset.train_test_split(test_size=0.1).values()
 
 """**Preprocess and tokenize**"""
+
 
 def batch_tokenize_preprocess(batch, tokenizer, max_source_length, max_target_length):
     source, target = batch["document"], batch["summary"]
@@ -216,6 +218,7 @@ def compute_metrics(eval_preds):
     result = {k: round(v, 4) for k, v in result.items()}
     return result
 
+
 """### Training arguments"""
 
 training_args = Seq2SeqTrainingArguments(
@@ -272,7 +275,7 @@ trainer.evaluate()
 
 """Train the model"""
 
-#%%wandb
+# %%wandb
 # uncomment to display Wandb charts
 
 trainer.train()
@@ -290,6 +293,7 @@ if WANDB_INTEGRATION:
 
 **Generate summaries from the fine-tuned model and compare them with those generated from the original, pre-trained one.**
 """
+
 
 def generate_summary(test_samples, model):
     inputs = tokenizer(

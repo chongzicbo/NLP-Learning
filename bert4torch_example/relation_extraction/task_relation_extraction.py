@@ -16,6 +16,7 @@ import numpy as np
 from bert4torch.layers import LayerNorm
 from bert4torch.tokenizers import Tokenizer
 from bert4torch.models import build_transformer_model, BaseModel
+
 # from bert4torch.optimizers import ExponentialMovingAverage
 from bert4torch.snippets import sequence_padding, Callback, ListDataset
 from tqdm import tqdm
@@ -34,21 +35,23 @@ args = parser.parse_args()
 
 maxlen = 128
 batch_size = args.batch_size
-root_model_path = "/mnt/e/working/huada_bgi/data/pretrained_model/huggingface/bert-base-chinese"
+root_model_path = (
+    "/mnt/e/working/huada_bgi/data/pretrained_model/huggingface/bert-base-chinese"
+)
 dict_path = root_model_path + "/vocab.txt"
 config_path = root_model_path + "/config.json"
 checkpoint_path = root_model_path + "/bert4torch_pytorch_model.bin"
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = "cuda" if torch.cuda.is_available() else "cpu"
 predicate2id, id2predicate = {}, {}
 
 data_dir = "/mnt/e/opensource_data/信息抽取/关系抽取/BD_Knowledge_Extraction/"
 
-with open(os.path.join(data_dir, 'all_50_schemas'), encoding='utf-8') as f:
+with open(os.path.join(data_dir, "all_50_schemas"), encoding="utf-8") as f:
     for l in f:
         l = json.loads(l)
-        if l['predicate'] not in predicate2id:
-            id2predicate[len(predicate2id)] = l['predicate']
-            predicate2id[l['predicate']] = len(predicate2id)
+        if l["predicate"] not in predicate2id:
+            id2predicate[len(predicate2id)] = l["predicate"]
+            predicate2id[l["predicate"]] = len(predicate2id)
 
 # 建立分词器
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
@@ -62,11 +65,18 @@ class MyDataset(ListDataset):
         单条格式：{'text': text, 'spo_list': [(s, p, o)]}
         """
         D = []
-        with open(filename, encoding='utf-8') as f:
+        with open(filename, encoding="utf-8") as f:
             for l in f:
                 l = json.loads(l)
-                D.append({'text': l['text'],
-                          'spo_list': [(spo['subject'], spo['predicate'], spo['object']) for spo in l['spo_list']]})
+                D.append(
+                    {
+                        "text": l["text"],
+                        "spo_list": [
+                            (spo["subject"], spo["predicate"], spo["object"])
+                            for spo in l["spo_list"]
+                        ],
+                    }
+                )
         return D[:4]  # 取10条用于debug
 
 
@@ -77,17 +87,17 @@ def collate_fn(batch):
         """
         n = len(pattern)
         for i in range(len(sequence)):
-            if sequence[i:i + n] == pattern:
+            if sequence[i : i + n] == pattern:
                 return i
         return -1
 
     batch_token_ids, batch_segment_ids = [], []
     batch_subject_labels, batch_subject_ids, batch_object_labels = [], [], []
     for d in batch:
-        token_ids, segment_ids = tokenizer.encode(d['text'], maxlen=maxlen)
+        token_ids, segment_ids = tokenizer.encode(d["text"], maxlen=maxlen)
         # 整理三元组 {s: [(o, p)]}
         spoes = {}
-        for s, p, o in d['spo_list']:
+        for s, p, o in d["spo_list"]:
             s = tokenizer.encode(s)[0][1:-1]
             p = predicate2id[p]
             o = tokenizer.encode(o)[0][1:-1]
@@ -122,21 +132,37 @@ def collate_fn(batch):
             batch_subject_labels.append(subject_labels)
             batch_subject_ids.append(subject_ids)
             batch_object_labels.append(object_labels)
-    batch_token_ids = torch.tensor(sequence_padding(batch_token_ids), dtype=torch.long, device=device)
-    batch_segment_ids = torch.tensor(sequence_padding(batch_segment_ids), dtype=torch.long, device=device)
-    batch_subject_labels = torch.tensor(sequence_padding(batch_subject_labels), dtype=torch.float, device=device)
+    batch_token_ids = torch.tensor(
+        sequence_padding(batch_token_ids), dtype=torch.long, device=device
+    )
+    batch_segment_ids = torch.tensor(
+        sequence_padding(batch_segment_ids), dtype=torch.long, device=device
+    )
+    batch_subject_labels = torch.tensor(
+        sequence_padding(batch_subject_labels), dtype=torch.float, device=device
+    )
     batch_subject_ids = torch.tensor(batch_subject_ids, dtype=torch.long, device=device)
-    batch_object_labels = torch.tensor(sequence_padding(batch_object_labels), dtype=torch.float, device=device)
-    batch_attention_mask = (batch_token_ids != tokenizer._token_pad_id)
-    return [batch_token_ids, batch_segment_ids, batch_subject_ids], [batch_subject_labels, batch_object_labels,
-                                                                     batch_attention_mask]
+    batch_object_labels = torch.tensor(
+        sequence_padding(batch_object_labels), dtype=torch.float, device=device
+    )
+    batch_attention_mask = batch_token_ids != tokenizer._token_pad_id
+    return [batch_token_ids, batch_segment_ids, batch_subject_ids], [
+        batch_subject_labels,
+        batch_object_labels,
+        batch_attention_mask,
+    ]
 
 
 train_dataloader = DataLoader(
-    MyDataset(os.path.join(data_dir, 'train_data.json')),
-    batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
-valid_dataset = MyDataset(os.path.join(data_dir, 'dev_data.json'))
-valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, collate_fn=collate_fn)
+    MyDataset(os.path.join(data_dir, "train_data.json")),
+    batch_size=batch_size,
+    shuffle=True,
+    collate_fn=collate_fn,
+)
+valid_dataset = MyDataset(os.path.join(data_dir, "dev_data.json"))
+valid_dataloader = DataLoader(
+    valid_dataset, batch_size=batch_size, collate_fn=collate_fn
+)
 
 
 # 定义bert上的模型结构
@@ -150,20 +176,29 @@ class Model(BaseModel):
 
     @staticmethod
     def extract_subject(inputs):
-        """根据subject_ids从output中取出subject的向量表征
-        """
+        """根据subject_ids从output中取出subject的向量表征"""
         output, subject_ids = inputs
-        start = torch.gather(output, dim=1,
-                             index=subject_ids[:, :1].unsqueeze(2).expand(-1, -1, output.shape[-1]))  # 起始subject_id
-        end = torch.gather(output, dim=1,
-                           index=subject_ids[:, 1:].unsqueeze(2).expand(-1, -1, output.shape[-1]))  # 终止subject_id
+        start = torch.gather(
+            output,
+            dim=1,
+            index=subject_ids[:, :1].unsqueeze(2).expand(-1, -1, output.shape[-1]),
+        )  # 起始subject_id
+        end = torch.gather(
+            output,
+            dim=1,
+            index=subject_ids[:, 1:].unsqueeze(2).expand(-1, -1, output.shape[-1]),
+        )  # 终止subject_id
         subject = torch.cat([start, end], 2)  # 拼接起始和终止subject_id
         return subject[:, 0]
 
     def forward(self, inputs):
         # 预测subject
-        seq_output = self.bert(inputs[:2])  # 输入[token_ids,segment_ids] 输出[btz, seq_len, hdsz]
-        subject_preds = (torch.sigmoid(self.linear1(seq_output))) ** 2  # 经过全连接层和sigmoid，输出[btz, seq_len, 2]  为什么要平方
+        seq_output = self.bert(
+            inputs[:2]
+        )  # 输入[token_ids,segment_ids] 输出[btz, seq_len, hdsz]
+        subject_preds = (
+            torch.sigmoid(self.linear1(seq_output))
+        ) ** 2  # 经过全连接层和sigmoid，输出[btz, seq_len, 2]  为什么要平方
 
         # 传入subject，预测object
         # 通过Conditional Layer Normalization将subject融入到object的预测中
@@ -180,7 +215,9 @@ class Model(BaseModel):
         self.eval()
         with torch.no_grad():
             seq_output = self.bert(inputs[:2])  # [btz, seq_len, hdsz]
-            subject_preds = (torch.sigmoid(self.linear1(seq_output))) ** 2  # [btz, seq_len, 2]
+            subject_preds = (
+                torch.sigmoid(self.linear1(seq_output))
+            ) ** 2  # [btz, seq_len, 2]
         return [seq_output, subject_preds]
 
     def predict_object(self, inputs):
@@ -216,12 +253,13 @@ class BCELoss(nn.BCELoss):
         return subject_loss + object_loss
 
 
-train_model.compile(loss=BCELoss(reduction='none'), optimizer=optim.Adam(train_model.parameters(), 1e-5))
+train_model.compile(
+    loss=BCELoss(reduction="none"), optimizer=optim.Adam(train_model.parameters(), 1e-5)
+)
 
 
 def extract_spoes(text):
-    """抽取输入text所包含的三元组
-    """
+    """抽取输入text所包含的三元组"""
     tokens = tokenizer.tokenize(text, maxlen=maxlen)
     mapping = tokenizer.rematch(text, tokens)  # wordpiece之后对应的id
     token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
@@ -243,7 +281,9 @@ def extract_spoes(text):
         spoes = []
         # token_ids = token_ids.repeat([len(subjects)]+[1]*(len(token_ids.shape)-1))
         # segment_ids = segment_ids.repeat([len(subjects)]+[1]*(len(token_ids.shape)-1))
-        seq_output = seq_output.repeat([len(subjects)] + [1] * (len(seq_output.shape) - 1))
+        seq_output = seq_output.repeat(
+            [len(subjects)] + [1] * (len(seq_output.shape) - 1)
+        )
         subjects = torch.tensor(subjects, dtype=torch.long, device=device)
         # 传入subject，抽取object和predicate
         object_preds = train_model.predict_object([seq_output, subjects])
@@ -255,13 +295,17 @@ def extract_spoes(text):
                 for _end, predicate2 in zip(*end):
                     if _start <= _end and predicate1 == predicate2:
                         spoes.append(
-                            ((mapping[subject[0]][0],
-                              mapping[subject[1]][-1]), predicate1.item(),
-                             (mapping[_start][0], mapping[_end][-1]))
+                            (
+                                (mapping[subject[0]][0], mapping[subject[1]][-1]),
+                                predicate1.item(),
+                                (mapping[_start][0], mapping[_end][-1]),
+                            )
                         )
                         break
-        return [(text[s[0]:s[1] + 1], id2predicate[p], text[o[0]:o[1] + 1])
-                for s, p, o, in spoes]
+        return [
+            (text[s[0] : s[1] + 1], id2predicate[p], text[o[0] : o[1] + 1])
+            for s, p, o, in spoes
+        ]
     else:
         return []
 
@@ -287,43 +331,43 @@ class SPO(tuple):
 
 
 def evaluate(data):
-    """评估函数，计算f1、precision、recall
-    """
+    """评估函数，计算f1、precision、recall"""
     X, Y, Z = 1e-10, 1e-10, 1e-10
-    f = open('dev_pred.json', 'w', encoding='utf-8')
+    f = open("dev_pred.json", "w", encoding="utf-8")
     pbar = tqdm()
     for d in data:
-        R = set([SPO(spo) for spo in extract_spoes(d['text'])])
-        T = set([SPO(spo) for spo in d['spo_list']])
+        R = set([SPO(spo) for spo in extract_spoes(d["text"])])
+        T = set([SPO(spo) for spo in d["spo_list"]])
         X += len(R & T)
         Y += len(R)
         Z += len(T)
         f1, precision, recall = 2 * X / (Y + Z), X / Y, X / Z
         pbar.update()
         pbar.set_description(
-            'f1: %.5f, precision: %.5f, recall: %.5f' % (f1, precision, recall)
+            "f1: %.5f, precision: %.5f, recall: %.5f" % (f1, precision, recall)
         )
-        s = json.dumps({
-            'text': d['text'],
-            'spo_list': list(T),
-            'spo_list_pred': list(R),
-            'new': list(R - T),
-            'lack': list(T - R),
-        },
+        s = json.dumps(
+            {
+                "text": d["text"],
+                "spo_list": list(T),
+                "spo_list_pred": list(R),
+                "new": list(R - T),
+                "lack": list(T - R),
+            },
             ensure_ascii=False,
-            indent=4)
-        f.write(s + '\n')
+            indent=4,
+        )
+        f.write(s + "\n")
     pbar.close()
     f.close()
     return f1, precision, recall
 
 
 class Evaluator(Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
-        self.best_val_f1 = 0.
+        self.best_val_f1 = 0.0
 
     def on_epoch_end(self, steps, epoch, logs=None):
         # optimizer.apply_ema_weights()
@@ -333,17 +377,15 @@ class Evaluator(Callback):
             # train_model.save_weights('best_model.pt')
         # optimizer.reset_old_weights()
         print(
-            'f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f\n' %
-            (f1, precision, recall, self.best_val_f1)
+            "f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f\n"
+            % (f1, precision, recall, self.best_val_f1)
         )
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
 
     train_model.fit(train_dataloader, epochs=20, callbacks=[evaluator])
 
 else:
-
-    train_model.load_weights('best_model.pt')
+    train_model.load_weights("best_model.pt")

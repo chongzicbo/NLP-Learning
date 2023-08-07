@@ -24,9 +24,9 @@ class Beam(object):
         """Initialize params."""
         self.size = size
         self.done = False
-        self.pad = vocab['<pad>']
-        self.bos = vocab['<s>']
-        self.eos = vocab['</s>']
+        self.pad = vocab["<pad>"]
+        self.bos = vocab["<s>"]
+        self.eos = vocab["</s>"]
         self.device = device
 
         # The score for each translation on the beam.
@@ -36,7 +36,9 @@ class Beam(object):
         self.prevKs = []
 
         # The outputs at each time-step.
-        self.nextYs = [torch.zeros(size, dtype=torch.long, device=self.device).fill_(self.pad)]
+        self.nextYs = [
+            torch.zeros(size, dtype=torch.long, device=self.device).fill_(self.pad)
+        ]
         self.nextYs[0][0] = self.bos
 
         # The attentions (matrix) for each time.
@@ -85,10 +87,10 @@ class Beam(object):
 
         ## if focus
         ## End condition is when top-of-beam is EOS.
-        #if self.nextYs[-1][0] == self.eos:
+        # if self.nextYs[-1][0] == self.eos:
         #    self.done = True
 
-        #return self.done
+        # return self.done
 
     def sort_best(self):
         """Sort the beam."""

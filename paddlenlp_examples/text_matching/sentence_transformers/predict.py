@@ -92,15 +92,24 @@ def predict(model, data, tokenizer, label_map, batch_size=1):
     """
     examples = []
     for text_pair in data:
-        query_input_ids, query_token_type_ids, title_input_ids, title_token_type_ids = convert_example(
-            text_pair, tokenizer, max_seq_length=args.max_seq_length)
-        examples.append((query_input_ids, query_token_type_ids, title_input_ids,
-                         title_token_type_ids))
+        (
+            query_input_ids,
+            query_token_type_ids,
+            title_input_ids,
+            title_token_type_ids,
+        ) = convert_example(text_pair, tokenizer, max_seq_length=args.max_seq_length)
+        examples.append(
+            (
+                query_input_ids,
+                query_token_type_ids,
+                title_input_ids,
+                title_token_type_ids,
+            )
+        )
 
     # Seperates data into some batches.
     batches = [
-        examples[idx:idx + batch_size]
-        for idx in range(0, len(examples), batch_size)
+        examples[idx : idx + batch_size] for idx in range(0, len(examples), batch_size)
     ]
     batchify_fn = lambda samples, fn=Tuple(
         Pad(axis=0, pad_val=tokenizer.pad_token_id),  # query_input
@@ -112,18 +121,24 @@ def predict(model, data, tokenizer, label_map, batch_size=1):
     results = []
     model.eval()
     for batch in batches:
-        query_input_ids, query_token_type_ids, title_input_ids, title_token_type_ids = batchify_fn(
-            batch)
+        (
+            query_input_ids,
+            query_token_type_ids,
+            title_input_ids,
+            title_token_type_ids,
+        ) = batchify_fn(batch)
 
         query_input_ids = paddle.to_tensor(query_input_ids)
         query_token_type_ids = paddle.to_tensor(query_token_type_ids)
         title_input_ids = paddle.to_tensor(title_input_ids)
         title_token_type_ids = paddle.to_tensor(title_token_type_ids)
 
-        probs = model(query_input_ids,
-                      title_input_ids,
-                      query_token_type_ids=query_token_type_ids,
-                      title_token_type_ids=title_token_type_ids)
+        probs = model(
+            query_input_ids,
+            title_input_ids,
+            query_token_type_ids=query_token_type_ids,
+            title_token_type_ids=title_token_type_ids,
+        )
         idx = paddle.argmax(probs, axis=1).numpy()
         idx = idx.tolist()
         labels = [label_map[i] for i in idx]
@@ -135,18 +150,16 @@ if __name__ == "__main__":
     paddle.set_device(args.device)
 
     # ErnieTinyTokenizer is special for ernie-tiny pretained model.
-    tokenizer = ppnlp.transformers.ErnieTinyTokenizer.from_pretrained(
-        'ernie-tiny')
+    tokenizer = ppnlp.transformers.ErnieTinyTokenizer.from_pretrained("ernie-tiny")
 
     data = [
-        ['世界上什么东西最小', '世界上什么东西最小？'],
-        ['光眼睛大就好看吗', '眼睛好看吗？'],
-        ['小蝌蚪找妈妈怎么样', '小蝌蚪找妈妈是谁画的'],
+        ["世界上什么东西最小", "世界上什么东西最小？"],
+        ["光眼睛大就好看吗", "眼睛好看吗？"],
+        ["小蝌蚪找妈妈怎么样", "小蝌蚪找妈妈是谁画的"],
     ]
-    label_map = {0: 'dissimilar', 1: 'similar'}
+    label_map = {0: "dissimilar", 1: "similar"}
 
-    pretrained_model = ppnlp.transformers.ErnieModel.from_pretrained(
-        "ernie-tiny")
+    pretrained_model = ppnlp.transformers.ErnieModel.from_pretrained("ernie-tiny")
     model = SentenceTransformer(pretrained_model)
 
     if args.params_path and os.path.isfile(args.params_path):
@@ -154,10 +167,6 @@ if __name__ == "__main__":
         model.set_dict(state_dict)
         print("Loaded parameters from %s" % args.params_path)
 
-    results = predict(model,
-                      data,
-                      tokenizer,
-                      label_map,
-                      batch_size=args.batch_size)
+    results = predict(model, data, tokenizer, label_map, batch_size=args.batch_size)
     for idx, text in enumerate(data):
-        print('Data: {} \t Lable: {}'.format(text, results[idx]))
+        print("Data: {} \t Lable: {}".format(text, results[idx]))

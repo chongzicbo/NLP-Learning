@@ -30,34 +30,34 @@ batch_size = 32
 epochs = 100
 
 # bert配置
-config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
-dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
+config_path = "/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json"
+checkpoint_path = "/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt"
+dict_path = "/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt"
 
 # 标注数据
-webqa_data = json.load(open('/root/qa_datasets/WebQA.json'))
-sogou_data = json.load(open('/root/qa_datasets/SogouQA.json'))
+webqa_data = json.load(open("/root/qa_datasets/WebQA.json"))
+sogou_data = json.load(open("/root/qa_datasets/SogouQA.json"))
 
 # 筛选数据
-seps, strips = u'\n。！？!?；;，, ', u'；;，, '
+seps, strips = "\n。！？!?；;，, ", "；;，, "
 data = []
 for d in webqa_data + sogou_data:
-    for p in d['passages']:
-        if p['answer']:
-            for t in text_segmentate(p['passage'], max_p_len - 2, seps, strips):
-                if p['answer'] in t:
-                    data.append((t, d['question'], p['answer']))
+    for p in d["passages"]:
+        if p["answer"]:
+            for t in text_segmentate(p["passage"], max_p_len - 2, seps, strips):
+                if p["answer"] in t:
+                    data.append((t, d["question"], p["answer"]))
 
 del webqa_data
 del sogou_data
 
 # 保存一个随机序（供划分valid用）
-if not os.path.exists('../random_order.json'):
+if not os.path.exists("../random_order.json"):
     random_order = list(range(len(data)))
     np.random.shuffle(random_order)
-    json.dump(random_order, open('../random_order.json', 'w'), indent=4)
+    json.dump(random_order, open("../random_order.json", "w"), indent=4)
 else:
-    random_order = json.load(open('../random_order.json'))
+    random_order = json.load(open("../random_order.json"))
 
 # 划分valid
 train_data = [data[j] for i, j in enumerate(random_order) if i % 10 != 0]
@@ -67,18 +67,16 @@ valid_data = [data[j] for i, j in enumerate(random_order) if i % 10 == 0]
 token_dict, keep_tokens = load_vocab(
     dict_path=dict_path,
     simplified=True,
-    startswith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
+    startswith=["[PAD]", "[UNK]", "[CLS]", "[SEP]"],
 )
 tokenizer = Tokenizer(token_dict, do_lower_case=True)
 
 
 class data_generator(DataGenerator):
-    """数据生成器
-    """
+    """数据生成器"""
 
     def __iter__(self, random=False):
-        """单条样本格式：[CLS]篇章[SEP]答案[SEP]问题[SEP]
-        """
+        """单条样本格式：[CLS]篇章[SEP]答案[SEP]问题[SEP]"""
         batch_token_ids, batch_segment_ids = [], []
         for is_end, (p, q, a) in self.sample(random):
             p_token_ids, _ = tokenizer.encode(p, maxlen=max_p_len + 1)
@@ -97,8 +95,7 @@ class data_generator(DataGenerator):
 
 
 class CrossEntropy(Loss):
-    """交叉熵作为loss，并mask掉输入部分
-    """
+    """交叉熵作为loss，并mask掉输入部分"""
 
     def compute_loss(self, inputs, mask=None):
         y_true, y_mask, y_pred = inputs
@@ -113,7 +110,7 @@ class CrossEntropy(Loss):
 model = build_transformer_model(
     config_path,
     checkpoint_path,
-    application='unilm',
+    application="unilm",
     keep_tokens=keep_tokens,  # 只保留keep_tokens中的字，精简原字表
 )
 
@@ -125,10 +122,9 @@ model.summary()
 
 
 class QuestionAnswerGeneration(AutoRegressiveDecoder):
-    """随机生成答案，并且通过beam search来生成问题
-    """
+    """随机生成答案，并且通过beam search来生成问题"""
 
-    @AutoRegressiveDecoder.wraps(default_rtype='probas')
+    @AutoRegressiveDecoder.wraps(default_rtype="probas")
     def predict(self, inputs, output_ids, states):
         token_ids, segment_ids = inputs
         token_ids = np.concatenate([token_ids, output_ids], 1)
@@ -137,12 +133,10 @@ class QuestionAnswerGeneration(AutoRegressiveDecoder):
 
     def generate(self, passage, topk=1, topp=0.95):
         token_ids, segment_ids = tokenizer.encode(passage, maxlen=max_p_len)
-        a_ids = self.random_sample([token_ids, segment_ids], 1,
-                                   topp=topp)[0]  # 基于随机采样
+        a_ids = self.random_sample([token_ids, segment_ids], 1, topp=topp)[0]  # 基于随机采样
         token_ids += list(a_ids)
         segment_ids += [1] * len(a_ids)
-        q_ids = self.beam_search([token_ids, segment_ids],
-                                 topk=topk)  # 基于beam search
+        q_ids = self.beam_search([token_ids, segment_ids], topk=topk)  # 基于beam search
         return (tokenizer.decode(q_ids), tokenizer.decode(a_ids))
 
 
@@ -152,32 +146,29 @@ qag = QuestionAnswerGeneration(
 
 
 def predict_to_file(data, filename, topk=1):
-    """将预测结果输出到文件，方便评估
-    """
-    with open(filename, 'w', encoding='utf-8') as f:
-        for d in tqdm(iter(data), desc=u'正在预测(共%s条样本)' % len(data)):
+    """将预测结果输出到文件，方便评估"""
+    with open(filename, "w", encoding="utf-8") as f:
+        for d in tqdm(iter(data), desc="正在预测(共%s条样本)" % len(data)):
             q, a = qag.generate(d[0])
-            s = '%s\t%s\t%s\n' % (q, a, d[0])
+            s = "%s\t%s\t%s\n" % (q, a, d[0])
             f.write(s)
             f.flush()
 
 
 class Evaluator(keras.callbacks.Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
         self.lowest = 1e10
 
     def on_epoch_end(self, epoch, logs=None):
         # 保存最优
-        if logs['loss'] <= self.lowest:
-            self.lowest = logs['loss']
-            model.save_weights('./best_model.weights')
+        if logs["loss"] <= self.lowest:
+            self.lowest = logs["loss"]
+            model.save_weights("./best_model.weights")
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
     train_generator = data_generator(train_data, batch_size)
 
@@ -185,10 +176,9 @@ if __name__ == '__main__':
         train_generator.forfit(),
         steps_per_epoch=1000,
         epochs=epochs,
-        callbacks=[evaluator]
+        callbacks=[evaluator],
     )
 
 else:
-
-    model.load_weights('./best_model.weights')
+    model.load_weights("./best_model.weights")
     # predict_to_file(valid_data, 'qa.csv')

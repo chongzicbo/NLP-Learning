@@ -39,7 +39,9 @@ def main():
     for elem in tqdm.tqdm(read_jsonl(args.jsonl_path)):
         all_tokenized.append(
             tokenizer.encode(
-                elem["text"], max_length=args.max_seq_length, truncation=True,
+                elem["text"],
+                max_length=args.max_seq_length,
+                truncation=True,
             )
         )
     random.shuffle(all_tokenized)

@@ -22,7 +22,7 @@ from paddlenlp.utils.log import logger
 MODEL_CLASSES = {
     "bert": (BertForTokenClassification, BertTokenizer),
     "ernie": (ErnieForTokenClassification, ErnieTokenizer),
-    "ernie-ctm": (ErnieCtmForTokenClassification, ErnieCtmTokenizer)
+    "ernie-ctm": (ErnieCtmForTokenClassification, ErnieCtmTokenizer),
 }
 
 parser = argparse.ArgumentParser()
@@ -58,6 +58,7 @@ parser.add_argument("--device", default="gpu", type=str, choices=["cpu", "gpu", 
 
 # yapf: enable
 
+
 @paddle.no_grad()
 def evaluate(model, loss_fct, metric, data_loader, label_num, mode="valid"):
     model.eval()
@@ -70,12 +71,19 @@ def evaluate(model, loss_fct, metric, data_loader, label_num, mode="valid"):
         avg_loss = paddle.mean(loss)
         preds = logits.argmax(axis=2)
 
-        num_infer_chunks, num_label_chunks, num_correct_chunks = metric.compute(batch["seq_len"], preds,
-                                                                                batch["labels"])
-        metric.update(num_infer_chunks.numpy(), num_label_chunks.numpy(), num_correct_chunks.numpy())
+        num_infer_chunks, num_label_chunks, num_correct_chunks = metric.compute(
+            batch["seq_len"], preds, batch["labels"]
+        )
+        metric.update(
+            num_infer_chunks.numpy(),
+            num_label_chunks.numpy(),
+            num_correct_chunks.numpy(),
+        )
         precision, recall, f1_score = metric.accumulate()
-    print("%s: eval loss: %f, precision: %f, recall: %f, f1: %f" %
-          (mode, avg_loss, precision, recall, f1_score))
+    print(
+        "%s: eval loss: %f, precision: %f, recall: %f, f1: %f"
+        % (mode, avg_loss, precision, recall, f1_score)
+    )
     model.train()
 
 
@@ -98,68 +106,93 @@ def do_train(args):
     no_entity_id = 0
 
     def tokenize_and_align_labels(examples):
-        tokenized_inputs = tokenizer(examples["tokens"],
-                                     max_seq_len=args.max_seq_length,
-                                     is_split_into_words=True,
-                                     return_length=True)
+        tokenized_inputs = tokenizer(
+            examples["tokens"],
+            max_seq_len=args.max_seq_length,
+            is_split_into_words=True,
+            return_length=True,
+        )
         labels = []
         for i, label in enumerate(examples["ner_tags"]):
             label_ids = label
             if len(tokenized_inputs["input_ids"][i]) - 2 < len(label_ids):
-                label_ids = label_ids[:len(tokenized_inputs["input_ids"][i]) - 2]
+                label_ids = label_ids[: len(tokenized_inputs["input_ids"][i]) - 2]
             label_ids = [no_entity_id] + label_ids + [no_entity_id]
-            label_ids += [no_entity_id] * (len(tokenized_inputs["input_ids"][i]) - len(label_ids))
+            label_ids += [no_entity_id] * (
+                len(tokenized_inputs["input_ids"][i]) - len(label_ids)
+            )
             labels.append(label_ids)
         tokenized_inputs["labels"] = labels
         return tokenized_inputs
 
     train_ds = train_ds.select(range(len(train_ds) - 1))
     column_names = train_ds.column_names
-    train_ds = train_ds.map(tokenize_and_align_labels, batched=True, remove_columns=column_names)
+    train_ds = train_ds.map(
+        tokenize_and_align_labels, batched=True, remove_columns=column_names
+    )
 
     ignore_label = -100
 
-    batchify_fn = DataCollatorForTokenClassification(tokenizer=tokenizer, label_pad_token_id=ignore_label)
-    train_batch_sampler = paddle.io.DistributedBatchSampler(train_ds, batch_size=args.batch_size, shuffle=True,
-                                                            drop_last=True)
+    batchify_fn = DataCollatorForTokenClassification(
+        tokenizer=tokenizer, label_pad_token_id=ignore_label
+    )
+    train_batch_sampler = paddle.io.DistributedBatchSampler(
+        train_ds, batch_size=args.batch_size, shuffle=True, drop_last=True
+    )
 
-    train_data_loader = DataLoader(dataset=train_ds, collate_fn=batchify_fn, num_workers=0,
-                                   batch_sampler=train_batch_sampler, return_list=True)
+    train_data_loader = DataLoader(
+        dataset=train_ds,
+        collate_fn=batchify_fn,
+        num_workers=0,
+        batch_sampler=train_batch_sampler,
+        return_list=True,
+    )
 
-    test_ds = raw_datasets['test']
+    test_ds = raw_datasets["test"]
     test_ds = test_ds.select(range(len(test_ds) - 1))
-    test_ds = test_ds.map(tokenize_and_align_labels,
-                          batched=True,
-                          remove_columns=column_names)
+    test_ds = test_ds.map(
+        tokenize_and_align_labels, batched=True, remove_columns=column_names
+    )
 
     test_data_loader = DataLoader(
         dataset=test_ds,
         collate_fn=batchify_fn,
         num_workers=0,
         batch_size=args.batch_size,
-        return_list=True)
+        return_list=True,
+    )
 
     if args.dataset == "peoples_daily_ner":
-        dev_ds = raw_datasets['validation']
+        dev_ds = raw_datasets["validation"]
         dev_ds = dev_ds.select(range(len(dev_ds) - 1))
-        dev_ds = dev_ds.map(tokenize_and_align_labels,
-                            batched=True,
-                            remove_columns=column_names)
+        dev_ds = dev_ds.map(
+            tokenize_and_align_labels, batched=True, remove_columns=column_names
+        )
 
         dev_data_loader = DataLoader(
             dataset=dev_ds,
             collate_fn=batchify_fn,
             num_workers=0,
             batch_size=args.batch_size,
-            return_list=True)
-    model = AutoForTokenClassification.from_pretrained(args.model_name_or_path, num_classes=label_num)
+            return_list=True,
+        )
+    model = AutoForTokenClassification.from_pretrained(
+        args.model_name_or_path, num_classes=label_num
+    )
     if paddle.distributed.get_world_size() > 1:
         model = paddle.DataParallel(model)
-    num_training_steps = args.max_steps if args.max_steps > 0 else len(train_data_loader) * args.num_train_epochs
-    lr_scheduler = LinearDecayWithWarmup(args.learning_rate, num_training_steps, args.warmup_steps)
+    num_training_steps = (
+        args.max_steps
+        if args.max_steps > 0
+        else len(train_data_loader) * args.num_train_epochs
+    )
+    lr_scheduler = LinearDecayWithWarmup(
+        args.learning_rate, num_training_steps, args.warmup_steps
+    )
 
     decay_params = [
-        p.name for n, p in model.named_parameters()
+        p.name
+        for n, p in model.named_parameters()
         if not any(nd in n for nd in ["bias", "norm"])
     ]
 
@@ -168,7 +201,7 @@ def do_train(args):
         epsilon=args.adam_epsilon,
         parameters=model.parameters(),
         weight_decay=args.weight_decay,
-        apply_decay_param_fun=lambda x: x in decay_params
+        apply_decay_param_fun=lambda x: x in decay_params,
     )
 
     loss_fct = paddle.nn.loss.CrossEntropyLoss(ignore_index=ignore_label)
@@ -190,8 +223,14 @@ def do_train(args):
             if global_step % args.logging_steps == 0:
                 print(
                     "global step %d, epoch: %d, batch: %d, loss: %f, speed: %.2f step/s"
-                    % (global_step, epoch, step, avg_loss,
-                       args.logging_steps / (time.time() - tic_train)))
+                    % (
+                        global_step,
+                        epoch,
+                        step,
+                        avg_loss,
+                        args.logging_steps / (time.time() - tic_train),
+                    )
+                )
                 tic_train = time.time()
             avg_loss.backward()
             optimizer.step()
@@ -200,9 +239,17 @@ def do_train(args):
             if global_step % args.save_steps == 0 or global_step == num_training_steps:
                 if paddle.distributed.get_rank() == 0:
                     if args.dataset == "peoples_daily_ner":
-                        evaluate(model, loss_fct, metric, dev_data_loader, label_num, "valid")
-                    evaluate(model, loss_fct, metric, test_data_loader, label_num, "test")
-                    paddle.save(model.state_dict(), os.path.join(args.output_dir, "model_%d.pdparams") % global_step)
+                        evaluate(
+                            model, loss_fct, metric, dev_data_loader, label_num, "valid"
+                        )
+                    evaluate(
+                        model, loss_fct, metric, test_data_loader, label_num, "test"
+                    )
+                    paddle.save(
+                        model.state_dict(),
+                        os.path.join(args.output_dir, "model_%d.pdparams")
+                        % global_step,
+                    )
 
             if global_step >= num_training_steps:
                 return
@@ -211,6 +258,6 @@ def do_train(args):
 if __name__ == "__main__":
     args = parser.parse_args()
     for arg in vars(args):
-        logger.info('{:20}:{}'.format(arg, getattr(args, arg)))
+        logger.info("{:20}:{}".format(arg, getattr(args, arg)))
 
     do_train(args)

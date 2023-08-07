@@ -14,22 +14,33 @@ from bert4torch.models import build_transformer_model
 from bert4torch.tokenizers import Tokenizer
 from bert4torch.snippets import AutoRegressiveDecoder
 
-config_path = 'F:/Projects/pretrain_ckpt/gpt2/[gpt2-ml_torch_15g]/bert4torch_config.json'
-checkpoint_path = 'F:/Projects/pretrain_ckpt/gpt2/[gpt2-ml_torch_15g]/bert4torch_pytorch_model.bin'
-dict_path = 'F:/Projects/pretrain_ckpt/gpt2/[gpt2-ml_torch_15g]/vocab.txt'
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+config_path = (
+    "F:/Projects/pretrain_ckpt/gpt2/[gpt2-ml_torch_15g]/bert4torch_config.json"
+)
+checkpoint_path = (
+    "F:/Projects/pretrain_ckpt/gpt2/[gpt2-ml_torch_15g]/bert4torch_pytorch_model.bin"
+)
+dict_path = "F:/Projects/pretrain_ckpt/gpt2/[gpt2-ml_torch_15g]/vocab.txt"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
-tokenizer = Tokenizer(dict_path, token_start=None, token_end=None, do_lower_case=True)  # 建立分词器
+tokenizer = Tokenizer(
+    dict_path, token_start=None, token_end=None, do_lower_case=True
+)  # 建立分词器
 
-model = build_transformer_model(config_path=config_path, checkpoint_path=checkpoint_path, model='gpt2_ml',
-                                segment_vocab_size=0).to(device)  # 建立模型，加载权重
+model = build_transformer_model(
+    config_path=config_path,
+    checkpoint_path=checkpoint_path,
+    model="gpt2_ml",
+    segment_vocab_size=0,
+).to(
+    device
+)  # 建立模型，加载权重
 
 
 class ArticleCompletion(AutoRegressiveDecoder):
-    """基于随机采样的文章续写
-    """
+    """基于随机采样的文章续写"""
 
-    @AutoRegressiveDecoder.wraps(default_rtype='probas')
+    @AutoRegressiveDecoder.wraps(default_rtype="probas")
     def predict(self, inputs, output_ids, states):
         token_ids = torch.cat([inputs[0], output_ids], 1)
         logits = model.predict([token_ids])
@@ -42,14 +53,10 @@ class ArticleCompletion(AutoRegressiveDecoder):
 
 
 article_completion = ArticleCompletion(
-    start_id=None,
-    end_id=511,  # 511是中文句号
-    maxlen=256,
-    minlen=128,
-    device=device
+    start_id=None, end_id=511, maxlen=256, minlen=128, device=device  # 511是中文句号
 )
 
-for text in [u'今天天气不错', u'双十一', u'科学空间']:
+for text in ["今天天气不错", "双十一", "科学空间"]:
     print(article_completion.generate(text))
 
 """

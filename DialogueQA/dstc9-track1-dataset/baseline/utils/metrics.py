@@ -26,13 +26,13 @@ def get_fourgrams(sequence, **kwargs):
 class Metric:
     def __init__(self):
         self.reset()
-    
+
     def reset(self):
         pass
-    
+
     def update(self, output):
         raise NotImplementedError()
-    
+
     def compute(self):
         raise NotImplementedError()
 
@@ -42,7 +42,9 @@ class UnigramMetric(Metric):
         self._score = None
         self._count = None
         if metric.lower() not in ["recall", "precision"]:
-            raise ValueError("mertic should be either 'recall' or 'precision', got %s" % metric)
+            raise ValueError(
+                "mertic should be either 'recall' or 'precision', got %s" % metric
+            )
         self.metric = metric.lower()
         super(UnigramMetric, self).__init__()
 
@@ -75,9 +77,11 @@ class UnigramMetric(Metric):
 
     def compute(self):
         if self._count == 0:
-            raise ValueError("Unigram metrics must have at least one example before it can be computed!")
+            raise ValueError(
+                "Unigram metrics must have at least one example before it can be computed!"
+            )
         return self._score / self._count
-    
+
     def name(self):
         return "Unigram{:s}".format(self.metric.capitalize())
 
@@ -89,14 +93,16 @@ class NGramDiversity(Metric):
         self._count = None
 
         if self._n not in [1, 2, 3, 4]:
-            raise ValueError("NGramDiversity only supports n=1 (unigrams), n=2 (bigrams),"
-                             "n=3 (trigrams) and n=4 (4-grams)!")
+            raise ValueError(
+                "NGramDiversity only supports n=1 (unigrams), n=2 (bigrams),"
+                "n=3 (trigrams) and n=4 (4-grams)!"
+            )
 
         self.ngram_func = {
             1: lambda x: x,
             2: get_bigrams,
             3: get_trigrams,
-            4: get_fourgrams
+            4: get_fourgrams,
         }[self._n]
 
         super(NGramDiversity, self).__init__()
@@ -125,7 +131,9 @@ class NGramDiversity(Metric):
 
     def compute(self):
         if self._count == 0:
-            raise ValueError("NGramDiversity must consume at least one example before it can be computed!")
+            raise ValueError(
+                "NGramDiversity must consume at least one example before it can be computed!"
+            )
         return self._diversity / self._count
 
     def name(self):
@@ -140,13 +148,15 @@ class CorpusNGramDiversity(Metric):
         self._token_count = None
 
         if self._n not in [1, 2, 3, 4]:
-            raise ValueError("CorpusNGramDiversity only supports n=1 (unigrams), n=2 (bigrams),"
-                             "n=3 (trigrams) and n=4 (4-grams)!")
+            raise ValueError(
+                "CorpusNGramDiversity only supports n=1 (unigrams), n=2 (bigrams),"
+                "n=3 (trigrams) and n=4 (4-grams)!"
+            )
         self.ngram_func = {
             1: lambda x: x,
             2: get_bigrams,
             3: get_trigrams,
-            4: get_fourgrams
+            4: get_fourgrams,
         }[self._n]
 
         super(CorpusNGramDiversity, self).__init__()
@@ -167,10 +177,12 @@ class CorpusNGramDiversity(Metric):
 
     def compute(self):
         if self._token_count == 0:
-            raise ValueError("CorpusNGramDiversity must consume at least one example before it can be computed!")
+            raise ValueError(
+                "CorpusNGramDiversity must consume at least one example before it can be computed!"
+            )
 
         return len(self._ngrams) / self._token_count
-    
+
     def name(self):
         return "Corpus{:d}GramDiversity".format(self._n)
 
@@ -200,7 +212,9 @@ class BLEU(Metric):
 
     def compute(self):
         if self._count == 0:
-            raise ValueError("BLEU-1 must have at least one example before it can be computed!")
+            raise ValueError(
+                "BLEU-1 must have at least one example before it can be computed!"
+            )
         return self._bleu / self._count
 
     def name(self):
@@ -229,9 +243,11 @@ class METEOR(Metric):
 
     def compute(self):
         if self._count == 0:
-            raise ValueError("METEOR must have at least one example before it can be computed!")
+            raise ValueError(
+                "METEOR must have at least one example before it can be computed!"
+            )
         return self._meteor / self._count
-    
+
     def name(self):
         return "METEOR"
 
@@ -279,7 +295,7 @@ class Rouge:
         :param refs: list of str : reference sentences to be evaluated
         :returns score: float (ROUGE-L score for the candidate evaluated against references)
         """
-        assert (len(refs) > 0)
+        assert len(refs) > 0
         prec = []
         rec = []
 
@@ -298,7 +314,9 @@ class Rouge:
         rec_max = max(rec)
 
         if prec_max != 0 and rec_max != 0:
-            score = ((1 + self.beta ** 2) * prec_max * rec_max) / float(rec_max + self.beta ** 2 * prec_max)
+            score = ((1 + self.beta**2) * prec_max * rec_max) / float(
+                rec_max + self.beta**2 * prec_max
+            )
         else:
             score = 0.0
         return score
@@ -330,7 +348,9 @@ class ROUGE(Metric):
 
     def compute(self):
         if self._count == 0:
-            raise ValueError("ROUGE-L must have at least one example before it can be computed!")
+            raise ValueError(
+                "ROUGE-L must have at least one example before it can be computed!"
+            )
         return self._rouge / self._count
 
     def name(self):

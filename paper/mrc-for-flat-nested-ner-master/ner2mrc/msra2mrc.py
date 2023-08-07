@@ -23,20 +23,36 @@ def convert_file(input_file, output_file, tag2query_file):
                 continue
             origin_count += 1
             src, labels = line.split("\t")
-            tags = bmes_decode(char_label_list=[(char, label) for char, label in zip(src.split(), labels.split())])
+            tags = bmes_decode(
+                char_label_list=[
+                    (char, label) for char, label in zip(src.split(), labels.split())
+                ]
+            )
             for label, query in tag2query.items():
                 mrc_samples.append(
                     {
                         "context": src,
-                        "start_position": [tag.begin for tag in tags if tag.tag == label],
-                        "end_position": [tag.end-1 for tag in tags if tag.tag == label],
-                        "query": query
+                        "start_position": [
+                            tag.begin for tag in tags if tag.tag == label
+                        ],
+                        "end_position": [
+                            tag.end - 1 for tag in tags if tag.tag == label
+                        ],
+                        "query": query,
                     }
                 )
                 new_count += 1
 
-    json.dump(mrc_samples, open(output_file, "w"), ensure_ascii=False, sort_keys=True, indent=2)
-    print(f"Convert {origin_count} samples to {new_count} samples and save to {output_file}")
+    json.dump(
+        mrc_samples,
+        open(output_file, "w"),
+        ensure_ascii=False,
+        sort_keys=True,
+        indent=2,
+    )
+    print(
+        f"Convert {origin_count} samples to {new_count} samples and save to {output_file}"
+    )
 
 
 def main():
@@ -50,5 +66,5 @@ def main():
         convert_file(old_file, new_file, tag2query_file)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

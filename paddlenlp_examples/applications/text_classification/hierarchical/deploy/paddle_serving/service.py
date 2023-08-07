@@ -9,11 +9,12 @@ _LOGGER = logging.getLogger()
 
 
 class Op(Op):
-
     def init_op(self):
         from paddlenlp.transformers import AutoTokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained("ernie-2.0-base-en",
-                                                       use_faster=True)
+
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            "ernie-2.0-base-en", use_faster=True
+        )
         # Output nodes may differ from model to model
         # You can see the output node name in the conf.prototxt file of serving_server
         self.fetch_names = [
@@ -22,29 +23,30 @@ class Op(Op):
 
     def preprocess(self, input_dicts, data_id, log_id):
         # Convert input format
-        (_, input_dict), = input_dicts.items()
+        ((_, input_dict),) = input_dicts.items()
         data = input_dict["sentence"]
         if isinstance(data, str) and "array(" in data:
             data = eval(data)
         else:
             _LOGGER.error("input value  {}is not supported.".format(data))
-        data = [i.decode('utf-8') for i in data]
+        data = [i.decode("utf-8") for i in data]
 
         # tokenizer + pad
-        data = self.tokenizer(data,
-                              max_length=512,
-                              padding=True,
-                              truncation=True)
+        data = self.tokenizer(data, max_length=512, padding=True, truncation=True)
         input_ids = data["input_ids"]
         token_type_ids = data["token_type_ids"]
 
-        return {
-            "input_ids": np.array(input_ids, dtype="int64"),
-            "token_type_ids": np.array(token_type_ids, dtype="int64")
-        }, False, None, ""
+        return (
+            {
+                "input_ids": np.array(input_ids, dtype="int64"),
+                "token_type_ids": np.array(token_type_ids, dtype="int64"),
+            },
+            False,
+            None,
+            "",
+        )
 
     def postprocess(self, input_dicts, fetch_dict, data_id, log_id):
-
         results = fetch_dict[self.fetch_names[0]]
         results = np.array(results)
         labels = []
@@ -55,12 +57,11 @@ class Op(Op):
             for i, p in enumerate(result):
                 if p > 0.5:
                     label.append(str(i))
-            labels.append(','.join(label))
+            labels.append(",".join(label))
         return {"label": labels}, None, ""
 
 
 class Service(WebService):
-
     def get_pipeline_response(self, read_op):
         return Op(name="seq_cls", input_ops=[read_op])
 

@@ -27,21 +27,23 @@ steps_per_epoch = 1000
 epochs = 10000
 
 # bert配置
-config_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt'
-dict_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/vocab.txt'
+config_path = "/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_config.json"
+checkpoint_path = (
+    "/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt"
+)
+dict_path = "/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/vocab.txt"
 
 novels = []
 
-for txt in glob.glob('/root/金庸/*/*.txt'):
-    txt = open(txt, encoding='gbk').read()
-    txt = txt.replace('\r', '').replace('\n', '')
-    txt = txt.replace(u'整理制作，并提供下载', '')
-    txt = re.sub(u'www.*?com', '', txt)
-    txt = txt.replace(u'\u3000', ' ')
+for txt in glob.glob("/root/金庸/*/*.txt"):
+    txt = open(txt, encoding="gbk").read()
+    txt = txt.replace("\r", "").replace("\n", "")
+    txt = txt.replace("整理制作，并提供下载", "")
+    txt = re.sub("www.*?com", "", txt)
+    txt = txt.replace("\u3000", " ")
     sents = []
-    for t in txt.split('  '):
-        for s in re.findall(u'.*?。', t):
+    for t in txt.split("  "):
+        for s in re.findall(".*?。", t):
             if len(s) <= maxlen - 2:
                 sents.append(s)
     novels.append(sents)
@@ -50,20 +52,20 @@ for txt in glob.glob('/root/金庸/*/*.txt'):
 token_dict, keep_tokens = load_vocab(
     dict_path=dict_path,
     simplified=True,
-    startswith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
+    startswith=["[PAD]", "[UNK]", "[CLS]", "[SEP]"],
 )
 tokenizer = Tokenizer(token_dict, do_lower_case=True)
 
 data = []
-pbar = tqdm(desc=u'构建语料中', total=sum(len(n) for n in novels))
+pbar = tqdm(desc="构建语料中", total=sum(len(n) for n in novels))
 
 for novel in novels:
-    s = u''
+    s = ""
     for i in range(len(novel)):
         for j in range(len(novel) - i):
             if len(s) + len(novel[i + j]) > maxlen - 2:
                 data.append(s)
-                s = u''
+                s = ""
                 break
             else:
                 s += novel[i + j]
@@ -78,8 +80,7 @@ np.random.shuffle(data)
 
 
 class data_generator(DataGenerator):
-    """数据生成器
-    """
+    """数据生成器"""
 
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids = [], []
@@ -95,8 +96,7 @@ class data_generator(DataGenerator):
 
 
 class CrossEntropy(Loss):
-    """交叉熵作为loss，并mask掉padding部分
-    """
+    """交叉熵作为loss，并mask掉padding部分"""
 
     def compute_loss(self, inputs, mask=None):
         y_true, y_pred = inputs
@@ -114,7 +114,7 @@ class CrossEntropy(Loss):
 model = build_transformer_model(
     config_path,
     checkpoint_path,
-    application='lm',
+    application="lm",
     keep_tokens=keep_tokens,  # 只保留keep_tokens中的字，精简原字表
 )
 
@@ -126,10 +126,9 @@ model.summary()
 
 
 class StoryCompletion(AutoRegressiveDecoder):
-    """基于随机采样的故事续写
-    """
+    """基于随机采样的故事续写"""
 
-    @AutoRegressiveDecoder.wraps(default_rtype='probas')
+    @AutoRegressiveDecoder.wraps(default_rtype="probas")
     def predict(self, inputs, output_ids, states):
         token_ids = inputs[0]
         token_ids = np.concatenate([token_ids, output_ids], 1)
@@ -148,33 +147,31 @@ story_completion = StoryCompletion(
 
 
 def just_show():
-    s1 = u'当晚两人在一家小客店中宿歇。张无忌躺在炕上，越想越是担心，走到赵敏窗外，但听她呼吸调匀，正自香梦沉酣。'
-    s2 = u'虚竹飞身跃上松树的枝干，只见段延庆的钢杖深深嵌在树枝之中，全凭一股内力粘劲，挂住了下面四人，内力之深厚，实是非同小可。虚竹伸左手抓住钢杖，提将上来。'
-    s3 = u'杨过居住在侠客岛，是令狐冲的弟子，武器是金蛇剑。'
+    s1 = "当晚两人在一家小客店中宿歇。张无忌躺在炕上，越想越是担心，走到赵敏窗外，但听她呼吸调匀，正自香梦沉酣。"
+    s2 = "虚竹飞身跃上松树的枝干，只见段延庆的钢杖深深嵌在树枝之中，全凭一股内力粘劲，挂住了下面四人，内力之深厚，实是非同小可。虚竹伸左手抓住钢杖，提将上来。"
+    s3 = "杨过居住在侠客岛，是令狐冲的弟子，武器是金蛇剑。"
     for s in [s1, s2, s3]:
         t = story_completion.generate(s)
-        print(u'输入: %s' % s)
-        print(u'结果: %s\n' % ('\n'.join(t)))
+        print("输入: %s" % s)
+        print("结果: %s\n" % ("\n".join(t)))
 
 
 class Evaluator(keras.callbacks.Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
         self.lowest = 1e10
 
     def on_epoch_end(self, epoch, logs=None):
         # 保存最优
-        if logs['loss'] <= self.lowest:
-            self.lowest = logs['loss']
-            model.save_weights('./best_model.weights')
+        if logs["loss"] <= self.lowest:
+            self.lowest = logs["loss"]
+            model.save_weights("./best_model.weights")
         # 演示效果
         just_show()
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
     train_generator = data_generator(data, batch_size)
 
@@ -182,12 +179,11 @@ if __name__ == '__main__':
         train_generator.forfit(),
         steps_per_epoch=steps_per_epoch,
         epochs=epochs,
-        callbacks=[evaluator]
+        callbacks=[evaluator],
     )
 
 else:
-
-    model.load_weights('./best_model.weights')
+    model.load_weights("./best_model.weights")
 """
 效果：
 输入: 当晚两人在一家小客店中宿歇。张无忌躺在炕上，越想越是担心，走到赵敏窗外，但听她呼吸调匀，正自香梦沉酣。

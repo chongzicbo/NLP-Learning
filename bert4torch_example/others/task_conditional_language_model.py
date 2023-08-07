@@ -13,7 +13,13 @@
 from pydantic import NoneStrBytes
 from bert4torch.models import build_transformer_model, BaseModel
 from bert4torch.tokenizers import Tokenizer, load_vocab
-from bert4torch.snippets import sequence_padding, text_segmentate, Callback, AutoRegressiveDecoder, ListDataset
+from bert4torch.snippets import (
+    sequence_padding,
+    text_segmentate,
+    Callback,
+    AutoRegressiveDecoder,
+    ListDataset,
+)
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.optim as optim
@@ -26,16 +32,18 @@ num_classes = 2
 epochs = 20
 
 # bert配置
-config_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/pytorch_model.bin'
-dict_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/vocab.txt'
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+config_path = "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/bert_config.json"
+checkpoint_path = "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/pytorch_model.bin"
+dict_path = (
+    "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/vocab.txt"
+)
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # 加载并精简词表，建立分词器
 token_dict, keep_tokens = load_vocab(
     dict_path=dict_path,
     simplified=True,
-    startswith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
+    startswith=["[PAD]", "[UNK]", "[CLS]", "[SEP]"],
 )
 tokenizer = Tokenizer(token_dict, do_lower_case=True)
 
@@ -44,14 +52,13 @@ tokenizer = Tokenizer(token_dict, do_lower_case=True)
 class MyDataset(ListDataset):
     @staticmethod
     def load_data(filenames):
-        """加载数据，并尽量划分为不超过maxlen的句子
-        """
+        """加载数据，并尽量划分为不超过maxlen的句子"""
         D = []
-        seps, strips = u'\n。！？!?；;，, ', u'；;，, '
+        seps, strips = "\n。！？!?；;，, ", "；;，, "
         for filename in filenames:
-            with open(filename, encoding='utf-8') as f:
+            with open(filename, encoding="utf-8") as f:
                 for l in f:
-                    text, label = l.strip().split('\t')
+                    text, label = l.strip().split("\t")
                     for t in text_segmentate(text, maxlen - 2, seps, strips):
                         D.append((t, int(label)))
                     # if len(D) >= 100:
@@ -67,18 +74,29 @@ def collate_fn(batch):
         batch_segment_ids.append(segment_ids)
         batch_labels.append(label)
 
-    batch_token_ids = torch.tensor(sequence_padding(batch_token_ids), dtype=torch.long, device=device)
-    batch_segment_ids = torch.tensor(sequence_padding(batch_segment_ids), dtype=torch.long, device=device)
+    batch_token_ids = torch.tensor(
+        sequence_padding(batch_token_ids), dtype=torch.long, device=device
+    )
+    batch_segment_ids = torch.tensor(
+        sequence_padding(batch_segment_ids), dtype=torch.long, device=device
+    )
     batch_labels = torch.tensor(batch_labels, dtype=torch.long, device=device)
     return [batch_token_ids, batch_segment_ids, batch_labels], batch_token_ids
 
 
 # 加载数据集
-train_dataloader = DataLoader(MyDataset([
-    'F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.train.data',
-    'F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.valid.data',
-    'F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.test.data']),
-    batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+train_dataloader = DataLoader(
+    MyDataset(
+        [
+            "F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.train.data",
+            "F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.valid.data",
+            "F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.test.data",
+        ]
+    ),
+    batch_size=batch_size,
+    shuffle=True,
+    collate_fn=collate_fn,
+)
 
 
 # 定义bert上的模型结构
@@ -86,13 +104,15 @@ class Model(BaseModel):
     def __init__(self) -> None:
         super().__init__()
         c = nn.Embedding(num_classes, 128)
-        self.bert = build_transformer_model(config_path,
-                                            checkpoint_path,
-                                            with_mlm=True,
-                                            application='lm',
-                                            keep_tokens=keep_tokens,  # 只保留keep_tokens中的字，精简原字表
-                                            layer_norm_cond=c,
-                                            ignore_invalid_weights=True)  # 忽略未初始化的权重
+        self.bert = build_transformer_model(
+            config_path,
+            checkpoint_path,
+            with_mlm=True,
+            application="lm",
+            keep_tokens=keep_tokens,  # 只保留keep_tokens中的字，精简原字表
+            layer_norm_cond=c,
+            ignore_invalid_weights=True,
+        )  # 忽略未初始化的权重
 
     def forward(self, inputs):
         _, seq_output = self.bert(inputs)  # [btz, seq_len, vocab_size]
@@ -112,14 +132,16 @@ class CrossEntropyLoss(nn.CrossEntropyLoss):
         return super().forward(input, target)
 
 
-model.compile(loss=CrossEntropyLoss(ignore_index=0), optimizer=optim.Adam(model.parameters(), 1e-5))
+model.compile(
+    loss=CrossEntropyLoss(ignore_index=0),
+    optimizer=optim.Adam(model.parameters(), 1e-5),
+)
 
 
 class RandomSentiment(AutoRegressiveDecoder):
-    """根据情感标签（0:负，1:正）随机生成一批句子
-    """
+    """根据情感标签（0:负，1:正）随机生成一批句子"""
 
-    @AutoRegressiveDecoder.wraps(default_rtype='logits')
+    @AutoRegressiveDecoder.wraps(default_rtype="logits")
     def predict(self, inputs, output_ids, states):
         token_ids = output_ids
         segment_ids = torch.zeros_like(token_ids, device=device)
@@ -135,41 +157,40 @@ random_sentiment = RandomSentiment(
     start_id=tokenizer._token_start_id,
     end_id=tokenizer._token_end_id,
     maxlen=maxlen,
-    device=device
+    device=device,
 )
 
 
 def just_show():
-    print(u'正面采样:')
-    print(random_sentiment.generate(1, 5, 0.95), '\n')
-    print(u'负面采样:')
-    print(random_sentiment.generate(0, 5, 0.95), '\n')
+    print("正面采样:")
+    print(random_sentiment.generate(1, 5, 0.95), "\n")
+    print("负面采样:")
+    print(random_sentiment.generate(0, 5, 0.95), "\n")
 
 
 class Evaluator(Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
         self.lowest = 1e10
 
     def on_epoch_end(self, steps, epoch, logs=None):
         # 保存最优
-        if logs['loss'] <= self.lowest:
-            self.lowest = logs['loss']
+        if logs["loss"] <= self.lowest:
+            self.lowest = logs["loss"]
             # model.save_weights('./best_model.pt')
         # 演示效果
         just_show()
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
 
-    model.fit(train_dataloader, epochs=epochs, steps_per_epoch=None, callbacks=[evaluator])
+    model.fit(
+        train_dataloader, epochs=epochs, steps_per_epoch=None, callbacks=[evaluator]
+    )
 else:
-
-    model.load_weights('./best_model.pt')
+    model.load_weights("./best_model.pt")
 
 """
 正面采样:

@@ -31,29 +31,30 @@ num_classes = 2
 epochs = 20
 
 # bert配置
-model_dir = "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_L-12_H-768_A-12"
-config_path = os.path.join(model_dir, 'bert_config.json')
-checkpoint_path = os.path.join(model_dir, 'bert_model.ckpt')
-dict_path = os.path.join(model_dir, 'vocab.txt')
+model_dir = (
+    "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_L-12_H-768_A-12"
+)
+config_path = os.path.join(model_dir, "bert_config.json")
+checkpoint_path = os.path.join(model_dir, "bert_model.ckpt")
+dict_path = os.path.join(model_dir, "vocab.txt")
 
 # 加载并精简词表，建立分词器
 token_dict, keep_tokens = load_vocab(
     dict_path=dict_path,
     simplified=True,
-    startswith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
+    startswith=["[PAD]", "[UNK]", "[CLS]", "[SEP]"],
 )
 tokenizer = Tokenizer(token_dict, do_lower_case=True)
 
 
 def load_data(filenames):
-    """加载数据，并尽量划分为不超过maxlen的句子
-    """
+    """加载数据，并尽量划分为不超过maxlen的句子"""
     D = []
-    seps, strips = u'\n。！？!?；;，, ', u'；;，, '
+    seps, strips = "\n。！？!?；;，, ", "；;，, "
     for filename in filenames:
-        with open(filename, encoding='utf-8') as f:
+        with open(filename, encoding="utf-8") as f:
             for l in f:
-                text, label = l.strip().split('\t')
+                text, label = l.strip().split("\t")
                 for t in text_segmentate(text, maxlen - 2, seps, strips):
                     D.append((t, int(label)))
     return D[:4]
@@ -61,16 +62,17 @@ def load_data(filenames):
 
 # 加载数据集
 data_dir = "/mnt/e/opensource_data/分类/情感分析/sentiment/"
-data = load_data([
-    os.path.join(data_dir, 'sentiment.train.data'),
-    os.path.join(data_dir, 'sentiment.valid.data'),
-    os.path.join(data_dir, 'sentiment.test.data')
-])
+data = load_data(
+    [
+        os.path.join(data_dir, "sentiment.train.data"),
+        os.path.join(data_dir, "sentiment.valid.data"),
+        os.path.join(data_dir, "sentiment.test.data"),
+    ]
+)
 
 
 class data_generator(DataGenerator):
-    """数据生成器
-    """
+    """数据生成器"""
 
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
@@ -88,8 +90,7 @@ class data_generator(DataGenerator):
 
 
 class CrossEntropy(Loss):
-    """交叉熵作为loss，并mask掉padding部分
-    """
+    """交叉熵作为loss，并mask掉padding部分"""
 
     def compute_loss(self, inputs, mask=None):
         y_true, y_pred = inputs
@@ -112,7 +113,7 @@ c = Reshape((128,))(c)
 model = build_transformer_model(
     config_path,
     checkpoint_path,
-    application='lm',
+    application="lm",
     keep_tokens=keep_tokens,  # 只保留keep_tokens中的字，精简原字表
     layer_norm_cond=c,
     additional_input_layers=c_in,
@@ -126,16 +127,13 @@ model.summary()
 
 
 class RandomSentiment(AutoRegressiveDecoder):
-    """根据情感标签（0:负，1:正）随机生成一批句子
-    """
+    """根据情感标签（0:负，1:正）随机生成一批句子"""
 
-    @AutoRegressiveDecoder.wraps(default_rtype='probas')
+    @AutoRegressiveDecoder.wraps(default_rtype="probas")
     def predict(self, inputs, output_ids, states):
         token_ids = output_ids
         segment_ids = np.zeros_like(token_ids)
-        return self.last_token(model).predict([
-            token_ids, segment_ids, inputs[0]
-        ])
+        return self.last_token(model).predict([token_ids, segment_ids, inputs[0]])
 
     def generate(self, label, n=1, topp=0.95):
         results = self.random_sample([[label]], n, topp=topp)  # 基于随机采样
@@ -143,37 +141,33 @@ class RandomSentiment(AutoRegressiveDecoder):
 
 
 random_sentiment = RandomSentiment(
-    start_id=tokenizer._token_start_id,
-    end_id=tokenizer._token_end_id,
-    maxlen=maxlen
+    start_id=tokenizer._token_start_id, end_id=tokenizer._token_end_id, maxlen=maxlen
 )
 
 
 def just_show():
-    print(u'正面采样:')
-    print(random_sentiment.generate(1, 5, 5), '\n')
-    print(u'负面采样:')
-    print(random_sentiment.generate(0, 5, 5), '\n')
+    print("正面采样:")
+    print(random_sentiment.generate(1, 5, 5), "\n")
+    print("负面采样:")
+    print(random_sentiment.generate(0, 5, 5), "\n")
 
 
 class Evaluator(keras.callbacks.Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
         self.lowest = 1e10
 
     def on_epoch_end(self, epoch, logs=None):
         # 保存最优
-        if logs['loss'] <= self.lowest:
-            self.lowest = logs['loss']
-            model.save_weights('./best_model.weights')
+        if logs["loss"] <= self.lowest:
+            self.lowest = logs["loss"]
+            model.save_weights("./best_model.weights")
         # 演示效果
         just_show()
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
     train_generator = data_generator(data, batch_size)
 
@@ -181,12 +175,11 @@ if __name__ == '__main__':
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=epochs,
-        callbacks=[evaluator]
+        callbacks=[evaluator],
     )
 
 else:
-
-    model.load_weights('./best_model.weights')
+    model.load_weights("./best_model.weights")
 """
 正面采样:
 [

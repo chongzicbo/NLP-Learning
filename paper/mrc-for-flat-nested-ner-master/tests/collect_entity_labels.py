@@ -29,7 +29,7 @@ def main(data_dir, data_sign, datafile_suffix=".word.bmes"):
     print(len(label_collection_set))
     print(label_collection_set)
 
-    print("%"*10)
+    print("%" * 10)
     set_labels = get_labels(data_sign)
     print(len(set_labels))
 

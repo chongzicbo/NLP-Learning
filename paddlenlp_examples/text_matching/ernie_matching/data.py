@@ -3,19 +3,29 @@ import paddle.io
 from paddlenlp.datasets import MapDataset
 
 
-def create_dataloader(dataset, mode="train.json", batch_size=1, batchify_fn=None, transfn=None):
+def create_dataloader(
+    dataset, mode="train.json", batch_size=1, batchify_fn=None, transfn=None
+):
     if transfn:
         dataset = dataset.map(transfn)
 
     shuffle = True if mode == "train.json" else False
     if mode == "train.json":
-        batch_sampler = paddle.io.DistributedBatchSampler(dataset, batch_size=batch_size, shuffle=shuffle)
+        batch_sampler = paddle.io.DistributedBatchSampler(
+            dataset, batch_size=batch_size, shuffle=shuffle
+        )
 
     else:
-        batch_sampler = paddle.io.BatchSampler(dataset, batch_size=batch_size, shuffle=shuffle)
+        batch_sampler = paddle.io.BatchSampler(
+            dataset, batch_size=batch_size, shuffle=shuffle
+        )
 
-    return paddle.io.DataLoader(dataset=dataset, batch_sampler=batch_sampler, collate_fn=batchify_fn, return_list=True)
-
+    return paddle.io.DataLoader(
+        dataset=dataset,
+        batch_sampler=batch_sampler,
+        collate_fn=batchify_fn,
+        return_list=True,
+    )
 
 
 def read_text_pair(data_path):
@@ -44,11 +54,21 @@ def convert_pointwise_example(example, tokenizer, max_seq_length=512, is_test=Fa
         return input_ids, token_type_ids
 
 
-def convert_pairwise_example(example, tokenizer, max_seq_length=512, phase="train.json"):
+def convert_pairwise_example(
+    example, tokenizer, max_seq_length=512, phase="train.json"
+):
     if phase == "train.json":
-        query, pos_title, neg_title = example["query"], example["title"], example["neg_title"]
-        pos_inputs = tokenizer(text=query, text_pair=pos_title, max_seq_len=max_seq_length)
-        neg_inputs = tokenizer(text=query, text_pair=neg_title, max_seq_len=max_seq_length)
+        query, pos_title, neg_title = (
+            example["query"],
+            example["title"],
+            example["neg_title"],
+        )
+        pos_inputs = tokenizer(
+            text=query, text_pair=pos_title, max_seq_len=max_seq_length
+        )
+        neg_inputs = tokenizer(
+            text=query, text_pair=neg_title, max_seq_len=max_seq_length
+        )
         pos_input_ids = pos_inputs["input_ids"]
         pos_token_type_ids = pos_inputs["token_type_ids"]
         neg_input_ids = neg_inputs["input_ids"]

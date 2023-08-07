@@ -22,27 +22,35 @@ class TorchVocab(object):
         itos: A list of token strings indexed by their numerical identifiers.
     """
 
-    def __init__(self, counter, max_size=None, min_freq=1, specials=["<pad>", "<oov>"], vectors=None, unk_init=None,
-                 vectors_cache=None):
+    def __init__(
+        self,
+        counter,
+        max_size=None,
+        min_freq=1,
+        specials=["<pad>", "<oov>"],
+        vectors=None,
+        unk_init=None,
+        vectors_cache=None,
+    ):
         """Create a Vocab object from a collections.Counter.
-          Arguments:
-              counter: collections.Counter object holding the frequencies of
-                  each value found in the data.
-              max_size: The maximum size of the vocabulary, or None for no
-                  maximum. Default: None.
-              min_freq: The minimum frequency needed to include a token in the
-                  vocabulary. Values less than 1 will be set to 1. Default: 1.
-              specials: The list of special tokens (e.g., padding or eos) that
-                  will be prepended to the vocabulary in addition to an <unk>
-                  token. Default: ['<pad>']
-              vectors: One of either the available pretrained vectors
-                  or custom pretrained vectors (see Vocab.load_vectors);
-                  or a list of aforementioned vectors
-              unk_init (callback): by default, initialize out-of-vocabulary word vectors
-                  to zero vectors; can be any function that takes in a Tensor and
-                  returns a Tensor of the same size. Default: torch.Tensor.zero_
-              vectors_cache: directory for cached vectors. Default: '.vector_cache'
-          """
+        Arguments:
+            counter: collections.Counter object holding the frequencies of
+                each value found in the data.
+            max_size: The maximum size of the vocabulary, or None for no
+                maximum. Default: None.
+            min_freq: The minimum frequency needed to include a token in the
+                vocabulary. Values less than 1 will be set to 1. Default: 1.
+            specials: The list of special tokens (e.g., padding or eos) that
+                will be prepended to the vocabulary in addition to an <unk>
+                token. Default: ['<pad>']
+            vectors: One of either the available pretrained vectors
+                or custom pretrained vectors (see Vocab.load_vectors);
+                or a list of aforementioned vectors
+            unk_init (callback): by default, initialize out-of-vocabulary word vectors
+                to zero vectors; can be any function that takes in a Tensor and
+                returns a Tensor of the same size. Default: torch.Tensor.zero_
+            vectors_cache: directory for cached vectors. Default: '.vector_cache'
+        """
 
         self.freqs = counter
         counter = counter.copy()
@@ -103,8 +111,12 @@ class Vocab(TorchVocab):
         self.eos_index = 2
         self.sos_index = 3
         self.mask_index = 4
-        super().__init__(counter, specials=["<pad>", "<unk>", "<eos>", "<sos>", "<mask>"],
-                         max_size=max_size, min_freq=min_freq)
+        super().__init__(
+            counter,
+            specials=["<pad>", "<unk>", "<eos>", "<sos>", "<mask>"],
+            max_size=max_size,
+            min_freq=min_freq,
+        )
 
     def to_seq(self, sentence, seq_len, with_eos=False, with_sos=False) -> list:
         pass
@@ -136,7 +148,9 @@ class WordVocab(Vocab):
 
         super().__init__(counter, max_size=max_size, min_freq=min_freq)
 
-    def to_seq(self, sentence, seq_len=None, with_eos=False, with_sos=False, with_len=False) -> list:
+    def to_seq(
+        self, sentence, seq_len=None, with_eos=False, with_sos=False, with_len=False
+    ) -> list:
         if isinstance(sentence, str):
             sentence = sentence.split()
 
@@ -158,8 +172,11 @@ class WordVocab(Vocab):
         return (seq, origin_seq_len) if with_len else seq
 
     def from_seq(self, seq, join=False, with_pad=False):
-        words = [self.itos[idx] if idx < len(self.itos) else "<%d>" % idx for idx in seq if
-                 not with_pad or idx != self.pad_index]
+        words = [
+            self.itos[idx] if idx < len(self.itos) else "<%d>" % idx
+            for idx in seq
+            if not with_pad or idx != self.pad_index
+        ]
         return " ".join(words) if join else words
 
     @staticmethod
@@ -167,12 +184,18 @@ class WordVocab(Vocab):
         with open(vocab_path, "rb") as f:
             return pickle.load(f)
 
+
 def build():
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--corpus_path",default="/mnt/e/Learning/python/NLP-Learning/textbox/dataset/samsum/train.src",  type=str)
-    parser.add_argument("-o", "--output_path",default="vocab.pkl" , type=str)
+    parser.add_argument(
+        "-c",
+        "--corpus_path",
+        default="/mnt/e/Learning/python/NLP-Learning/textbox/dataset/samsum/train.src",
+        type=str,
+    )
+    parser.add_argument("-o", "--output_path", default="vocab.pkl", type=str)
     parser.add_argument("-s", "--vocab_size", type=int, default=None)
     parser.add_argument("-e", "--encoding", type=str, default="utf-8")
     parser.add_argument("-m", "--min_freq", type=int, default=1)
@@ -184,5 +207,6 @@ def build():
     print("VOCAB SIZE:", len(vocab))
     vocab.save_vocab(args.output_path)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     build()

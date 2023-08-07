@@ -19,16 +19,22 @@ class MRCNERDataset(Dataset):
         possible_only: if True, only use possible samples that contain answer for the query/context
         is_chinese: is chinese dataset
     """
-    def __init__(self, json_path, tokenizer: BertWordPieceTokenizer, max_length: int = 512, possible_only=False,
-                 is_chinese=False, pad_to_maxlen=False):
+
+    def __init__(
+        self,
+        json_path,
+        tokenizer: BertWordPieceTokenizer,
+        max_length: int = 512,
+        possible_only=False,
+        is_chinese=False,
+        pad_to_maxlen=False,
+    ):
         self.all_data = json.load(open(json_path, encoding="utf-8"))
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.possible_only = possible_only
         if self.possible_only:
-            self.all_data = [
-                x for x in self.all_data if x["start_position"]
-            ]
+            self.all_data = [x for x in self.all_data if x["start_position"]]
         self.is_chinese = is_chinese
         self.pad_to_maxlen = pad_to_maxlen
 
@@ -64,12 +70,16 @@ class MRCNERDataset(Dataset):
 
         if self.is_chinese:
             context = "".join(context.split())
-            end_positions = [x+1 for x in end_positions]
+            end_positions = [x + 1 for x in end_positions]
         else:
             # add space offsets
             words = context.split()
-            start_positions = [x + sum([len(w) for w in words[:x]]) for x in start_positions]
-            end_positions = [x + sum([len(w) for w in words[:x + 1]]) for x in end_positions]
+            start_positions = [
+                x + sum([len(w) for w in words[:x]]) for x in start_positions
+            ]
+            end_positions = [
+                x + sum([len(w) for w in words[: x + 1]]) for x in end_positions
+            ]
 
         query_context_tokens = tokenizer.encode(query, context, add_special_tokens=True)
         tokens = query_context_tokens.ids
@@ -92,7 +102,9 @@ class MRCNERDataset(Dataset):
             origin_offset2token_idx_start[token_start] = token_idx
             origin_offset2token_idx_end[token_end] = token_idx
 
-        new_start_positions = [origin_offset2token_idx_start[start] for start in start_positions]
+        new_start_positions = [
+            origin_offset2token_idx_start[start] for start in start_positions
+        ]
         new_end_positions = [origin_offset2token_idx_end[end] for end in end_positions]
 
         label_mask = [
@@ -106,8 +118,16 @@ class MRCNERDataset(Dataset):
         if not self.is_chinese:
             for token_idx in range(len(tokens)):
                 current_word_idx = query_context_tokens.words[token_idx]
-                next_word_idx = query_context_tokens.words[token_idx+1] if token_idx+1 < len(tokens) else None
-                prev_word_idx = query_context_tokens.words[token_idx-1] if token_idx-1 > 0 else None
+                next_word_idx = (
+                    query_context_tokens.words[token_idx + 1]
+                    if token_idx + 1 < len(tokens)
+                    else None
+                )
+                prev_word_idx = (
+                    query_context_tokens.words[token_idx - 1]
+                    if token_idx - 1 > 0
+                    else None
+                )
                 if prev_word_idx is not None and current_word_idx == prev_word_idx:
                     start_label_mask[token_idx] = 0
                 if next_word_idx is not None and current_word_idx == next_word_idx:
@@ -116,12 +136,16 @@ class MRCNERDataset(Dataset):
         assert all(start_label_mask[p] != 0 for p in new_start_positions)
         assert all(end_label_mask[p] != 0 for p in new_end_positions)
 
-        assert len(new_start_positions) == len(new_end_positions) == len(start_positions)
+        assert (
+            len(new_start_positions) == len(new_end_positions) == len(start_positions)
+        )
         assert len(label_mask) == len(tokens)
-        start_labels = [(1 if idx in new_start_positions else 0)
-                        for idx in range(len(tokens))]
-        end_labels = [(1 if idx in new_end_positions else 0)
-                      for idx in range(len(tokens))]
+        start_labels = [
+            (1 if idx in new_start_positions else 0) for idx in range(len(tokens))
+        ]
+        end_labels = [
+            (1 if idx in new_end_positions else 0) for idx in range(len(tokens))
+        ]
 
         # truncate
         tokens = tokens[: self.max_length]
@@ -135,7 +159,7 @@ class MRCNERDataset(Dataset):
         sep_token = tokenizer.token_to_id("[SEP]")
         if tokens[-1] != sep_token:
             assert len(tokens) == self.max_length
-            tokens = tokens[: -1] + [sep_token]
+            tokens = tokens[:-1] + [sep_token]
             start_labels[-1] = 0
             end_labels[-1] = 0
             start_label_mask[-1] = 0
@@ -165,7 +189,7 @@ class MRCNERDataset(Dataset):
             torch.LongTensor(end_label_mask),
             match_labels,
             sample_idx,
-            label_idx
+            label_idx,
         ]
 
     def pad(self, lst, value=0, max_length=None):
@@ -180,6 +204,7 @@ def run_dataset():
     import os
     from datasets.collate_functions import collate_to_max_length
     from torch.utils.data import DataLoader
+
     # zh datasets
     bert_path = "/data/nfsdata/nlp/BERT_BASE_DIR/chinese_L-12_H-768_A-12"
     vocab_file = os.path.join(bert_path, "vocab.txt")
@@ -195,14 +220,24 @@ def run_dataset():
 
     vocab_file = os.path.join(bert_path, "vocab.txt")
     tokenizer = BertWordPieceTokenizer(vocab_file)
-    dataset = MRCNERDataset(json_path=json_path, tokenizer=tokenizer,
-                            is_chinese=is_chinese)
+    dataset = MRCNERDataset(
+        json_path=json_path, tokenizer=tokenizer, is_chinese=is_chinese
+    )
 
-    dataloader = DataLoader(dataset, batch_size=1,
-                            collate_fn=collate_to_max_length)
+    dataloader = DataLoader(dataset, batch_size=1, collate_fn=collate_to_max_length)
 
     for batch in dataloader:
-        for tokens, token_type_ids, start_labels, end_labels, start_label_mask, end_label_mask, match_labels, sample_idx, label_idx in zip(*batch):
+        for (
+            tokens,
+            token_type_ids,
+            start_labels,
+            end_labels,
+            start_label_mask,
+            end_label_mask,
+            match_labels,
+            sample_idx,
+            label_idx,
+        ) in zip(*batch):
             tokens = tokens.tolist()
             start_positions, end_positions = torch.where(match_labels > 0)
             start_positions = start_positions.tolist()
@@ -221,15 +256,28 @@ def run_dataset():
 
             if not start_positions:
                 continue
-            print("="*20)
-            print(f"len: {len(tokens)}", tokenizer.decode(tokens, skip_special_tokens=False))
+            print("=" * 20)
+            print(
+                f"len: {len(tokens)}",
+                tokenizer.decode(tokens, skip_special_tokens=False),
+            )
             for start, end in zip(start_positions, end_positions):
-                print(str(sample_idx.item()), str(label_idx.item()) + "\t" + tokenizer.decode(tokens[start: end+1]))
+                print(
+                    str(sample_idx.item()),
+                    str(label_idx.item())
+                    + "\t"
+                    + tokenizer.decode(tokens[start : end + 1]),
+                )
 
-            print("!!!"*20)
+            print("!!!" * 20)
             for start, end in zip(tmp_start_position, tmp_end_position):
-                print(str(sample_idx.item()), str(label_idx.item()) + "\t" + tokenizer.decode(tokens[start: end + 1]))
+                print(
+                    str(sample_idx.item()),
+                    str(label_idx.item())
+                    + "\t"
+                    + tokenizer.decode(tokens[start : end + 1]),
+                )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_dataset()

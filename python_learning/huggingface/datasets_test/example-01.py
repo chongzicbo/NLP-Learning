@@ -9,8 +9,8 @@
 """
 import datasets
 
-dataset=datasets.load_from_disk('/tmp/NLP-Learning/LLM/ChatGLM-Tuning/data/alpaca')
+dataset = datasets.load_from_disk("/tmp/NLP-Learning/LLM/ChatGLM-Tuning/data/alpaca")
 for x in dataset:
-    print(x['input_ids'])
+    print(x["input_ids"])
     break
-print(dataset['input_ids'][0:2])
+print(dataset["input_ids"][0:2])

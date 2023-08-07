@@ -15,7 +15,11 @@ from torch.nn.parameter import Parameter
 
 
 def gelu(x):
-    return 0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
+    return (
+        0.5
+        * x
+        * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
+    )
 
 
 class LayerNorm(nn.Module):
@@ -53,7 +57,9 @@ class Attention(nn.Module):
         super(Attention, self).__init__()
         n_state = nx
         assert n_state % config.n_head == 0
-        self.register_buffer('bias', torch.tril(torch.ones(n_ctx, n_ctx)).view(1, 1, n_ctx, n_ctx))
+        self.register_buffer(
+            "bias", torch.tril(torch.ones(n_ctx, n_ctx)).view(1, 1, n_ctx, n_ctx)
+        )
         self.n_head = config.n_head
         self.split_size = n_state
         self.scale = scale
@@ -65,7 +71,7 @@ class Attention(nn.Module):
         if self.scale:
             w = w / math.sqrt(v.size(-1))
         nd, ns = w.size(-2), w.size(-1)
-        b = self.bias[:, :, ns - nd:ns, :ns]
+        b = self.bias[:, :, ns - nd : ns, :ns]
         w = w * b - 1e10 * (1 - b)
         w = nn.Softmax(dim=-1)(w)
         return torch.matmul(w, v)
@@ -90,10 +96,15 @@ class Attention(nn.Module):
         key = self.split_heads(key, k=True)
         value = self.split_heads(value)
         if layer_past is not None:
-            past_key, past_value = layer_past[0].transpose(-2, -1), layer_past[1]  # transpose back cf below
+            past_key, past_value = (
+                layer_past[0].transpose(-2, -1),
+                layer_past[1],
+            )  # transpose back cf below
             key = torch.cat((past_key, key), dim=-1)
             value = torch.cat((past_value, value), dim=-2)
-        present = torch.stack((key.transpose(-2, -1), value))  # transpose to have same shapes for stacking
+        present = torch.stack(
+            (key.transpose(-2, -1), value)
+        )  # transpose to have same shapes for stacking
         a = self._attn(query, key, value)
         a = self.merge_heads(a)
         a = self.c_proj(a)
@@ -124,7 +135,9 @@ class Block(nn.Module):
         self.mlp = MLP(4 * nx, config)
 
     def forward(self, x, layer_past=None):
-        a, present = self.attn(self.ln_1(x), layer_past=layer_past)  # 先进行LayerNorm，然后进行attention
+        a, present = self.attn(
+            self.ln_1(x), layer_past=layer_past
+        )  # 先进行LayerNorm，然后进行attention
         x = x + a  # 残差
         m = self.mlp(self.ln_2(x))  #
         x = x + m  # 残差
@@ -141,7 +154,9 @@ class GPT2Model(nn.Module):
         self.wte = nn.Embedding(config.vocab_size, config.n_embd)
         self.wpe = nn.Embedding(config.n_positions, config.n_embd)
         block = Block(config.n_ctx, config, scale=True)
-        self.h = nn.ModuleList([copy.deepcopy(block) for _ in range(config.n_layer)])  # 12个Block
+        self.h = nn.ModuleList(
+            [copy.deepcopy(block) for _ in range(config.n_layer)]
+        )  # 12个Block
         self.ln_f = LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)
 
     def set_embeddings_weights(self, model_embeddings_weights):
@@ -156,8 +171,12 @@ class GPT2Model(nn.Module):
         else:
             past_length = past[0][0].size(-2)
         if position_ids is None:  # 生成position_id
-            position_ids = torch.arange(past_length, input_ids.size(-1) + past_length, dtype=torch.long,
-                                        device=input_ids.device)
+            position_ids = torch.arange(
+                past_length,
+                input_ids.size(-1) + past_length,
+                dtype=torch.long,
+                device=input_ids.device,
+            )
             position_ids = position_ids.unsqueeze(0).expand_as(input_ids)
         input_shape = input_ids.size()  # [batch_size,1]
         input_ids = input_ids.view(-1, input_ids.size(-1))
@@ -169,7 +188,9 @@ class GPT2Model(nn.Module):
             token_type_embeds = self.wte(token_type_ids)
         else:
             token_type_embeds = 0
-        hidden_states = inputs_embeds + position_embeds + token_type_embeds  # token embedding+position embedding+token_type embedding
+        hidden_states = (
+            inputs_embeds + position_embeds + token_type_embeds
+        )  # token embedding+position embedding+token_type embedding
         presents = []
         for block, layer_past in zip(self.h, past):  # 12个transformer block
             hidden_states, present = block(hidden_states, layer_past)
@@ -202,12 +223,22 @@ class GPT2LMHeadModel(nn.Module):
         super(GPT2LMHeadModel, self).__init__()
         self.transformer = GPT2Model(config)
         self.lm_head = GPT2LMHead(self.transformer.wte.weight, config)
+
     def set_tied(self):
-        """ Make sure we are sharing the embeddings
-        """
+        """Make sure we are sharing the embeddings"""
         self.lm_head.set_embeddings_weights(self.transformer.wte.weight)
-    def forward(self, input_ids, position_ids=None, token_type_ids=None, lm_labels=None, past=None):
-        hidden_states, presents = self.transformer(input_ids, position_ids, token_type_ids, past)
+
+    def forward(
+        self,
+        input_ids,
+        position_ids=None,
+        token_type_ids=None,
+        lm_labels=None,
+        past=None,
+    ):
+        hidden_states, presents = self.transformer(
+            input_ids, position_ids, token_type_ids, past
+        )
         lm_logits = self.lm_head(hidden_states)
         if lm_labels is not None:
             loss_fct = nn.CrossEntropyLoss(ignore_index=-1)

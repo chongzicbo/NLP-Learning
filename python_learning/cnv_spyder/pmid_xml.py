@@ -21,22 +21,28 @@ from xml.dom.minidom import Element, Text
 import requests
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--save_dir",
-                    default="E:\\working\\huada_bgi\\data\\other_data\\付费文献\\pmid",
-                    type=str,
-                    # required=True,
-                    help="filepath saved")
+parser.add_argument(
+    "--save_dir",
+    default="E:\\working\\huada_bgi\\data\\other_data\\付费文献\\pmid",
+    type=str,
+    # required=True,
+    help="filepath saved",
+)
 
-parser.add_argument("--input_file_list",
-                    default="E:\\working\\huada_bgi\\data\\produce\\all_cnv_pmid_nopmcid_list-20220704.csv",
-                    type=str,
-                    # required=True,
-                    help="待爬取的文献清单")
-parser.add_argument("--log_file",
-                    default="file_spyder.log",
-                    type=str,
-                    # required=True,
-                    help="日志文件")
+parser.add_argument(
+    "--input_file_list",
+    default="E:\\working\\huada_bgi\\data\\produce\\all_cnv_pmid_nopmcid_list-20220704.csv",
+    type=str,
+    # required=True,
+    help="待爬取的文献清单",
+)
+parser.add_argument(
+    "--log_file",
+    default="file_spyder.log",
+    type=str,
+    # required=True,
+    help="日志文件",
+)
 
 
 def write_failed(filepath, id):
@@ -54,8 +60,8 @@ def get_all_exist_file(save_dir):
 
 
 def get_node_data(data: list, node):
-    """"
-        递归获取节点数据
+    """ "
+    递归获取节点数据
     """
     if isinstance(node, Text):
         data.append(node.data)
@@ -69,7 +75,9 @@ def get_node_data(data: list, node):
 def download_by_pmid(save_dir, pmid):
     pmc_dict = {}
     xml_res = requests.get(
-        url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=%s&retmode=xml" % pmid)
+        url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=%s&retmode=xml"
+        % pmid
+    )
     if "error=" in xml_res.text:
         print("The following PMCID is not available: %s" % pmid)
         logging.info("The following PMCID is not available: %s" % pmid)
@@ -124,7 +132,6 @@ def download_by_pmid(save_dir, pmid):
     for child in author_nodes:
         name = {}
         for c in child.childNodes:
-
             if c.nodeName == "LastName":
                 surname = c.firstChild.data
                 name["surname"] = surname
@@ -242,8 +249,7 @@ def download_by_pmid(save_dir, pmid):
     return json.dumps(pmc_dict, ensure_ascii=False)
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     import time
 
     start_time = time.time()
@@ -254,7 +260,9 @@ if __name__ == '__main__':
     save_dir = args.save_dir
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
-    logging.basicConfig(filename=os.path.join(args.save_dir, args.log_file), level=logging.INFO)
+    logging.basicConfig(
+        filename=os.path.join(args.save_dir, args.log_file), level=logging.INFO
+    )
     print(download_by_pmid(args.save_dir, "1614233"))
     with open(args.input_file_list) as fr:
         lines = fr.readlines()

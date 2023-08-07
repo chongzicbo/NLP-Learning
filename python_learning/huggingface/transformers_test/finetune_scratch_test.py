@@ -11,7 +11,7 @@ import time
 
 from datasets import load_dataset
 
-dataset = load_dataset('yelp_review_full')
+dataset = load_dataset("yelp_review_full")
 
 from transformers import AutoTokenizer
 
@@ -19,7 +19,7 @@ tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
 
 
 def tokenize_function(examples):
-    return tokenizer(examples["text"], padding='max_length', truncation=True)
+    return tokenizer(examples["text"], padding="max_length", truncation=True)
 
 
 tokenized_datasets = dataset.map(tokenize_function, batched=True)
@@ -31,7 +31,9 @@ small_eval_dataset = tokenized_datasets["test"].shuffle(seed=42).select(range(10
 
 from transformers import AutoModelForSequenceClassification
 
-model = AutoModelForSequenceClassification.from_pretrained("bert-base-cased", num_labels=5)
+model = AutoModelForSequenceClassification.from_pretrained(
+    "bert-base-cased", num_labels=5
+)
 
 from torch.utils.data import DataLoader
 
@@ -46,12 +48,16 @@ from transformers import get_scheduler
 
 num_epochs = 1
 num_training_steps = num_epochs * len(train_dataloader)
-lr_scheduler = get_scheduler(name="linear", optimizer=optimizer, num_warmup_steps=0,
-                             num_training_steps=num_training_steps)
+lr_scheduler = get_scheduler(
+    name="linear",
+    optimizer=optimizer,
+    num_warmup_steps=0,
+    num_training_steps=num_training_steps,
+)
 
 import torch
 
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 model.to(device)
 
 from tqdm.auto import tqdm
@@ -72,7 +78,7 @@ for epoch in range(num_epochs):
 
 import evaluate
 
-metric = evaluate.load('accuracy')
+metric = evaluate.load("accuracy")
 model.eval()
 
 for batch in eval_dataloader:
@@ -81,25 +87,35 @@ for batch in eval_dataloader:
         outputs = model(**batch)
     logits = outputs.logits
     predictions = torch.argmax(logits, dim=-1)
-    metric.add_batch(predictions=predictions, references=batch['labels'])
+    metric.add_batch(predictions=predictions, references=batch["labels"])
 
 metric.compute()
 
 text = "Text from the news article"
-inputs = tokenizer(text, padding='max_length', truncation=True)
-input_ids, token_type_ids, attention_mask = torch.unsqueeze(torch.tensor(inputs["input_ids"]), 0).to(
-    device), torch.unsqueeze(
-    torch.tensor(
-        inputs['token_type_ids']), 0).to(device), torch.unsqueeze(torch.tensor(inputs['attention_mask']), 0).to(device)
+inputs = tokenizer(text, padding="max_length", truncation=True)
+input_ids, token_type_ids, attention_mask = (
+    torch.unsqueeze(torch.tensor(inputs["input_ids"]), 0).to(device),
+    torch.unsqueeze(torch.tensor(inputs["token_type_ids"]), 0).to(device),
+    torch.unsqueeze(torch.tensor(inputs["attention_mask"]), 0).to(device),
+)
 start_time = time.time()
 model(input_ids, token_type_ids, attention_mask)
 end_time = time.time()
-print(end_time-start_time)
+print(end_time - start_time)
 
-torch.onnx.export(model, (input_ids, token_type_ids, attention_mask),
-                  "/home/bocheng/data/model_saved/test.onnx", export_params=True, opset_version=16,
-                  do_constant_folding=True, input_names=['input_ids', 'token_type_ids', 'attention_mask'],
-                  output_names=['output'], dynamic_axes={'input_ids': {0: 'batch_size', 1: 'sequence'},
-                                                         'token_type_ids':{0: 'batch_size', 1: 'sequence'},
-                                                         'attention_mask':{0: 'batch_size', 1: 'sequence'},# variable length axes
-                                                         'output': {0: 'batch_size'}})
+torch.onnx.export(
+    model,
+    (input_ids, token_type_ids, attention_mask),
+    "/home/bocheng/data/model_saved/test.onnx",
+    export_params=True,
+    opset_version=16,
+    do_constant_folding=True,
+    input_names=["input_ids", "token_type_ids", "attention_mask"],
+    output_names=["output"],
+    dynamic_axes={
+        "input_ids": {0: "batch_size", 1: "sequence"},
+        "token_type_ids": {0: "batch_size", 1: "sequence"},
+        "attention_mask": {0: "batch_size", 1: "sequence"},  # variable length axes
+        "output": {0: "batch_size"},
+    },
+)

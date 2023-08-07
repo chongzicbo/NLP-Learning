@@ -18,7 +18,11 @@ import paddle.nn.functional as F
 from paddlenlp.data import Stack, Tuple, Pad
 from paddlenlp.datasets import load_dataset
 from paddlenlp.metrics import ChunkEvaluator
-from paddlenlp.transformers import SkepCrfForTokenClassification, SkepModel, SkepTokenizer
+from paddlenlp.transformers import (
+    SkepCrfForTokenClassification,
+    SkepModel,
+    SkepTokenizer,
+)
 
 # yapf: disable
 parser = argparse.ArgumentParser()
@@ -48,11 +52,9 @@ def set_seed(seed):
     paddle.seed(seed)
 
 
-def convert_example_to_feature(example,
-                               tokenizer,
-                               max_seq_len=512,
-                               no_entity_label="O",
-                               is_test=False):
+def convert_example_to_feature(
+    example, tokenizer, max_seq_len=512, no_entity_label="O", is_test=False
+):
     """
     Builds model inputs from a sequence or a pair of sequence for sequence classification tasks
     by concatenating and adding special tokens. And creates a mask from the two sequences passed
@@ -80,49 +82,49 @@ def convert_example_to_feature(example,
         token_type_ids(obj: `list[int]`): List of sequence pair mask.
         label(obj:`list[int]`, optional): The input label if not test data.
     """
-    tokens = example['tokens']
-    labels = example['labels']
-    tokenized_input = tokenizer(tokens,
-                                return_length=True,
-                                is_split_into_words=True,
-                                max_seq_len=max_seq_len)
+    tokens = example["tokens"]
+    labels = example["labels"]
+    tokenized_input = tokenizer(
+        tokens, return_length=True, is_split_into_words=True, max_seq_len=max_seq_len
+    )
 
-    input_ids = np.array(tokenized_input['input_ids'], dtype="int64")
-    token_type_ids = np.array(tokenized_input['token_type_ids'], dtype="int64")
-    seq_len = np.array(tokenized_input['seq_len'], dtype="int64")
+    input_ids = np.array(tokenized_input["input_ids"], dtype="int64")
+    token_type_ids = np.array(tokenized_input["token_type_ids"], dtype="int64")
+    seq_len = np.array(tokenized_input["seq_len"], dtype="int64")
 
     if is_test:
         return input_ids, token_type_ids, seq_len
     else:
-        labels = labels[:(max_seq_len - 2)]
-        encoded_label = np.array([no_entity_label] + labels + [no_entity_label],
-                                 dtype="int64")
+        labels = labels[: (max_seq_len - 2)]
+        encoded_label = np.array(
+            [no_entity_label] + labels + [no_entity_label], dtype="int64"
+        )
 
         return input_ids, token_type_ids, seq_len, encoded_label
 
 
-def create_dataloader(dataset,
-                      mode='train.json',
-                      batch_size=1,
-                      batchify_fn=None,
-                      trans_fn=None):
+def create_dataloader(
+    dataset, mode="train.json", batch_size=1, batchify_fn=None, trans_fn=None
+):
     if trans_fn:
         dataset = dataset.map(trans_fn)
 
-    shuffle = True if mode == 'train.json' else False
-    if mode == 'train.json':
-        batch_sampler = paddle.io.DistributedBatchSampler(dataset,
-                                                          batch_size=batch_size,
-                                                          shuffle=shuffle)
+    shuffle = True if mode == "train.json" else False
+    if mode == "train.json":
+        batch_sampler = paddle.io.DistributedBatchSampler(
+            dataset, batch_size=batch_size, shuffle=shuffle
+        )
     else:
-        batch_sampler = paddle.io.BatchSampler(dataset,
-                                               batch_size=batch_size,
-                                               shuffle=shuffle)
+        batch_sampler = paddle.io.BatchSampler(
+            dataset, batch_size=batch_size, shuffle=shuffle
+        )
 
-    return paddle.io.DataLoader(dataset=dataset,
-                                batch_sampler=batch_sampler,
-                                collate_fn=batchify_fn,
-                                return_list=True)
+    return paddle.io.DataLoader(
+        dataset=dataset,
+        batch_sampler=batch_sampler,
+        collate_fn=batchify_fn,
+        return_list=True,
+    )
 
 
 if __name__ == "__main__":
@@ -131,36 +133,38 @@ if __name__ == "__main__":
     if paddle.distributed.get_world_size() > 1:
         paddle.distributed.init_parallel_env()
 
-    train_ds = load_dataset("cote", "dp", splits=['train.json'])
+    train_ds = load_dataset("cote", "dp", splits=["train.json"])
     # The COTE_DP dataset labels with "BIO" schema.
     label_map = {label: idx for idx, label in enumerate(train_ds.label_list)}
     # `no_entity_label` represents that the token isn't an entity.
     no_entity_label_idx = label_map.get("O", 2)
 
     set_seed(args.seed)
-    skep = SkepModel.from_pretrained('skep_ernie_1.0_large_ch')
-    model = SkepCrfForTokenClassification(skep,
-                                          num_classes=len(train_ds.label_list))
-    tokenizer = SkepTokenizer.from_pretrained('skep_ernie_1.0_large_ch')
+    skep = SkepModel.from_pretrained("skep_ernie_1.0_large_ch")
+    model = SkepCrfForTokenClassification(skep, num_classes=len(train_ds.label_list))
+    tokenizer = SkepTokenizer.from_pretrained("skep_ernie_1.0_large_ch")
 
-    trans_func = partial(convert_example_to_feature,
-                         tokenizer=tokenizer,
-                         max_seq_len=args.max_seq_length,
-                         no_entity_label=no_entity_label_idx,
-                         is_test=False)
+    trans_func = partial(
+        convert_example_to_feature,
+        tokenizer=tokenizer,
+        max_seq_len=args.max_seq_length,
+        no_entity_label=no_entity_label_idx,
+        is_test=False,
+    )
     batchify_fn = lambda samples, fn=Tuple(
         Pad(axis=0, pad_val=tokenizer.vocab[tokenizer.pad_token]),  # input ids
-        Pad(axis=0, pad_val=tokenizer.vocab[tokenizer.pad_token]
-            ),  # token type ids
-        Stack(dtype='int64'),  # sequence lens
-        Pad(axis=0, pad_val=no_entity_label_idx)  # labels
+        Pad(axis=0, pad_val=tokenizer.vocab[tokenizer.pad_token]),  # token type ids
+        Stack(dtype="int64"),  # sequence lens
+        Pad(axis=0, pad_val=no_entity_label_idx),  # labels
     ): [data for data in fn(samples)]
 
-    train_data_loader = create_dataloader(train_ds,
-                                          mode='train.json',
-                                          batch_size=args.batch_size,
-                                          batchify_fn=batchify_fn,
-                                          trans_fn=trans_func)
+    train_data_loader = create_dataloader(
+        train_ds,
+        mode="train.json",
+        batch_size=args.batch_size,
+        batchify_fn=batchify_fn,
+        trans_fn=trans_func,
+    )
 
     if args.init_from_ckpt and os.path.isfile(args.init_from_ckpt):
         state_dict = paddle.load(args.init_from_ckpt)
@@ -171,14 +175,16 @@ if __name__ == "__main__":
     # Generate parameter names needed to perform weight decay.
     # All bias and LayerNorm parameters are excluded.
     decay_params = [
-        p.name for n, p in model.named_parameters()
+        p.name
+        for n, p in model.named_parameters()
         if not any(nd in n for nd in ["bias", "norm"])
     ]
     optimizer = paddle.optimizer.AdamW(
         learning_rate=args.learning_rate,
         parameters=model.parameters(),
         weight_decay=args.weight_decay,
-        apply_decay_param_fun=lambda x: x in decay_params)
+        apply_decay_param_fun=lambda x: x in decay_params,
+    )
     metric = ChunkEvaluator(label_list=train_ds.label_list, suffix=True)
 
     global_step = 0
@@ -186,17 +192,20 @@ if __name__ == "__main__":
     for epoch in range(1, args.epochs + 1):
         for step, batch in enumerate(train_data_loader, start=1):
             input_ids, token_type_ids, seq_lens, labels = batch
-            loss = model(input_ids,
-                         token_type_ids,
-                         seq_lens=seq_lens,
-                         labels=labels)
+            loss = model(input_ids, token_type_ids, seq_lens=seq_lens, labels=labels)
             avg_loss = paddle.mean(loss)
             global_step += 1
             if global_step % 10 == 0 and rank == 0:
                 print(
                     "global step %d, epoch: %d, batch: %d, loss: %.5f, speed: %.2f step/s"
-                    % (global_step, epoch, step, avg_loss, 10 /
-                       (time.time() - tic_train)))
+                    % (
+                        global_step,
+                        epoch,
+                        step,
+                        avg_loss,
+                        10 / (time.time() - tic_train),
+                    )
+                )
                 tic_train = time.time()
             loss.backward()
             optimizer.step()

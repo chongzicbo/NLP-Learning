@@ -1,11 +1,11 @@
 # -*- encoding: utf-8 -*-
-'''
+"""
 @File    :   utils.py
 @Time    :   2022/08/01 15:27:39
 @Author  :   chengbo 
 @Version :   1.0
 @Desc    :   None
-'''
+"""
 
 # here put the import lib
 import numpy as np
@@ -30,8 +30,11 @@ def evaluate(model, criterion, metric, data_loader):
     metric.reset()
     losses = []
     for batch in data_loader:
-        input_ids, token_type_ids, labels = batch['input_ids'], batch[
-            'token_type_ids'], batch['labels']
+        input_ids, token_type_ids, labels = (
+            batch["input_ids"],
+            batch["token_type_ids"],
+            batch["labels"],
+        )
         logits = model(input_ids, token_type_ids)
         loss = criterion(logits, labels)
         probs = F.sigmoid(logits)
@@ -39,8 +42,10 @@ def evaluate(model, criterion, metric, data_loader):
         metric.update(probs, labels)
 
     micro_f1_score, macro_f1_score = metric.accumulate()
-    logger.info("eval loss: %.5f, micro f1 score: %.5f, macro f1 score: %.5f" %
-                (np.mean(losses), micro_f1_score, macro_f1_score))
+    logger.info(
+        "eval loss: %.5f, micro f1 score: %.5f, macro f1 score: %.5f"
+        % (np.mean(losses), micro_f1_score, macro_f1_score)
+    )
     model.train()
     metric.reset()
 
@@ -51,12 +56,12 @@ def preprocess_function(examples, tokenizer, max_seq_length, label_list, depth):
     """
     Builds model inputs from a sequence for sequence classification tasks
     by concatenating and adding special tokens.
-        
+
     Args:
         example(obj:`list[str]`): List of input data, containing text and label if it have label.
-        tokenizer(obj:`PretrainedTokenizer`): This tokenizer inherits from :class:`~paddlenlp.transformers.PretrainedTokenizer` 
+        tokenizer(obj:`PretrainedTokenizer`): This tokenizer inherits from :class:`~paddlenlp.transformers.PretrainedTokenizer`
             which contains most of the methods. Users should refer to the superclass for more information regarding methods.
-        max_seq_length(obj:`int`): The maximum total input sequence length after tokenization. 
+        max_seq_length(obj:`int`): The maximum total input sequence length after tokenization.
             Sequences longer than this will be truncated, sequences shorter will be padded.
         label_nums(obj:`int`): The number of the labels.
     Returns:
@@ -70,12 +75,12 @@ def preprocess_function(examples, tokenizer, max_seq_length, label_list, depth):
     offsets = [0] * len(shape)
     has_next = True
     while has_next:
-        l = ''
+        l = ""
         for i, off in enumerate(offsets):
-            if l == '':
+            if l == "":
                 l = layers[i][off]
             else:
-                l += '##{}'.format(layers[i][off])
+                l += "##{}".format(layers[i][off])
             if l in label_list and label_list[l] not in labels:
                 labels.append(label_list[l])
         for i in range(len(shape) - 1, -1, -1):

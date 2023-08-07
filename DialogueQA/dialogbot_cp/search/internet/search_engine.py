@@ -11,22 +11,22 @@ from loguru import logger
 from dialogbot_cp.search.internet import html_crawler
 from dialogbot_cp.utils.tokenizer import postag
 
-baidu_url_prefix = 'http://www.baidu.com/s?ie=utf-8&wd='
-bing_url_prefix = 'https://cn.bing.com/search?q='
-calendar_url = 'http://open.baidu.com/calendar'
-calculator_url = 'http://open.baidu.com/static/calculator/calculator.html'
-weather_url = 'http://weathernew.pae.baidu.com'
+baidu_url_prefix = "http://www.baidu.com/s?ie=utf-8&wd="
+bing_url_prefix = "https://cn.bing.com/search?q="
+calendar_url = "http://open.baidu.com/calendar"
+calculator_url = "http://open.baidu.com/static/calculator/calculator.html"
+weather_url = "http://weathernew.pae.baidu.com"
 split_symbol = ["。", "?", ".", "_", "-", ":", "！", "？"]
 baidu_url_suffix = "&usm=3&rsv_idx=2&rsv_page=1"
 
 
 def split_2_short_text(sentence):
     for i in split_symbol:
-        sentence = sentence.replace(i, i + '\t')
-    return sentence.split('\t')
+        sentence = sentence.replace(i, i + "\t")
+    return sentence.split("\t")
 
 
-def keep_pos_words(query, tags=['n']):
+def keep_pos_words(query, tags=["n"]):
     result = []
     words = postag(query)
     for k in words:
@@ -38,7 +38,7 @@ def keep_pos_words(query, tags=['n']):
 
 class Engine:
     def __init__(self, topk=10):
-        self.name = 'engine'
+        self.name = "engine"
         self.topk = topk
         self.contents = OrderedDict()
 
@@ -69,14 +69,14 @@ class Engine:
         :return: list, string
         """
         answer = []
-        left_text = ''
+        left_text = ""
         # 抓取百度前10条的摘要
         new_query = baidu_url_prefix + urllib.parse.quote(query) + baidu_url_suffix
         soup_baidu = html_crawler.get_html_baidu(new_query)
 
         if not soup_baidu:
             return answer, left_text
-        if soup_baidu.title.get_text().__contains__('百度安全验证'):
+        if soup_baidu.title.get_text().__contains__("百度安全验证"):
             logger.warning("爬虫触发百度安全验证")
             return answer, left_text
         for i in range(1, self.topk):
@@ -86,15 +86,15 @@ class Engine:
                 break
             # Find result by internet
             # 判断是否有mu,如果第一个是百度知识图谱的 就直接命中答案
-            if ('mu' in items.attrs) and i == 1:
-                r = items.find(class_='op_exactqa_s_answer')
+            if ("mu" in items.attrs) and i == 1:
+                r = items.find(class_="op_exactqa_s_answer")
                 if r:
                     logger.debug("百度知识图谱找到答案")
                     answer.append(r.get_text().strip())
                     return answer, left_text
 
             # 古诗词判断
-            if ('mu' in items.attrs) and i == 1:
+            if ("mu" in items.attrs) and i == 1:
                 r = items.find(class_="op_exactqa_detail_s_answer")
                 if r:
                     logger.debug("百度诗词找到答案")
@@ -102,15 +102,25 @@ class Engine:
                     return answer, left_text
 
             # 万年历 & 日期
-            if ('mu' in items.attrs) and i == 1 and items.attrs['mu'].__contains__(calendar_url):
+            if (
+                ("mu" in items.attrs)
+                and i == 1
+                and items.attrs["mu"].__contains__(calendar_url)
+            ):
                 r = items.find(class_="op-calendar-content")
                 if r:
                     logger.debug("百度万年历找到答案")
-                    answer.append(r.get_text().strip().replace("\n", "").replace(" ", ""))
+                    answer.append(
+                        r.get_text().strip().replace("\n", "").replace(" ", "")
+                    )
                     return answer, left_text
 
-            if ('tpl' in items.attrs) and i == 1 and items.attrs['tpl'].__contains__('calendar_new'):
-                r = items.attrs['fk'].replace("6018_", "")
+            if (
+                ("tpl" in items.attrs)
+                and i == 1
+                and items.attrs["tpl"].__contains__("calendar_new")
+            ):
+                r = items.attrs["fk"].replace("6018_", "")
                 logger.debug(r)
                 if r:
                     logger.debug("百度万年历新版找到答案")
@@ -118,7 +128,11 @@ class Engine:
                     return answer, left_text
 
             # 计算器
-            if ('mu' in items.attrs) and i == 1 and items.attrs['mu'].__contains__(calculator_url):
+            if (
+                ("mu" in items.attrs)
+                and i == 1
+                and items.attrs["mu"].__contains__(calculator_url)
+            ):
                 r = items.find(class_="op_new_val_screen_result")
                 if r:
                     logger.debug("计算器找到答案")
@@ -126,21 +140,30 @@ class Engine:
                     return answer, left_text
 
             # 天气
-            if ('mu' in items.attrs) and i == 1 and items.attrs['mu'].__contains__(weather_url):
+            if (
+                ("mu" in items.attrs)
+                and i == 1
+                and items.attrs["mu"].__contains__(weather_url)
+            ):
                 r = items.find(class_="op_weather4_twoicon_today")
                 if r:
                     logger.debug("天气找到答案")
-                    answer.append(r.get_text().strip().replace("\n", "").replace(' ', '').strip())
+                    answer.append(
+                        r.get_text().strip().replace("\n", "").replace(" ", "").strip()
+                    )
                     return answer, left_text
             # 百度知道
-            if ('mu' in items.attrs) and i == 1:
-                r = items.find(class_='op_best_answer_question_link')
+            if ("mu" in items.attrs) and i == 1:
+                r = items.find(class_="op_best_answer_question_link")
                 if r:
-                    zhidao_soup = html_crawler.get_html_zhidao(r['href'])
-                    r = zhidao_soup.find(class_='bd answer').find('pre')
+                    zhidao_soup = html_crawler.get_html_zhidao(r["href"])
+                    r = zhidao_soup.find(class_="bd answer").find("pre")
                     if not r:
-                        r = zhidao_soup.find(class_='bd answer').find(class_='line content').find(
-                            class_="best-text mb-10")
+                        r = (
+                            zhidao_soup.find(class_="bd answer")
+                            .find(class_="line content")
+                            .find(class_="best-text mb-10")
+                        )
                     if r:
                         logger.debug("百度知道找到答案")
                         answer.append(r.get_text().strip().replace("展开全部", "").strip())
@@ -149,28 +172,36 @@ class Engine:
             if items.find("h3") and items.find("h3").find("a"):
                 # 百度知道-页面
                 if items.find("h3").find("a").get_text().__contains__("百度知道"):
-                    url = items.find("h3").find("a")['href']
+                    url = items.find("h3").find("a")["href"]
                     if url:
                         zhidao_soup = html_crawler.get_html_zhidao(url)
-                        r = zhidao_soup.find(class_='bd answer')
+                        r = zhidao_soup.find(class_="bd answer")
                         if r:
-                            r = r.find('pre')
+                            r = r.find("pre")
                             if not r:
-                                r = zhidao_soup.find(class_='bd answer').find(class_='line content').find(
-                                    class_="best-text mb-10")
+                                r = (
+                                    zhidao_soup.find(class_="bd answer")
+                                    .find(class_="line content")
+                                    .find(class_="best-text mb-10")
+                                )
                             if r:
                                 logger.debug("百度知道找到答案")
-                                answer.append(r.get_text().strip().replace("展开全部", "").strip())
+                                answer.append(
+                                    r.get_text().strip().replace("展开全部", "").strip()
+                                )
                                 return answer, left_text
 
                 # 百度百科
-                if items.find("h3").find("a").get_text().__contains__("百度百科") and i <= 5:
-                    url = items.find("h3").find("a")['href']
+                if (
+                    items.find("h3").find("a").get_text().__contains__("百度百科")
+                    and i <= 5
+                ):
+                    url = items.find("h3").find("a")["href"]
                     if url:
                         logger.debug("百度百科找到答案")
                         baike_soup = html_crawler.get_html_baike(url)
 
-                        r = baike_soup.find(class_='lemma-summary')
+                        r = baike_soup.find(class_="lemma-summary")
                         if r:
                             answer.append(r.get_text().replace("\n", "").strip())
                             return answer, left_text
@@ -185,9 +216,11 @@ class Engine:
         :return: list, string
         """
         answer = []
-        left_text = ''
+        left_text = ""
         # 获取bing的摘要
-        soup_bing = html_crawler.get_html_bing(bing_url_prefix + urllib.parse.quote(query))
+        soup_bing = html_crawler.get_html_bing(
+            bing_url_prefix + urllib.parse.quote(query)
+        )
         # 判断是否在Bing的知识图谱中
         r = soup_bing.find(class_="b_entityTP")
 
@@ -202,15 +235,15 @@ class Engine:
         else:
             r = soup_bing.find(id="dict_ans")
             if r:
-                bing_list = r.find_all('li')
+                bing_list = r.find_all("li")
                 for bl in bing_list:
                     temp = bl.get_text()
                     if temp.__contains__("必应网典"):
                         logger.debug("查找Bing网典")
-                        url = bl.find("h2").find("a")['href']
+                        url = bl.find("h2").find("a")["href"]
                         if url:
                             bingwd_soup = html_crawler.get_html_bingwd(url)
-                            r = bingwd_soup.find(class_='bk_card_desc').find("p")
+                            r = bingwd_soup.find(class_="bk_card_desc").find("p")
                             if r:
                                 r = r.get_text().replace("\n", "").strip()
                                 if r:
@@ -255,7 +288,7 @@ class Engine:
         return answer
 
     @staticmethod
-    def key_items_by_pos(sentences, pos='nr'):
+    def key_items_by_pos(sentences, pos="nr"):
         target_dict = {}
         for ks in sentences:
             words = postag(ks)
@@ -266,5 +299,7 @@ class Engine:
                     else:
                         target_dict[w.word] = 1
         # 找出最大词频
-        sorted_list = sorted(target_dict.items(), key=lambda item: item[1], reverse=True)
+        sorted_list = sorted(
+            target_dict.items(), key=lambda item: item[1], reverse=True
+        )
         return sorted_list

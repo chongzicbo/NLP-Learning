@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 
-'''
+"""
 @Time   : 2019-06-29 11:58:55
 @Author : su.zhu
 @Desc   : 
-'''
+"""
 
 import torch
 import numpy as np
 
-class word_digit_features_extractor():
 
+class word_digit_features_extractor:
     def __init__(self, max_digit_number=5, device=None):
         self.max_digit_number = max_digit_number
         self.device = device
 
-    def get_feature_dim(self,):
+    def get_feature_dim(
+        self,
+    ):
         return self.max_digit_number
 
     def get_digit_features(self, word_seqs, lens):
@@ -25,7 +27,7 @@ class word_digit_features_extractor():
         for seq in word_seqs:
             features = []
             for word in seq:
-                if not (set(word) - set('0123456789')):
+                if not (set(word) - set("0123456789")):
                     if len(word) < self.max_digit_number:
                         idx = len(word) - 1
                     else:

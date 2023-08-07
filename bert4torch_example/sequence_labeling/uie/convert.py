@@ -16,11 +16,11 @@ import shutil
 from tqdm import tqdm
 import time
 
-logger = logging.Logger('log')
+logger = logging.Logger("log")
 
 
 def get_path_from_url(url, root_dir, check_exist=True, decompress=True):
-    """ Download from given url to root_dir.
+    """Download from given url to root_dir.
     if file or directory specified by url is exists under
     root_dir, return the path directly, otherwise download
     from url and decompress it, return the path.
@@ -44,7 +44,7 @@ def get_path_from_url(url, root_dir, check_exist=True, decompress=True):
         Args:
             path (string): URL string or not.
         """
-        return path.startswith('http://') or path.startswith('https://')
+        return path.startswith("http://") or path.startswith("https://")
 
     def _map_path(url, root_dir):
         # parse path after download under root_dir
@@ -54,27 +54,33 @@ def get_path_from_url(url, root_dir, check_exist=True, decompress=True):
 
     def _get_download(url, fullname):
         import requests
+
         # using requests.get method
         fname = os.path.basename(fullname)
         try:
             req = requests.get(url, stream=True)
         except Exception as e:  # requests.exceptions.ConnectionError
-            logger.info("Downloading {} from {} failed with exception {}".format(
-                fname, url, str(e)))
+            logger.info(
+                "Downloading {} from {} failed with exception {}".format(
+                    fname, url, str(e)
+                )
+            )
             return False
 
         if req.status_code != 200:
-            raise RuntimeError("Downloading from {} failed with code "
-                               "{}!".format(url, req.status_code))
+            raise RuntimeError(
+                "Downloading from {} failed with code "
+                "{}!".format(url, req.status_code)
+            )
 
         # For protecting download interupted, download to
         # tmp_fullname firstly, move tmp_fullname to fullname
         # after download finished
         tmp_fullname = fullname + "_tmp"
-        total_size = req.headers.get('content-length')
-        with open(tmp_fullname, 'wb') as f:
+        total_size = req.headers.get("content-length")
+        with open(tmp_fullname, "wb") as f:
             if total_size:
-                with tqdm(total=(int(total_size) + 1023) // 1024, unit='KB') as pbar:
+                with tqdm(total=(int(total_size) + 1023) // 1024, unit="KB") as pbar:
                     for chunk in req.iter_content(chunk_size=1024):
                         f.write(chunk)
                         pbar.update(1)
@@ -106,8 +112,9 @@ def get_path_from_url(url, root_dir, check_exist=True, decompress=True):
             if retry_cnt < DOWNLOAD_RETRY_LIMIT:
                 retry_cnt += 1
             else:
-                raise RuntimeError("Download from {} failed. "
-                                   "Retry limit reached".format(url))
+                raise RuntimeError(
+                    "Download from {} failed. " "Retry limit reached".format(url)
+                )
 
             if not _get_download(url, fullname):
                 time.sleep(1)
@@ -116,7 +123,7 @@ def get_path_from_url(url, root_dir, check_exist=True, decompress=True):
         return fullname
 
     def _uncompress_file_zip(filepath):
-        with zipfile.ZipFile(filepath, 'r') as files:
+        with zipfile.ZipFile(filepath, "r") as files:
             file_list = files.namelist()
 
             file_dir = os.path.dirname(filepath)
@@ -129,7 +136,8 @@ def get_path_from_url(url, root_dir, check_exist=True, decompress=True):
             elif _is_a_single_dir(file_list):
                 # `strip(os.sep)` to remove `os.sep` in the tail of path
                 rootpath = os.path.splitext(file_list[0].strip(os.sep))[0].split(
-                    os.sep)[-1]
+                    os.sep
+                )[-1]
                 uncompressed_path = os.path.join(file_dir, rootpath)
 
                 files.extractall(file_dir)
@@ -150,10 +158,10 @@ def get_path_from_url(url, root_dir, check_exist=True, decompress=True):
     def _is_a_single_dir(file_list):
         new_file_list = []
         for file_path in file_list:
-            if '/' in file_path:
-                file_path = file_path.replace('/', os.sep)
-            elif '\\' in file_path:
-                file_path = file_path.replace('\\', os.sep)
+            if "/" in file_path:
+                file_path = file_path.replace("/", os.sep)
+            elif "\\" in file_path:
+                file_path = file_path.replace("\\", os.sep)
             new_file_list.append(file_path)
 
         file_name = new_file_list[0].split(os.sep)[0]
@@ -174,7 +182,8 @@ def get_path_from_url(url, root_dir, check_exist=True, decompress=True):
                 files.extractall(file_dir)
             elif _is_a_single_dir(file_list):
                 rootpath = os.path.splitext(file_list[0].strip(os.sep))[0].split(
-                    os.sep)[-1]
+                    os.sep
+                )[-1]
                 uncompressed_path = os.path.join(file_dir, rootpath)
                 files.extractall(file_dir)
             else:
@@ -214,8 +223,7 @@ def get_path_from_url(url, root_dir, check_exist=True, decompress=True):
     else:
         fullpath = _download(url, root_dir)
 
-    if decompress and (tarfile.is_tarfile(fullpath) or
-                       zipfile.is_zipfile(fullpath)):
+    if decompress and (tarfile.is_tarfile(fullpath) or zipfile.is_zipfile(fullpath)):
         fullpath = _decompress(fullpath)
 
     return fullpath
@@ -224,102 +232,67 @@ def get_path_from_url(url, root_dir, check_exist=True, decompress=True):
 MODEL_MAP = {
     "uie-base": {
         "resource_file_urls": {
-            "model_state.pdparams":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base_v0.1/model_state.pdparams",
-            "model_config.json":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/model_config.json",
-            "vocab_file":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/vocab.txt",
-            "special_tokens_map":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/special_tokens_map.json",
-            "tokenizer_config":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/tokenizer_config.json"
+            "model_state.pdparams": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base_v0.1/model_state.pdparams",
+            "model_config.json": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/model_config.json",
+            "vocab_file": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/vocab.txt",
+            "special_tokens_map": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/special_tokens_map.json",
+            "tokenizer_config": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/tokenizer_config.json",
         }
     },
     "uie-medium": {
         "resource_file_urls": {
-            "model_state.pdparams":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_medium_v1.0/model_state.pdparams",
-            "model_config.json":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_medium/model_config.json",
-            "vocab_file":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/vocab.txt",
-            "special_tokens_map":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/special_tokens_map.json",
-            "tokenizer_config":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/tokenizer_config.json",
+            "model_state.pdparams": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_medium_v1.0/model_state.pdparams",
+            "model_config.json": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_medium/model_config.json",
+            "vocab_file": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/vocab.txt",
+            "special_tokens_map": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/special_tokens_map.json",
+            "tokenizer_config": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/tokenizer_config.json",
         }
     },
     "uie-mini": {
         "resource_file_urls": {
-            "model_state.pdparams":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_mini_v1.0/model_state.pdparams",
-            "model_config.json":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_mini/model_config.json",
-            "vocab_file":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/vocab.txt",
-            "special_tokens_map":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/special_tokens_map.json",
-            "tokenizer_config":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/tokenizer_config.json",
+            "model_state.pdparams": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_mini_v1.0/model_state.pdparams",
+            "model_config.json": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_mini/model_config.json",
+            "vocab_file": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/vocab.txt",
+            "special_tokens_map": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/special_tokens_map.json",
+            "tokenizer_config": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/tokenizer_config.json",
         }
     },
     "uie-micro": {
         "resource_file_urls": {
-            "model_state.pdparams":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_micro_v1.0/model_state.pdparams",
-            "model_config.json":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_micro/model_config.json",
-            "vocab_file":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/vocab.txt",
-            "special_tokens_map":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/special_tokens_map.json",
-            "tokenizer_config":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/tokenizer_config.json",
+            "model_state.pdparams": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_micro_v1.0/model_state.pdparams",
+            "model_config.json": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_micro/model_config.json",
+            "vocab_file": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/vocab.txt",
+            "special_tokens_map": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/special_tokens_map.json",
+            "tokenizer_config": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/tokenizer_config.json",
         }
     },
     "uie-nano": {
         "resource_file_urls": {
-            "model_state.pdparams":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_nano_v1.0/model_state.pdparams",
-            "model_config.json":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_nano/model_config.json",
-            "vocab_file":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/vocab.txt",
-            "special_tokens_map":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/special_tokens_map.json",
-            "tokenizer_config":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/tokenizer_config.json",
+            "model_state.pdparams": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_nano_v1.0/model_state.pdparams",
+            "model_config.json": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_nano/model_config.json",
+            "vocab_file": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/vocab.txt",
+            "special_tokens_map": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/special_tokens_map.json",
+            "tokenizer_config": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/tokenizer_config.json",
         }
     },
     "uie-medical-base": {
         "resource_file_urls": {
-            "model_state.pdparams":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_medical_base_v0.1/model_state.pdparams",
-            "model_config.json":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/model_config.json",
-            "vocab_file":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/vocab.txt",
-            "special_tokens_map":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/special_tokens_map.json",
-            "tokenizer_config":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/tokenizer_config.json",
+            "model_state.pdparams": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_medical_base_v0.1/model_state.pdparams",
+            "model_config.json": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/model_config.json",
+            "vocab_file": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/vocab.txt",
+            "special_tokens_map": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/special_tokens_map.json",
+            "tokenizer_config": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_base/tokenizer_config.json",
         }
     },
     "uie-tiny": {
         "resource_file_urls": {
-            "model_state.pdparams":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_tiny_v0.1/model_state.pdparams",
-            "model_config.json":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_tiny/model_config.json",
-            "vocab_file":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_tiny/vocab.txt",
-            "special_tokens_map":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_tiny/special_tokens_map.json",
-            "tokenizer_config":
-                "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_tiny/tokenizer_config.json"
+            "model_state.pdparams": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_tiny_v0.1/model_state.pdparams",
+            "model_config.json": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_tiny/model_config.json",
+            "vocab_file": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_tiny/vocab.txt",
+            "special_tokens_map": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_tiny/special_tokens_map.json",
+            "tokenizer_config": "https://bj.bcebos.com/paddlenlp/taskflow/information_extraction/uie_tiny/tokenizer_config.json",
         }
-    }
+    },
 }
 
 
@@ -328,51 +301,76 @@ def build_params_map(attention_num=12):
     build params map from paddle-paddle's ERNIE to transformer's BERT
     :return:
     """
-    weight_map = collections.OrderedDict({
-        'encoder.embeddings.word_embeddings.weight': "bert.embeddings.word_embeddings.weight",
-        'encoder.embeddings.position_embeddings.weight': "bert.embeddings.position_embeddings.weight",
-        'encoder.embeddings.token_type_embeddings.weight': "bert.embeddings.token_type_embeddings.weight",
-        'encoder.embeddings.task_type_embeddings.weight': "embeddings.task_type_embeddings.weight",
-        # 这里没有前缀bert，直接映射到bert4torch结构
-        'encoder.embeddings.layer_norm.weight': 'bert.embeddings.LayerNorm.weight',
-        'encoder.embeddings.layer_norm.bias': 'bert.embeddings.LayerNorm.bias',
-    })
+    weight_map = collections.OrderedDict(
+        {
+            "encoder.embeddings.word_embeddings.weight": "bert.embeddings.word_embeddings.weight",
+            "encoder.embeddings.position_embeddings.weight": "bert.embeddings.position_embeddings.weight",
+            "encoder.embeddings.token_type_embeddings.weight": "bert.embeddings.token_type_embeddings.weight",
+            "encoder.embeddings.task_type_embeddings.weight": "embeddings.task_type_embeddings.weight",
+            # 这里没有前缀bert，直接映射到bert4torch结构
+            "encoder.embeddings.layer_norm.weight": "bert.embeddings.LayerNorm.weight",
+            "encoder.embeddings.layer_norm.bias": "bert.embeddings.LayerNorm.bias",
+        }
+    )
     # add attention layers
     for i in range(attention_num):
         weight_map[
-            f'encoder.encoder.layers.{i}.self_attn.q_proj.weight'] = f'bert.encoder.layer.{i}.attention.self.query.weight'
+            f"encoder.encoder.layers.{i}.self_attn.q_proj.weight"
+        ] = f"bert.encoder.layer.{i}.attention.self.query.weight"
         weight_map[
-            f'encoder.encoder.layers.{i}.self_attn.q_proj.bias'] = f'bert.encoder.layer.{i}.attention.self.query.bias'
+            f"encoder.encoder.layers.{i}.self_attn.q_proj.bias"
+        ] = f"bert.encoder.layer.{i}.attention.self.query.bias"
         weight_map[
-            f'encoder.encoder.layers.{i}.self_attn.k_proj.weight'] = f'bert.encoder.layer.{i}.attention.self.key.weight'
+            f"encoder.encoder.layers.{i}.self_attn.k_proj.weight"
+        ] = f"bert.encoder.layer.{i}.attention.self.key.weight"
         weight_map[
-            f'encoder.encoder.layers.{i}.self_attn.k_proj.bias'] = f'bert.encoder.layer.{i}.attention.self.key.bias'
+            f"encoder.encoder.layers.{i}.self_attn.k_proj.bias"
+        ] = f"bert.encoder.layer.{i}.attention.self.key.bias"
         weight_map[
-            f'encoder.encoder.layers.{i}.self_attn.v_proj.weight'] = f'bert.encoder.layer.{i}.attention.self.value.weight'
+            f"encoder.encoder.layers.{i}.self_attn.v_proj.weight"
+        ] = f"bert.encoder.layer.{i}.attention.self.value.weight"
         weight_map[
-            f'encoder.encoder.layers.{i}.self_attn.v_proj.bias'] = f'bert.encoder.layer.{i}.attention.self.value.bias'
+            f"encoder.encoder.layers.{i}.self_attn.v_proj.bias"
+        ] = f"bert.encoder.layer.{i}.attention.self.value.bias"
         weight_map[
-            f'encoder.encoder.layers.{i}.self_attn.out_proj.weight'] = f'bert.encoder.layer.{i}.attention.output.dense.weight'
+            f"encoder.encoder.layers.{i}.self_attn.out_proj.weight"
+        ] = f"bert.encoder.layer.{i}.attention.output.dense.weight"
         weight_map[
-            f'encoder.encoder.layers.{i}.self_attn.out_proj.bias'] = f'bert.encoder.layer.{i}.attention.output.dense.bias'
+            f"encoder.encoder.layers.{i}.self_attn.out_proj.bias"
+        ] = f"bert.encoder.layer.{i}.attention.output.dense.bias"
         weight_map[
-            f'encoder.encoder.layers.{i}.norm1.weight'] = f'bert.encoder.layer.{i}.attention.output.LayerNorm.weight'
-        weight_map[f'encoder.encoder.layers.{i}.norm1.bias'] = f'bert.encoder.layer.{i}.attention.output.LayerNorm.bias'
-        weight_map[f'encoder.encoder.layers.{i}.linear1.weight'] = f'bert.encoder.layer.{i}.intermediate.dense.weight'
-        weight_map[f'encoder.encoder.layers.{i}.linear1.bias'] = f'bert.encoder.layer.{i}.intermediate.dense.bias'
-        weight_map[f'encoder.encoder.layers.{i}.linear2.weight'] = f'bert.encoder.layer.{i}.output.dense.weight'
-        weight_map[f'encoder.encoder.layers.{i}.linear2.bias'] = f'bert.encoder.layer.{i}.output.dense.bias'
-        weight_map[f'encoder.encoder.layers.{i}.norm2.weight'] = f'bert.encoder.layer.{i}.output.LayerNorm.weight'
-        weight_map[f'encoder.encoder.layers.{i}.norm2.bias'] = f'bert.encoder.layer.{i}.output.LayerNorm.bias'
+            f"encoder.encoder.layers.{i}.norm1.weight"
+        ] = f"bert.encoder.layer.{i}.attention.output.LayerNorm.weight"
+        weight_map[
+            f"encoder.encoder.layers.{i}.norm1.bias"
+        ] = f"bert.encoder.layer.{i}.attention.output.LayerNorm.bias"
+        weight_map[
+            f"encoder.encoder.layers.{i}.linear1.weight"
+        ] = f"bert.encoder.layer.{i}.intermediate.dense.weight"
+        weight_map[
+            f"encoder.encoder.layers.{i}.linear1.bias"
+        ] = f"bert.encoder.layer.{i}.intermediate.dense.bias"
+        weight_map[
+            f"encoder.encoder.layers.{i}.linear2.weight"
+        ] = f"bert.encoder.layer.{i}.output.dense.weight"
+        weight_map[
+            f"encoder.encoder.layers.{i}.linear2.bias"
+        ] = f"bert.encoder.layer.{i}.output.dense.bias"
+        weight_map[
+            f"encoder.encoder.layers.{i}.norm2.weight"
+        ] = f"bert.encoder.layer.{i}.output.LayerNorm.weight"
+        weight_map[
+            f"encoder.encoder.layers.{i}.norm2.bias"
+        ] = f"bert.encoder.layer.{i}.output.LayerNorm.bias"
     # add pooler
     weight_map.update(
         {
-            'encoder.pooler.dense.weight': 'bert.pooler.dense.weight',
-            'encoder.pooler.dense.bias': 'bert.pooler.dense.bias',
-            'linear_start.weight': 'linear_start.weight',
-            'linear_start.bias': 'linear_start.bias',
-            'linear_end.weight': 'linear_end.weight',
-            'linear_end.bias': 'linear_end.bias',
+            "encoder.pooler.dense.weight": "bert.pooler.dense.weight",
+            "encoder.pooler.dense.bias": "bert.pooler.dense.bias",
+            "linear_start.weight": "linear_start.weight",
+            "linear_start.bias": "linear_start.bias",
+            "linear_end.weight": "linear_end.weight",
+            "linear_end.bias": "linear_end.bias",
         }
     )
     return weight_map
@@ -381,19 +379,24 @@ def build_params_map(attention_num=12):
 def extract_and_convert(input_dir, output_dir):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    logger.info('=' * 20 + 'save config file' + '=' * 20)
-    config = json.load(open(os.path.join(input_dir, 'model_config.json'), 'rt', encoding='utf-8'))
-    config = config['init_args'][0]
+    logger.info("=" * 20 + "save config file" + "=" * 20)
+    config = json.load(
+        open(os.path.join(input_dir, "model_config.json"), "rt", encoding="utf-8")
+    )
+    config = config["init_args"][0]
     config["architectures"] = ["UIE"]
-    config['layer_norm_eps'] = 1e-12
-    del config['init_class']
-    if 'sent_type_vocab_size' in config:
-        config['type_vocab_size'] = config['sent_type_vocab_size']
-    config['intermediate_size'] = 4 * config['hidden_size']
-    json.dump(config, open(os.path.join(output_dir, 'config.json'),
-                           'wt', encoding='utf-8'), indent=4)
-    logger.info('=' * 20 + 'save vocab file' + '=' * 20)
-    with open(os.path.join(input_dir, 'vocab.txt'), 'rt', encoding='utf-8') as f:
+    config["layer_norm_eps"] = 1e-12
+    del config["init_class"]
+    if "sent_type_vocab_size" in config:
+        config["type_vocab_size"] = config["sent_type_vocab_size"]
+    config["intermediate_size"] = 4 * config["hidden_size"]
+    json.dump(
+        config,
+        open(os.path.join(output_dir, "config.json"), "wt", encoding="utf-8"),
+        indent=4,
+    )
+    logger.info("=" * 20 + "save vocab file" + "=" * 20)
+    with open(os.path.join(input_dir, "vocab.txt"), "rt", encoding="utf-8") as f:
         words = f.read().splitlines()
     words_set = set()
     words_duplicate_indices = []
@@ -404,18 +407,22 @@ def extract_and_convert(input_dir, output_dir):
         words_set.add(word)
     for i, idx in enumerate(words_duplicate_indices):
         words[idx] = chr(0x1F6A9 + i)  # Change duplicated word to 🚩 LOL
-    with open(os.path.join(output_dir, 'vocab.txt'), 'wt', encoding='utf-8') as f:
+    with open(os.path.join(output_dir, "vocab.txt"), "wt", encoding="utf-8") as f:
         for word in words:
-            f.write(word + '\n')
+            f.write(word + "\n")
     special_tokens_map = {
         "unk_token": "[UNK]",
         "sep_token": "[SEP]",
         "pad_token": "[PAD]",
         "cls_token": "[CLS]",
-        "mask_token": "[MASK]"
+        "mask_token": "[MASK]",
     }
-    json.dump(special_tokens_map, open(os.path.join(output_dir, 'special_tokens_map.json'),
-                                       'wt', encoding='utf-8'))
+    json.dump(
+        special_tokens_map,
+        open(
+            os.path.join(output_dir, "special_tokens_map.json"), "wt", encoding="utf-8"
+        ),
+    )
     tokenizer_config = {
         "do_lower_case": True,
         "unk_token": "[UNK]",
@@ -423,22 +430,29 @@ def extract_and_convert(input_dir, output_dir):
         "pad_token": "[PAD]",
         "cls_token": "[CLS]",
         "mask_token": "[MASK]",
-        "tokenizer_class": "BertTokenizer"
+        "tokenizer_class": "BertTokenizer",
     }
-    json.dump(tokenizer_config, open(os.path.join(output_dir, 'tokenizer_config.json'),
-                                     'wt', encoding='utf-8'))
-    logger.info('=' * 20 + 'extract weights' + '=' * 20)
+    json.dump(
+        tokenizer_config,
+        open(os.path.join(output_dir, "tokenizer_config.json"), "wt", encoding="utf-8"),
+    )
+    logger.info("=" * 20 + "extract weights" + "=" * 20)
     state_dict = collections.OrderedDict()
-    weight_map = build_params_map(attention_num=config['num_hidden_layers'])
+    weight_map = build_params_map(attention_num=config["num_hidden_layers"])
     paddle_paddle_params = pickle.load(
-        open(os.path.join(input_dir, 'model_state.pdparams'), 'rb'))
-    del paddle_paddle_params['StructuredToParameterName@@']
+        open(os.path.join(input_dir, "model_state.pdparams"), "rb")
+    )
+    del paddle_paddle_params["StructuredToParameterName@@"]
     for weight_name, weight_value in paddle_paddle_params.items():
-        if 'weight' in weight_name:
-            if 'encoder.encoder' in weight_name or 'pooler' in weight_name or 'linear' in weight_name:
+        if "weight" in weight_name:
+            if (
+                "encoder.encoder" in weight_name
+                or "pooler" in weight_name
+                or "linear" in weight_name
+            ):
                 weight_value = weight_value.transpose()
         # Fix: embedding error
-        if 'word_embeddings.weight' in weight_name:
+        if "word_embeddings.weight" in weight_name:
             weight_value[0, :] = 0
         if weight_name not in weight_map:
             logger.info(f"{'=' * 20} [SKIP] {weight_name} {'=' * 20}")
@@ -451,9 +465,9 @@ def extract_and_convert(input_dir, output_dir):
 def check_model(input_model):
     if not os.path.exists(input_model):
         if input_model not in MODEL_MAP:
-            raise ValueError('input_model not exists!')
+            raise ValueError("input_model not exists!")
 
-        resource_file_urls = MODEL_MAP[input_model]['resource_file_urls']
+        resource_file_urls = MODEL_MAP[input_model]["resource_file_urls"]
         logger.info("Downloading resource files...")
 
         for key, val in resource_file_urls.items():
@@ -467,12 +481,22 @@ def do_main():
     extract_and_convert(args.input_model, args.output_model)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--input_model", default="uie-base", type=str,
-                        help="Directory of input paddle model.\n Will auto download model [uie-base/uie-tiny]")
-    parser.add_argument("-o", "--output_model", default="uie_base_pytorch", type=str,
-                        help="Directory of output pytorch model")
+    parser.add_argument(
+        "-i",
+        "--input_model",
+        default="uie-base",
+        type=str,
+        help="Directory of input paddle model.\n Will auto download model [uie-base/uie-tiny]",
+    )
+    parser.add_argument(
+        "-o",
+        "--output_model",
+        default="uie_base_pytorch",
+        type=str,
+        help="Directory of output pytorch model",
+    )
     args = parser.parse_args()
 
     do_main()

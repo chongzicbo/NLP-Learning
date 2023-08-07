@@ -18,7 +18,7 @@ def fun1(conn):
     conn.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     conn1, conn2 = Pipe()
     p = Process(target=fun1, args=(conn2,))
     p.start()

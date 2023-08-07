@@ -8,7 +8,7 @@
 import nltk
 from nltk.tokenize import sent_tokenize
 
-nltk.download('punkt')
+nltk.download("punkt")
 a = nltk.word_tokenize("partial Yq deletion and partial duplication of")
 print(a)
 
@@ -16,6 +16,6 @@ text = "A de novo derivative Y chromosome (partial Yq deletion and partial dupli
 sentences = sent_tokenize(text)
 print(sentences)
 
-sentence_tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+sentence_tokenizer = nltk.data.load("tokenizers/punkt/english.pickle")
 sentences = sentence_tokenizer.tokenize(text)
 print(sentences)

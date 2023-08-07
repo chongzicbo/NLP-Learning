@@ -50,16 +50,13 @@ def predict(model, data, tokenizer, label_map, batch_size=1):
     for text in data:
         example = {"text": text}
         input_ids, token_type_ids = convert_example(
-            example,
-            tokenizer,
-            max_seq_length=args.max_seq_length,
-            is_test=True)
+            example, tokenizer, max_seq_length=args.max_seq_length, is_test=True
+        )
         examples.append((input_ids, token_type_ids))
 
     # Seperates data into some batches.
     batches = [
-        examples[idx:idx + batch_size]
-        for idx in range(0, len(examples), batch_size)
+        examples[idx : idx + batch_size] for idx in range(0, len(examples), batch_size)
     ]
     batchify_fn = lambda samples, fn=Tuple(
         Pad(axis=0, pad_val=tokenizer.pad_token_id),  # input
@@ -85,26 +82,22 @@ if __name__ == "__main__":
     paddle.set_device(args.device)
 
     data = [
-        '这个宾馆比较陈旧了，特价的房间也很一般。总体来说一般',
-        '怀着十分激动的心情放映，可是看着看着发现，在放映完毕后，出现一集米老鼠的动画片',
-        '作为老的四星酒店，房间依然很整洁，相当不错。机场接机服务很好，可以在车上办理入住手续，节省时间。',
+        "这个宾馆比较陈旧了，特价的房间也很一般。总体来说一般",
+        "怀着十分激动的心情放映，可是看着看着发现，在放映完毕后，出现一集米老鼠的动画片",
+        "作为老的四星酒店，房间依然很整洁，相当不错。机场接机服务很好，可以在车上办理入住手续，节省时间。",
     ]
-    label_map = {0: 'negative', 1: 'positive'}
+    label_map = {0: "negative", 1: "positive"}
 
     model = ppnlp.transformers.ErnieForSequenceClassification.from_pretrained(
-        'ernie-tiny', num_classes=len(label_map))
-    tokenizer = ppnlp.transformers.ErnieTinyTokenizer.from_pretrained(
-        'ernie-tiny')
+        "ernie-tiny", num_classes=len(label_map)
+    )
+    tokenizer = ppnlp.transformers.ErnieTinyTokenizer.from_pretrained("ernie-tiny")
 
     if args.params_path and os.path.isfile(args.params_path):
         state_dict = paddle.load(args.params_path)
         model.set_dict(state_dict)
         print("Loaded parameters from %s" % args.params_path)
 
-    results = predict(model,
-                      data,
-                      tokenizer,
-                      label_map,
-                      batch_size=args.batch_size)
+    results = predict(model, data, tokenizer, label_map, batch_size=args.batch_size)
     for idx, text in enumerate(data):
-        print('Data: {} \t Lable: {}'.format(text, results[idx]))
+        print("Data: {} \t Lable: {}".format(text, results[idx]))

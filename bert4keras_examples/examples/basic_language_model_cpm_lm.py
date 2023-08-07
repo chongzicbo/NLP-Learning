@@ -15,19 +15,19 @@ from bert4keras.tokenizers import SpTokenizer
 from bert4keras.snippets import AutoRegressiveDecoder
 from bert4keras.snippets import uniout
 import jieba
+
 jieba.initialize()
 
 # 模型路径
-config_path = '/root/kg/bert/CPM_LM_2.6B_TF/config.json'
-checkpoint_path = '/root/kg/bert/CPM_LM_2.6B_TF/model.ckpt'
-spm_path = '/root/kg/bert/CPM_LM_2.6B_TF/chinese_vocab.model'
+config_path = "/root/kg/bert/CPM_LM_2.6B_TF/config.json"
+checkpoint_path = "/root/kg/bert/CPM_LM_2.6B_TF/model.ckpt"
+spm_path = "/root/kg/bert/CPM_LM_2.6B_TF/chinese_vocab.model"
 
 
 def pre_tokenize(text):
-    """分词前处理函数
-    """
+    """分词前处理函数"""
     return [
-        w.replace(' ', u'\u2582').replace('\n', u'\u2583')
+        w.replace(" ", "\u2582").replace("\n", "\u2583")
         for w in jieba.cut(text, cut_all=False)
     ]
 
@@ -37,18 +37,18 @@ tokenizer = SpTokenizer(
     token_start=None,
     token_end=None,
     pre_tokenize=pre_tokenize,
-    token_translate={u'\u2583': '<cls>'}
+    token_translate={"\u2583": "<cls>"},
 )  # 建立分词器
 
 model = build_transformer_model(
-    config_path=config_path, checkpoint_path=checkpoint_path, model='gpt2'
+    config_path=config_path, checkpoint_path=checkpoint_path, model="gpt2"
 )  # 建立模型，加载权重
 
 
 class TextExpansion(AutoRegressiveDecoder):
-    """基于随机采样的文本续写
-    """
-    @AutoRegressiveDecoder.wraps(default_rtype='probas')
+    """基于随机采样的文本续写"""
+
+    @AutoRegressiveDecoder.wraps(default_rtype="probas")
     def predict(self, inputs, output_ids, states):
         token_ids = np.concatenate([inputs[0], output_ids], 1)
         return self.last_token(model).predict(token_ids)
@@ -58,16 +58,15 @@ class TextExpansion(AutoRegressiveDecoder):
         可以考虑将解码方式换为beam search。
         """
         token_ids, _ = tokenizer.encode(text)
-        results = self.random_sample([token_ids],
-                                     n,
-                                     topp=topp,
-                                     temperature=temperature)  # 基于随机采样
+        results = self.random_sample(
+            [token_ids], n, topp=topp, temperature=temperature
+        )  # 基于随机采样
         results = [token_ids + [int(i) for i in ids] for ids in results]
         texts = [tokenizer.decode(ids) for ids in results]
         return [self.post_replace(text) for text in texts]
 
     def post_replace(self, text):
-        for s, t in [(' ', ''), (u'\u2582', ' '), (u'\u2583', '\n')]:
+        for s, t in [(" ", ""), ("\u2582", " "), ("\u2583", "\n")]:
             text = text.replace(s, t)
         return text
 
@@ -80,7 +79,7 @@ text_expansion = TextExpansion(
 
 # 常识推理
 # 本例输出：北京
-query = u"""
+query = """
 美国的首都是华盛顿
 法国的首都是巴黎
 日本的首都是东京
@@ -90,7 +89,7 @@ print(text_expansion.generate(query[1:-1], 1)[0])
 
 # 单词翻译
 # 本例输出：bird
-query = u"""
+query = """
 狗 dog
 猫 cat
 猪 pig
@@ -100,7 +99,7 @@ print(text_expansion.generate(query[1:-1], 1)[0])
 
 # 主语抽取
 # 本例输出：杨振宁
-query = u"""
+query = """
 从1931年起，华罗庚在清华大学边学习边工作 华罗庚
 在一间简陋的房间里，陈景润攻克了“哥德巴赫猜想” 陈景润
 在这里，丘成桐得到IBM奖学金 丘成桐
@@ -110,7 +109,7 @@ print(text_expansion.generate(query[1:-1], 1)[0])
 
 # 三元组抽取
 # 本例输出：张红,体重,140斤
-query = u"""
+query = """
 姚明的身高是211cm，是很多人心目中的偶像。 ->姚明，身高，211cm
 毛泽东是绍兴人，早年在长沙读书。->毛泽东，出生地，绍兴
 虽然周杰伦在欧洲办的婚礼，但是他是土生土长的中国人->周杰伦，国籍，中国

@@ -17,7 +17,9 @@ import tensorflow as tf
 # keras默认是执行图模式，debug困难；使用eager模式方便debug
 tf.config.run_functions_eagerly(True)
 
-bert_dir = "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_L-12_H-768_A-12/"
+bert_dir = (
+    "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_L-12_H-768_A-12/"
+)
 config_path = os.path.join(bert_dir, "bert_config.json")
 checkpoint_path = os.path.join(bert_dir, "bert_model.ckpt")
 dict_path = os.path.join(bert_dir, "vocab.txt")
@@ -27,7 +29,7 @@ model = build_transformer_model(
     config_path=config_path, checkpoint_path=checkpoint_path, with_mlm=True
 )  # 建立模型，加载权重
 
-token_ids, segment_ids = tokenizer.encode(u'科学技术是第一生产力')
+token_ids, segment_ids = tokenizer.encode("科学技术是第一生产力")
 
 # mask掉“技术”
 token_ids[3] = token_ids[4] = tokenizer._token_mask_id

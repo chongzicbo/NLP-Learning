@@ -10,7 +10,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 pwd_path = os.path.abspath(os.path.dirname(__file__))
 
 # -----用户目录，存储模型文件-----
-USER_DATA_DIR = os.path.expanduser('~/.cache/torch/chengbo')
+USER_DATA_DIR = os.path.expanduser("~/.cache/torch/chengbo")
 os.makedirs(USER_DATA_DIR, exist_ok=True)
 
 # tokenize config file
@@ -20,17 +20,17 @@ user_define_words_path = os.path.join(pwd_path, "data/user_define_words.txt")
 remove_words_path = os.path.join(pwd_path, "data/remove_words.txt")
 
 # search dialog
-search_model = 'bm25'
-question_answer_path = os.path.join(pwd_path, 'data/taobao/question_answer.txt')
-context_response_path = os.path.join(pwd_path, 'data/taobao/context_response.txt')
-search_vocab_path = os.path.join(pwd_path, 'data/taobao/vocab.txt')
+search_model = "bm25"
+question_answer_path = os.path.join(pwd_path, "data/taobao/question_answer.txt")
+context_response_path = os.path.join(pwd_path, "data/taobao/context_response.txt")
+search_vocab_path = os.path.join(pwd_path, "data/taobao/vocab.txt")
 
 # seq2seq dialog
-dialog_mode = 'single'
+dialog_mode = "single"
 vocab_path = os.path.join(pwd_path, "data/taobao/vocab.txt")
-model_path = os.path.join(pwd_path, 'output/models')
+model_path = os.path.join(pwd_path, "output/models")
 seq2seq_model_path = os.path.join(model_path, dialog_mode)
-predict_result_path = os.path.join(pwd_path, 'output/predict_result.txt')
+predict_result_path = os.path.join(pwd_path, "output/predict_result.txt")
 
 
 class Params:
@@ -56,5 +56,5 @@ user = "neo4j"
 password = "123456"
 answer_num_limit = 20
 # mongodb
-mongo_host = 'localhost'
+mongo_host = "localhost"
 mongo_port = 27017

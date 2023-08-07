@@ -9,7 +9,13 @@
 
 from bert4torch.tokenizers import Tokenizer
 from bert4torch.models import build_transformer_model, BaseModel
-from bert4torch.snippets import sequence_padding, Callback, ListDataset, get_pool_emb, seed_everything
+from bert4torch.snippets import (
+    sequence_padding,
+    Callback,
+    ListDataset,
+    get_pool_emb,
+    seed_everything,
+)
 import torch.nn as nn
 import torch
 import torch.optim as optim
@@ -18,20 +24,22 @@ import sys
 
 # =============================基本参数=============================
 # pooling, task_name = sys.argv[1:]  # 传入参数
-pooling, task_name = 'cls', 'ATEC'  # debug使用
-print('pooling: ', pooling, ' task_name: ', task_name)
-assert task_name in ['ATEC', 'BQ', 'LCQMC', 'PAWSX', 'STS-B']
-assert pooling in {'first-last-avg', 'last-avg', 'cls', 'pooler'}
+pooling, task_name = "cls", "ATEC"  # debug使用
+print("pooling: ", pooling, " task_name: ", task_name)
+assert task_name in ["ATEC", "BQ", "LCQMC", "PAWSX", "STS-B"]
+assert pooling in {"first-last-avg", "last-avg", "cls", "pooler"}
 
-maxlen = 64 if task_name != 'PAWSX' else 128
+maxlen = 64 if task_name != "PAWSX" else 128
 batch_size = 32
-config_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/pytorch_model.bin'
-dict_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/vocab.txt'
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+config_path = "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/bert_config.json"
+checkpoint_path = "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/pytorch_model.bin"
+dict_path = (
+    "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/vocab.txt"
+)
+device = "cuda" if torch.cuda.is_available() else "cpu"
 seed_everything(42)
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # 建立分词器
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
@@ -44,9 +52,9 @@ class MyDataset(ListDataset):
         单条格式：(文本1, 文本2, 标签id)
         """
         D = []
-        with open(filename, encoding='utf-8') as f:
+        with open(filename, encoding="utf-8") as f:
             for l in f:
-                l = l.strip().split('\t')
+                l = l.strip().split("\t")
                 if len(l) == 3:
                     D.append((l[0], l[1], int(l[2])))
         return D
@@ -61,8 +69,12 @@ def collate_fn(batch):
         batch_token2_ids.append(token2_ids)
         batch_labels.append([label])
 
-    batch_token1_ids = torch.tensor(sequence_padding(batch_token1_ids), dtype=torch.long, device=device)
-    batch_token2_ids = torch.tensor(sequence_padding(batch_token2_ids), dtype=torch.long, device=device)
+    batch_token1_ids = torch.tensor(
+        sequence_padding(batch_token1_ids), dtype=torch.long, device=device
+    )
+    batch_token2_ids = torch.tensor(
+        sequence_padding(batch_token2_ids), dtype=torch.long, device=device
+    )
 
     batch_labels = torch.tensor(batch_labels, dtype=torch.long, device=device)
     return (batch_token1_ids, batch_token2_ids), batch_labels.flatten()
@@ -70,25 +82,49 @@ def collate_fn(batch):
 
 # 加载数据集
 train_dataloader = DataLoader(
-    MyDataset(f'F:/Projects/data/corpus/sentence_embedding/{task_name}/{task_name}.train.data'), batch_size=batch_size,
-    shuffle=True, collate_fn=collate_fn)
+    MyDataset(
+        f"F:/Projects/data/corpus/sentence_embedding/{task_name}/{task_name}.train.data"
+    ),
+    batch_size=batch_size,
+    shuffle=True,
+    collate_fn=collate_fn,
+)
 valid_dataloader = DataLoader(
-    MyDataset(f'F:/Projects/data/corpus/sentence_embedding/{task_name}/{task_name}.valid.data'), batch_size=batch_size,
-    collate_fn=collate_fn)
-test_dataloader = DataLoader(MyDataset(f'F:/Projects/data/corpus/sentence_embedding/{task_name}/{task_name}.test.data'),
-                             batch_size=batch_size, collate_fn=collate_fn)
+    MyDataset(
+        f"F:/Projects/data/corpus/sentence_embedding/{task_name}/{task_name}.valid.data"
+    ),
+    batch_size=batch_size,
+    collate_fn=collate_fn,
+)
+test_dataloader = DataLoader(
+    MyDataset(
+        f"F:/Projects/data/corpus/sentence_embedding/{task_name}/{task_name}.test.data"
+    ),
+    batch_size=batch_size,
+    collate_fn=collate_fn,
+)
 
 
 # 定义bert上的模型结构
 class Model(BaseModel):
-    def __init__(self, pool_method='cls', concatenation_sent_rep=True, concatenation_sent_difference=True,
-                 concatenation_sent_multiplication=False):
+    def __init__(
+        self,
+        pool_method="cls",
+        concatenation_sent_rep=True,
+        concatenation_sent_difference=True,
+        concatenation_sent_multiplication=False,
+    ):
         super().__init__()
         self.pool_method = pool_method
-        with_pool = 'linear' if pool_method == 'pooler' else True
-        output_all_encoded_layers = True if pool_method == 'first-last-avg' else False
-        self.bert = build_transformer_model(config_path, checkpoint_path, segment_vocab_size=0,
-                                            with_pool=with_pool, output_all_encoded_layers=output_all_encoded_layers)
+        with_pool = "linear" if pool_method == "pooler" else True
+        output_all_encoded_layers = True if pool_method == "first-last-avg" else False
+        self.bert = build_transformer_model(
+            config_path,
+            checkpoint_path,
+            segment_vocab_size=0,
+            with_pool=with_pool,
+            output_all_encoded_layers=output_all_encoded_layers,
+        )
         self.concatenation_sent_rep = concatenation_sent_rep
         self.concatenation_sent_difference = concatenation_sent_difference
         self.concatenation_sent_multiplication = concatenation_sent_multiplication
@@ -101,10 +137,14 @@ class Model(BaseModel):
 
     def forward(self, token1_ids, token2_ids):
         hidden_state1, pooler1 = self.bert([token1_ids])
-        rep_a = get_pool_emb(hidden_state1, pooler1, token1_ids.gt(0).long(), self.pool_method)
+        rep_a = get_pool_emb(
+            hidden_state1, pooler1, token1_ids.gt(0).long(), self.pool_method
+        )
 
         hidden_state2, pooler2 = self.bert([token2_ids])
-        rep_b = get_pool_emb(hidden_state2, pooler2, token2_ids.gt(0).long(), self.pool_method)
+        rep_b = get_pool_emb(
+            hidden_state2, pooler2, token2_ids.gt(0).long(), self.pool_method
+        )
 
         vectors_concat = []
         if self.concatenation_sent_rep:
@@ -133,7 +173,7 @@ model.compile(
 
 # 定义评价函数
 def evaluate(data):
-    total, right = 0., 0.
+    total, right = 0.0, 0.0
     for x_true, y_true in data:
         y_pred = model.predict(x_true).argmax(axis=1)  # 这里取不取softmax不影响结果
         total += len(y_true)
@@ -142,11 +182,10 @@ def evaluate(data):
 
 
 class Evaluator(Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
-        self.best_val_acc = 0.
+        self.best_val_acc = 0.0
 
     def on_epoch_end(self, global_step, epoch, logs=None):
         val_acc = evaluate(valid_dataloader)
@@ -154,15 +193,13 @@ class Evaluator(Callback):
         if val_acc > self.best_val_acc:
             self.best_val_acc = val_acc
             # model.save_weights('best_model.pt')
-        print(f'val_acc: {val_acc:.5f}, test_acc: {test_acc:.5f}, best_val_acc: {self.best_val_acc:.5f}\n')
+        print(
+            f"val_acc: {val_acc:.5f}, test_acc: {test_acc:.5f}, best_val_acc: {self.best_val_acc:.5f}\n"
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     evaluator = Evaluator()
-    model.fit(train_dataloader,
-              epochs=5,
-              steps_per_epoch=None,
-              callbacks=[evaluator]
-              )
+    model.fit(train_dataloader, epochs=5, steps_per_epoch=None, callbacks=[evaluator])
 else:
-    model.load_weights('best_model.pt')
+    model.load_weights("best_model.pt")

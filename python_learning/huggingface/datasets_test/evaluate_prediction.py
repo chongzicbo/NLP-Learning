@@ -9,11 +9,11 @@
 """
 from datasets import list_metrics
 
-metrics_list=list_metrics()
+metrics_list = list_metrics()
 print(metrics_list)
 
 from datasets import load_metric
-metric=load_metric('glue','mrpc')
+
+metric = load_metric("glue", "mrpc")
 
 print(metric.inputs_description)
-

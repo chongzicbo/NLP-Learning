@@ -15,7 +15,12 @@ import paddle.nn.functional as F
 import paddlenlp as ppnlp
 from paddlenlp.data import Tuple, Pad
 from paddlenlp.datasets import load_dataset
-from data import convert_example, create_dataloader, read_custom_data, write_test_results
+from data import (
+    convert_example,
+    create_dataloader,
+    read_custom_data,
+    write_test_results,
+)
 from model import MultiLabelClassifier
 
 # yapf: disable

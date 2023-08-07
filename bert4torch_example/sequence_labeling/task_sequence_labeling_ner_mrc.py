@@ -23,16 +23,16 @@ from collections import defaultdict
 max_c_len = 224
 max_q_len = 32
 batch_size = 6  # 真实的batch_size是 batch_size * 实体类型数
-categories = ['LOC', 'PER', 'ORG']
-ent2query = {"LOC": "找出下述句子中的地址名",
-             "PER": "找出下述句子中的人名",
-             "ORG": "找出下述句子中的机构名"}
+categories = ["LOC", "PER", "ORG"]
+ent2query = {"LOC": "找出下述句子中的地址名", "PER": "找出下述句子中的人名", "ORG": "找出下述句子中的机构名"}
 
 # BERT base
-config_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/pytorch_model.bin'
-dict_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/vocab.txt'
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+config_path = "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/bert_config.json"
+checkpoint_path = "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/pytorch_model.bin"
+dict_path = (
+    "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/vocab.txt"
+)
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # 固定seed
 seed_everything(42)
@@ -43,18 +43,18 @@ class MyDataset(ListDataset):
     @staticmethod
     def load_data(filename):
         D = []
-        with open(filename, encoding='utf-8') as f:
+        with open(filename, encoding="utf-8") as f:
             f = f.read()
-            for l in f.split('\n\n'):
+            for l in f.split("\n\n"):
                 if not l:
                     continue
-                d = ['']
-                for i, c in enumerate(l.split('\n')):
-                    char, flag = c.split(' ')
+                d = [""]
+                for i, c in enumerate(l.split("\n")):
+                    char, flag = c.split(" ")
                     d[0] += char
-                    if flag[0] == 'B':
+                    if flag[0] == "B":
                         d.append([i, i, flag[2:]])
-                    elif flag[0] == 'I':
+                    elif flag[0] == "I":
                         d[-1][1] = i
                 D.append(d)
         return D
@@ -65,7 +65,12 @@ tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
 
 def collate_fn(batch):
-    batch_token_ids, batch_segment_ids, batch_start_labels, batch_end_labels = [], [], [], []
+    batch_token_ids, batch_segment_ids, batch_start_labels, batch_end_labels = (
+        [],
+        [],
+        [],
+        [],
+    )
     batch_ent_type = []
     for d in batch:
         tokens_b = tokenizer.tokenize(d[0], maxlen=max_c_len)[1:]  # 不保留[CLS]
@@ -96,7 +101,9 @@ def collate_fn(batch):
 
             start_ids = [0] * len(tokens_a) + start_ids
             end_ids = [0] * len(tokens_a) + end_ids
-            token_ids = tokenizer.tokens_to_ids(tokens_a) + tokenizer.tokens_to_ids(tokens_b)
+            token_ids = tokenizer.tokens_to_ids(tokens_a) + tokenizer.tokens_to_ids(
+                tokens_b
+            )
             segment_ids = [0] * len(tokens_a) + [1] * len(tokens_b)
             assert len(start_ids) == len(end_ids) == len(token_ids) == len(segment_ids)
 
@@ -106,31 +113,50 @@ def collate_fn(batch):
             batch_end_labels.append(end_ids)
             batch_ent_type.append(_type)
 
-    batch_token_ids = torch.tensor(sequence_padding(batch_token_ids), dtype=torch.long, device=device)
-    batch_segment_ids = torch.tensor(sequence_padding(batch_segment_ids), dtype=torch.long, device=device)
-    batch_start_labels = torch.tensor(sequence_padding(batch_start_labels), dtype=torch.long, device=device)
-    batch_end_labels = torch.tensor(sequence_padding(batch_end_labels), dtype=torch.long, device=device)
-    return [batch_token_ids, batch_segment_ids], [batch_segment_ids, batch_start_labels, batch_end_labels,
-                                                  batch_ent_type]
+    batch_token_ids = torch.tensor(
+        sequence_padding(batch_token_ids), dtype=torch.long, device=device
+    )
+    batch_segment_ids = torch.tensor(
+        sequence_padding(batch_segment_ids), dtype=torch.long, device=device
+    )
+    batch_start_labels = torch.tensor(
+        sequence_padding(batch_start_labels), dtype=torch.long, device=device
+    )
+    batch_end_labels = torch.tensor(
+        sequence_padding(batch_end_labels), dtype=torch.long, device=device
+    )
+    return [batch_token_ids, batch_segment_ids], [
+        batch_segment_ids,
+        batch_start_labels,
+        batch_end_labels,
+        batch_ent_type,
+    ]
 
 
 # 转换数据集
-train_dataloader = DataLoader(MyDataset('F:/Projects/data/corpus/ner/china-people-daily-ner-corpus/example.train'),
-                              batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
-valid_dataloader = DataLoader(MyDataset('F:/Projects/data/corpus/ner/china-people-daily-ner-corpus/example.dev'),
-                              batch_size=batch_size, collate_fn=collate_fn)
+train_dataloader = DataLoader(
+    MyDataset(
+        "F:/Projects/data/corpus/ner/china-people-daily-ner-corpus/example.train"
+    ),
+    batch_size=batch_size,
+    shuffle=True,
+    collate_fn=collate_fn,
+)
+valid_dataloader = DataLoader(
+    MyDataset("F:/Projects/data/corpus/ner/china-people-daily-ner-corpus/example.dev"),
+    batch_size=batch_size,
+    collate_fn=collate_fn,
+)
 
 
 # 定义bert上的模型结构
 class Model(BaseModel):
     def __init__(self):
         super().__init__()
-        self.bert = build_transformer_model(config_path=config_path, checkpoint_path=checkpoint_path)
-        self.mid_linear = nn.Sequential(
-            nn.Linear(768, 128),
-            nn.ReLU(),
-            nn.Dropout(0.1)
+        self.bert = build_transformer_model(
+            config_path=config_path, checkpoint_path=checkpoint_path
         )
+        self.mid_linear = nn.Sequential(nn.Linear(768, 128), nn.ReLU(), nn.Dropout(0.1))
         self.start_fc = nn.Linear(128, 2)
         self.end_fc = nn.Linear(128, 2)
 
@@ -170,8 +196,10 @@ model.compile(loss=Loss(), optimizer=optim.Adam(model.parameters(), lr=2e-5))
 
 def evaluate(data):
     X, Y, Z = 0, 1e-10, 1e-10
-    for (token_ids, segment_ids), labels in tqdm(data, desc='Evaluation'):
-        start_logit, end_logit = model.predict([token_ids, segment_ids])  # [btz, seq_len, 2]
+    for (token_ids, segment_ids), labels in tqdm(data, desc="Evaluation"):
+        start_logit, end_logit = model.predict(
+            [token_ids, segment_ids]
+        )  # [btz, seq_len, 2]
         mask, start_ids, end_ids, ent_type = labels
 
         # entity粒度
@@ -187,8 +215,7 @@ def evaluate(data):
 
 # 严格解码 baseline
 def mrc_decode(start_preds, end_preds, ent_type, mask=None):
-    '''返回实体的start, end
-    '''
+    """返回实体的start, end"""
     predict_entities = set()
     if mask is not None:  # 预测的把query和padding部分mask掉
         start_preds = torch.argmax(start_preds, -1) * mask
@@ -213,26 +240,25 @@ def mrc_decode(start_preds, end_preds, ent_type, mask=None):
 
 
 class Evaluator(Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
-        self.best_val_f1 = 0.
+        self.best_val_f1 = 0.0
 
     def on_epoch_end(self, steps, epoch, logs=None):
         f1, precision, recall = evaluate(valid_dataloader)
         if f1 > self.best_val_f1:
             self.best_val_f1 = f1
             # model.save_weights('best_model.pt')
-        print(f'[val] f1: {f1:.5f}, p: {precision:.5f} r: {recall:.5f} best_f1: {self.best_val_f1:.5f}')
+        print(
+            f"[val] f1: {f1:.5f}, p: {precision:.5f} r: {recall:.5f} best_f1: {self.best_val_f1:.5f}"
+        )
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
 
     model.fit(train_dataloader, epochs=20, steps_per_epoch=None, callbacks=[evaluator])
 
 else:
-
-    model.load_weights('best_model.pt')
+    model.load_weights("best_model.pt")

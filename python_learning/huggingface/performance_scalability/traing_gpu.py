@@ -36,7 +36,9 @@ def print_summary(result):
 
 from transformers import AutoModelForSequenceClassification
 
-model = AutoModelForSequenceClassification.from_pretrained("bert-base-uncased").to("cuda")
+model = AutoModelForSequenceClassification.from_pretrained("bert-base-uncased").to(
+    "cuda"
+)
 print_gpu_utilization()
 default_args = {
     "output_dir": "tmp",
@@ -50,7 +52,14 @@ from transformers import TrainingArguments, Trainer, logging
 
 logging.set_verbosity_error()
 
-training_args = TrainingArguments(per_device_train_batch_size=1,gradient_accumulation_steps=4,gradient_checkpointing=True,fp16=True, optim="adafactor",**default_args)
+training_args = TrainingArguments(
+    per_device_train_batch_size=1,
+    gradient_accumulation_steps=4,
+    gradient_checkpointing=True,
+    fp16=True,
+    optim="adafactor",
+    **default_args,
+)
 import bitsandbytes as bnb
 from torch import nn
 from transformers.trainer_pt_utils import get_parameter_names

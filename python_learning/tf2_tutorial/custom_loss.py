@@ -14,7 +14,7 @@ import tensorflow as tf
 class CrossEntropy(Layer):
     """特殊的层，用来定义复杂loss
     继承Layer的方式自定义损失
-     """
+    """
 
     def __init__(self, output_axis=None, **kwargs):
         super(CrossEntropy, self).__init__(**kwargs)
@@ -35,7 +35,7 @@ class CrossEntropy(Layer):
         y_mask = K.cast(K.not_equal(y_true, 0), K.floatx())
         accuracy = keras.metrics.sparse_categorical_accuracy(y_true, y_pred)
         accuracy = K.sum(accuracy * y_mask) / K.sum(y_mask)
-        self.add_metric(accuracy, name='accuracy')
+        self.add_metric(accuracy, name="accuracy")
         loss = K.sparse_categorical_crossentropy(y_true, y_pred)
         loss = K.sum(loss * y_mask) / K.sum(y_mask)
         return loss
@@ -59,7 +59,7 @@ class CrossEntropy(Layer):
 
     def get_config(self):
         config = {
-            'output_axis': self.output_axis,
+            "output_axis": self.output_axis,
         }
         base_config = super(CrossEntropy, self).get_config()
 
@@ -68,10 +68,10 @@ class CrossEntropy(Layer):
 
 # https://github.com/mkocabas/focal-loss-keras/blob/master/focal_loss.py
 # 装饰器的方式实现复杂损失函数：focal_loss
-def focal_loss(gamma=2., alpha=.25):
+def focal_loss(gamma=2.0, alpha=0.25):
     def focal_loss_fixed(y_true, y_pred):
         pt_1 = tf.where(tf.equal(y_true, 1), y_pred, tf.ones_like(y_pred))
         pt_0 = tf.where(tf.equal(y_true, 0), y_pred, tf.zeros_like(y_pred))
-        return -K.mean(alpha * K.pow(1. - pt_1, gamma) * K.log(pt_1 + K.epsilon())) - K.mean(
-            (1 - alpha) * K.pow(pt_0, gamma) * K.log(1. - pt_0 + K.epsilon()))
-
+        return -K.mean(
+            alpha * K.pow(1.0 - pt_1, gamma) * K.log(pt_1 + K.epsilon())
+        ) - K.mean((1 - alpha) * K.pow(pt_0, gamma) * K.log(1.0 - pt_0 + K.epsilon()))

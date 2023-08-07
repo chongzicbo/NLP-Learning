@@ -14,5 +14,6 @@ generator.to("cuda")
 
 image = generator("An image of a squirrel in Picasso style").images[0]
 from matplotlib import pyplot as plt
+
 plt.imshow(image)
 plt.show()

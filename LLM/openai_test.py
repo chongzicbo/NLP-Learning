@@ -9,6 +9,9 @@
 """
 import os
 import openai
+
 openai.organization = "org-p1SkoHd7HEWYaP5gYqNXPPYf"
-openai.api_key = os.getenv("OPENAI_API_KEY","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")
+openai.api_key = os.getenv(
+    "OPENAI_API_KEY", "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"
+)
 openai.Model.list()

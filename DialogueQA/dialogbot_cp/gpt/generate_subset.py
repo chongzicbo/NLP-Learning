@@ -17,17 +17,34 @@ def generate_subset():
     :return:
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--raw_data_path', default='data/train.txt', type=str, required=False, help='原始训练语料')
-    parser.add_argument('--subset_size', default=1000000, type=int, required=False, help='要获取的对话数据子集的规模')
-    parser.add_argument('--subset_data_path', default='data', type=str, required=False,
-                        help='数据子集文件路径,指定文件的父目录')
+    parser.add_argument(
+        "--raw_data_path",
+        default="data/train.txt",
+        type=str,
+        required=False,
+        help="原始训练语料",
+    )
+    parser.add_argument(
+        "--subset_size", default=1000000, type=int, required=False, help="要获取的对话数据子集的规模"
+    )
+    parser.add_argument(
+        "--subset_data_path",
+        default="data",
+        type=str,
+        required=False,
+        help="数据子集文件路径,指定文件的父目录",
+    )
     args = parser.parse_args()
     with open(args.raw_data_path, "r", encoding="utf8") as f:
         data = f.read()
     dialogues = data.split("\n\n")
     subset_size = min(len(dialogues), args.subset_size)
 
-    with open(join(args.subset_data_path, "train_{}w.txt".format(int(subset_size / 10000))), "w", encoding="utf8") as f:
+    with open(
+        join(args.subset_data_path, "train_{}w.txt".format(int(subset_size / 10000))),
+        "w",
+        encoding="utf8",
+    ) as f:
         print("generating subset,please wait a few minutes")
         for dialogue_index, dialogue in enumerate(dialogues):
             if dialogue_index >= subset_size:
@@ -43,7 +60,13 @@ def compute_dialogue_length():
     :return:
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--raw_data_path', default='data/train.txt', type=str, required=False, help='原始训练语料')
+    parser.add_argument(
+        "--raw_data_path",
+        default="data/train.txt",
+        type=str,
+        required=False,
+        help="原始训练语料",
+    )
     args = parser.parse_args()
     with open(args.raw_data_path, "r", encoding="utf8") as f:
         data = f.read()
@@ -61,12 +84,12 @@ def compute_dialogue_length():
     ax.xaxis.set_major_locator(x_major_locator)  # 把x轴的主刻度设置为10的倍数
     # ax.yaxis.set_major_locator(y_major_locator)
 
-    plt.xlabel('dialogue length')
-    plt.ylabel('number of dialogue')
+    plt.xlabel("dialogue length")
+    plt.ylabel("number of dialogue")
     # plt.plot(dialogue_length_arr, num_arr, c='green')
     plt.scatter(dialogue_length_arr, num_arr)
     plt.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     generate_subset()

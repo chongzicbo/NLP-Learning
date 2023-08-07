@@ -7,18 +7,18 @@ def travelTree(currentPath, count):
         return
     if os.path.isfile(currentPath):
         fileName = os.path.basename(currentPath)
-        print('\t' * count + '├── ' + fileName)
+        print("\t" * count + "├── " + fileName)
     elif os.path.isdir(currentPath):
-        print('\t' * count + '├── ' + currentPath)
+        print("\t" * count + "├── " + currentPath)
         pathList = os.listdir(currentPath)
         for eachPath in pathList:
-            travelTree(currentPath + '/' + eachPath, count + 1)
+            travelTree(currentPath + "/" + eachPath, count + 1)
 
 
-travelTree('F:\IBM\QASystemOnMedicalKG', 1)
+travelTree("F:\IBM\QASystemOnMedicalKG", 1)
 
 
-'''
+"""
 ├── QASystemOnMedicalKG
     ├── answer_search.py               # 问题查询及返回
     ├── build_medicalgraph.py          # 将结构化json数据导入neo4j
@@ -41,4 +41,4 @@ travelTree('F:\IBM\QASystemOnMedicalKG', 1)
         ├── max_cut.py                 # 基于词典的最大前向/后向匹配
     ├── question_classifier.py         # 问句类型分类脚本
     ├── question_parser.py             # 问句解析脚本
-			'''
+			"""

@@ -7,7 +7,9 @@ import torch
 import torch.nn.functional as F
 
 
-def transform_predictions_to_labels(sequence_input_lst, wordpiece_mask, idx2label_map, input_type="logit"):
+def transform_predictions_to_labels(
+    sequence_input_lst, wordpiece_mask, idx2label_map, input_type="logit"
+):
     """
     shape:
         sequence_input_lst: [batch_size, seq_len, num_labels]
@@ -15,9 +17,17 @@ def transform_predictions_to_labels(sequence_input_lst, wordpiece_mask, idx2labe
     """
     wordpiece_mask = wordpiece_mask.detach().cpu().numpy().tolist()
     if input_type == "logit":
-        label_sequence = torch.argmax(F.softmax(sequence_input_lst, dim=2), dim=2).detach().cpu().numpy().tolist()
+        label_sequence = (
+            torch.argmax(F.softmax(sequence_input_lst, dim=2), dim=2)
+            .detach()
+            .cpu()
+            .numpy()
+            .tolist()
+        )
     elif input_type == "prob":
-        label_sequence = torch.argmax(sequence_input_lst, dim=2).detach().cpu().numpy().tolist()
+        label_sequence = (
+            torch.argmax(sequence_input_lst, dim=2).detach().cpu().numpy().tolist()
+        )
     elif input_type == "label":
         label_sequence = sequence_input_lst.detach().cpu().numpy().tolist()
     else:
@@ -42,12 +52,18 @@ def compute_tagger_span_f1(sequence_pred_lst, sequence_gold_lst):
         gold_entity_lst = get_entity_from_bmes_lst(seq_gold_item)
         pred_entity_lst = get_entity_from_bmes_lst(seq_pred_item)
 
-        true_positive_item, false_positive_item, false_negative_item = count_confusion_matrix(pred_entity_lst, gold_entity_lst)
+        (
+            true_positive_item,
+            false_positive_item,
+            false_negative_item,
+        ) = count_confusion_matrix(pred_entity_lst, gold_entity_lst)
         sum_true_positive += true_positive_item
         sum_false_negative += false_negative_item
         sum_false_positive += false_positive_item
 
-    batch_confusion_matrix = torch.tensor([sum_true_positive, sum_false_positive, sum_false_negative], dtype=torch.long)
+    batch_confusion_matrix = torch.tensor(
+        [sum_true_positive, sum_false_positive, sum_false_negative], dtype=torch.long
+    )
     return batch_confusion_matrix
 
 
@@ -67,15 +83,15 @@ def count_confusion_matrix(pred_entities, gold_entities):
 
 def get_entity_from_bmes_lst(label_list):
     """reuse the code block from
-        https://github.com/jiesutd/NCRFpp/blob/105a53a321eca9c1280037c473967858e01aaa43/utils/metric.py#L73
-        Many thanks to Jie Yang.
+    https://github.com/jiesutd/NCRFpp/blob/105a53a321eca9c1280037c473967858e01aaa43/utils/metric.py#L73
+    Many thanks to Jie Yang.
     """
     list_len = len(label_list)
-    begin_label = 'B-'
-    end_label = 'E-'
-    single_label = 'S-'
-    whole_tag = ''
-    index_tag = ''
+    begin_label = "B-"
+    end_label = "E-"
+    single_label = "S-"
+    whole_tag = ""
+    index_tag = ""
     tag_list = []
     stand_matrix = []
     for i in range(0, list_len):
@@ -85,39 +101,40 @@ def get_entity_from_bmes_lst(label_list):
             continue
 
         if begin_label in current_label:
-            if index_tag != '':
-                tag_list.append(whole_tag + ',' + str(i-1))
-            whole_tag = current_label.replace(begin_label,"",1) +'[' +str(i)
-            index_tag = current_label.replace(begin_label,"",1)
+            if index_tag != "":
+                tag_list.append(whole_tag + "," + str(i - 1))
+            whole_tag = current_label.replace(begin_label, "", 1) + "[" + str(i)
+            index_tag = current_label.replace(begin_label, "", 1)
         elif single_label in current_label:
-            if index_tag != '':
-                tag_list.append(whole_tag + ',' + str(i-1))
-            whole_tag = current_label.replace(single_label,"",1) +'[' +str(i)
+            if index_tag != "":
+                tag_list.append(whole_tag + "," + str(i - 1))
+            whole_tag = current_label.replace(single_label, "", 1) + "[" + str(i)
             tag_list.append(whole_tag)
             whole_tag = ""
             index_tag = ""
         elif end_label in current_label:
-            if index_tag != '':
-                tag_list.append(whole_tag +',' + str(i))
-            whole_tag = ''
-            index_tag = ''
+            if index_tag != "":
+                tag_list.append(whole_tag + "," + str(i))
+            whole_tag = ""
+            index_tag = ""
         else:
             continue
-    if (whole_tag != '')&(index_tag != ''):
+    if (whole_tag != "") & (index_tag != ""):
         tag_list.append(whole_tag)
     tag_list_len = len(tag_list)
 
     for i in range(0, tag_list_len):
         if len(tag_list[i]) > 0:
-            tag_list[i] = tag_list[i]+ ']'
+            tag_list[i] = tag_list[i] + "]"
             insert_list = reverse_style(tag_list[i])
             stand_matrix.append(insert_list)
     return stand_matrix
 
 
 def reverse_style(input_string):
-    target_position = input_string.index('[')
+    target_position = input_string.index("[")
     input_len = len(input_string)
-    output_string = input_string[target_position:input_len] + input_string[0:target_position]
+    output_string = (
+        input_string[target_position:input_len] + input_string[0:target_position]
+    )
     return output_string
-

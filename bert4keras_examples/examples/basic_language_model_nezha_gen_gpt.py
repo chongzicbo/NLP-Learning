@@ -17,9 +17,9 @@ from bert4keras.tokenizers import Tokenizer
 from bert4keras.snippets import AutoRegressiveDecoder
 from bert4keras.snippets import uniout
 
-config_path = '/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_nezha_gpt_L-12_H-768_A-12/chinese_nezha_gpt_L-12_H-768_A-12/config.json'
-checkpoint_path = '/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_nezha_gpt_L-12_H-768_A-12/chinese_nezha_gpt_L-12_H-768_A-12/gpt.ckpt'
-dict_path = '/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_nezha_gpt_L-12_H-768_A-12/chinese_nezha_gpt_L-12_H-768_A-12/vocab.txt'
+config_path = "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_nezha_gpt_L-12_H-768_A-12/chinese_nezha_gpt_L-12_H-768_A-12/config.json"
+checkpoint_path = "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_nezha_gpt_L-12_H-768_A-12/chinese_nezha_gpt_L-12_H-768_A-12/gpt.ckpt"
+dict_path = "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_nezha_gpt_L-12_H-768_A-12/chinese_nezha_gpt_L-12_H-768_A-12/vocab.txt"
 
 tokenizer = Tokenizer(dict_path, do_lower_case=True)  # 建立分词器
 
@@ -27,15 +27,14 @@ model = build_transformer_model(
     config_path=config_path,
     checkpoint_path=checkpoint_path,
     segment_vocab_size=0,  # 去掉segment_ids输入
-    application='lm',
+    application="lm",
 )  # 建立模型，加载权重
 
 
 class ArticleCompletion(AutoRegressiveDecoder):
-    """基于随机采样的文章续写
-    """
+    """基于随机采样的文章续写"""
 
-    @AutoRegressiveDecoder.wraps(default_rtype='probas')
+    @AutoRegressiveDecoder.wraps(default_rtype="probas")
     def predict(self, inputs, output_ids, states):
         token_ids = np.concatenate([inputs[0], output_ids], 1)
         return self.last_token(model).predict(token_ids)
@@ -47,13 +46,10 @@ class ArticleCompletion(AutoRegressiveDecoder):
 
 
 article_completion = ArticleCompletion(
-    start_id=None,
-    end_id=511,  # 511是中文句号
-    maxlen=256,
-    minlen=128
+    start_id=None, end_id=511, maxlen=256, minlen=128  # 511是中文句号
 )
 
-print(article_completion.generate(u'今天天气不错'))
+print(article_completion.generate("今天天气不错"))
 """
 部分结果：
 >>> article_completion.generate(u'今天天气不错')

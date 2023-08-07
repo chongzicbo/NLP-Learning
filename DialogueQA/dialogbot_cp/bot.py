@@ -20,17 +20,20 @@ from dialogbot_cp.utils.text_util import ch_count
 
 class Bot:
     def __init__(
-            self,
-            vocab_path=config.vocab_path,
-            search_model=config.search_model,
-            question_answer_path=config.question_answer_path,
-            context_response_path=config.context_response_path,
-            context=None
+        self,
+        vocab_path=config.vocab_path,
+        search_model=config.search_model,
+        question_answer_path=config.question_answer_path,
+        context_response_path=config.context_response_path,
+        context=None,
     ):
         self.context = context if context else []
-        self.search_bot = SearchBot(question_answer_path, context_response_path,
-                                    vocab_path=vocab_path,
-                                    search_model=search_model)
+        self.search_bot = SearchBot(
+            question_answer_path,
+            context_response_path,
+            vocab_path=vocab_path,
+            search_model=search_model,
+        )
         self.gpt_bot = GPTBot()
 
     def set_context(self, v):
@@ -51,12 +54,12 @@ class Bot:
         :param use_task: bool, weather or not use task bot
         :return: (response, details) str, []
         """
-        self.context.append({'user:': query})
+        self.context.append({"user:": query})
         response = {}
 
         if use_task:
-            task_response = ''
-            response['task_response'] = task_response
+            task_response = ""
+            response["task_response"] = task_response
 
         # Search response
         if use_search:
@@ -68,13 +71,13 @@ class Bot:
             else:
                 mode = "qa"
             search_response, sim_score = self.search_bot.answer(query, mode=mode)
-            response['search_response'] = search_response
+            response["search_response"] = search_response
 
         # GPT2 response
         if use_gen:
             gen_response = self.gpt_bot.answer(query)
-            response['gen_response'] = gen_response
+            response["gen_response"] = gen_response
 
-        self.context.append({'bot:': response})
+        self.context.append({"bot:": response})
 
         return response

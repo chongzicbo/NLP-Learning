@@ -9,31 +9,37 @@
 """
 from datasets import load_dataset
 
-wnut = load_dataset('wnut_17')
+wnut = load_dataset("wnut_17")
 
-print(wnut['train'][0])
+print(wnut["train"][0])
 
 from transformers import AutoTokenizer
 
-tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
-example = wnut['train'][0]
-tokenized_input = tokenizer(example['tokens'], is_split_into_words=True)
-tokens = tokenizer.convert_ids_to_tokens(tokenized_input['input_ids'])
+tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+example = wnut["train"][0]
+tokenized_input = tokenizer(example["tokens"], is_split_into_words=True)
+tokens = tokenizer.convert_ids_to_tokens(tokenized_input["input_ids"])
 print(tokens)
 
 
 def tokenize_and_align_labels(examples):
-    tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
+    tokenized_inputs = tokenizer(
+        examples["tokens"], truncation=True, is_split_into_words=True
+    )
 
     labels = []
     for i, label in enumerate(examples[f"ner_tags"]):
-        word_ids = tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
+        word_ids = tokenized_inputs.word_ids(
+            batch_index=i
+        )  # Map tokens to their respective word.
         previous_word_idx = None
         label_ids = []
         for word_idx in word_ids:  # Set the special tokens to -100.
             if word_idx is None:
                 label_ids.append(-100)
-            elif word_idx != previous_word_idx:  # Only label the first token of a given word.
+            elif (
+                word_idx != previous_word_idx
+            ):  # Only label the first token of a given word.
                 label_ids.append(label[word_idx])
             else:
                 label_ids.append(-100)
@@ -54,6 +60,7 @@ import evaluate
 
 seqeval = evaluate.load("seqeval")
 import numpy as np
+
 label_list = wnut["train"].features[f"ner_tags"].feature.names
 label_list
 labels = [label_list[i] for i in example[f"ner_tags"]]
@@ -79,6 +86,7 @@ def compute_metrics(p):
         "f1": results["overall_f1"],
         "accuracy": results["overall_accuracy"],
     }
+
 
 id2label = {
     0: "O",

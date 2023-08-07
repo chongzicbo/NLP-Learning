@@ -8,6 +8,7 @@
 import torch
 from torch import nn
 import numpy as np
+
 # import matplotlib.pyplot as plt
 from torch.autograd import Variable
 
@@ -69,7 +70,7 @@ class s_model(nn.Module):
             hidden_size=int(word_emb_size / 2),
             num_layers=1,
             batch_first=True,
-            bidirectional=True
+            bidirectional=True,
         ).cuda()
 
         self.lstm2 = nn.LSTM(
@@ -77,7 +78,7 @@ class s_model(nn.Module):
             hidden_size=int(word_emb_size / 2),
             num_layers=1,
             batch_first=True,
-            bidirectional=True
+            bidirectional=True,
         ).cuda()
 
         self.conv1 = nn.Sequential(
@@ -99,7 +100,9 @@ class s_model(nn.Module):
         ).cuda()
 
     def forward(self, t):
-        mask = torch.gt(torch.unsqueeze(t, 2), 0).type(torch.cuda.FloatTensor)  # (batch_size,sent_len,1)
+        mask = torch.gt(torch.unsqueeze(t, 2), 0).type(
+            torch.cuda.FloatTensor
+        )  # (batch_size,sent_len,1)
         mask.requires_grad = False
 
         outs = self.embeds(t)

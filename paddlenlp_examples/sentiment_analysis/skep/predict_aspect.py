@@ -56,11 +56,9 @@ def predict(model, data_loader, label_map):
     return results
 
 
-def convert_example(example,
-                    tokenizer,
-                    max_seq_length=512,
-                    is_test=False,
-                    dataset_name="chnsenticorp"):
+def convert_example(
+    example, tokenizer, max_seq_length=512, is_test=False, dataset_name="chnsenticorp"
+):
     """
     Builds model inputs from a sequence or a pair of sequence for sequence classification tasks
     by concatenating and adding special tokens. And creates a mask from the two sequences passed
@@ -90,9 +88,9 @@ def convert_example(example,
         token_type_ids(obj: `list[int]`): List of sequence pair mask.
         label(obj:`numpy.array`, data type of int64, optional): The input label if not is_test.
     """
-    encoded_inputs = tokenizer(text=example["text"],
-                               text_pair=example["text_pair"],
-                               max_seq_len=max_seq_length)
+    encoded_inputs = tokenizer(
+        text=example["text"], text_pair=example["text_pair"], max_seq_len=max_seq_length
+    )
 
     input_ids = np.array(encoded_inputs["input_ids"], dtype="int64")
     token_type_ids = np.array(encoded_inputs["token_type_ids"], dtype="int64")
@@ -104,53 +102,57 @@ def convert_example(example,
         return input_ids, token_type_ids
 
 
-def create_dataloader(dataset,
-                      mode='train.json',
-                      batch_size=1,
-                      batchify_fn=None,
-                      trans_fn=None):
+def create_dataloader(
+    dataset, mode="train.json", batch_size=1, batchify_fn=None, trans_fn=None
+):
     if trans_fn:
         dataset = dataset.map(trans_fn)
 
-    shuffle = True if mode == 'train.json' else False
-    if mode == 'train.json':
-        batch_sampler = paddle.io.DistributedBatchSampler(dataset,
-                                                          batch_size=batch_size,
-                                                          shuffle=shuffle)
+    shuffle = True if mode == "train.json" else False
+    if mode == "train.json":
+        batch_sampler = paddle.io.DistributedBatchSampler(
+            dataset, batch_size=batch_size, shuffle=shuffle
+        )
     else:
-        batch_sampler = paddle.io.BatchSampler(dataset,
-                                               batch_size=batch_size,
-                                               shuffle=shuffle)
+        batch_sampler = paddle.io.BatchSampler(
+            dataset, batch_size=batch_size, shuffle=shuffle
+        )
 
-    return paddle.io.DataLoader(dataset=dataset,
-                                batch_sampler=batch_sampler,
-                                collate_fn=batchify_fn,
-                                return_list=True)
+    return paddle.io.DataLoader(
+        dataset=dataset,
+        batch_sampler=batch_sampler,
+        collate_fn=batchify_fn,
+        return_list=True,
+    )
 
 
 if __name__ == "__main__":
-
     test_ds = load_dataset("seabsa16", "phns", splits=["test"])
-    label_map = {0: 'negative', 1: 'positive'}
+    label_map = {0: "negative", 1: "positive"}
 
     model = SkepForSequenceClassification.from_pretrained(
-        'skep_ernie_1.0_large_ch', num_classes=len(label_map))
-    tokenizer = SkepTokenizer.from_pretrained('skep_ernie_1.0_large_ch')
+        "skep_ernie_1.0_large_ch", num_classes=len(label_map)
+    )
+    tokenizer = SkepTokenizer.from_pretrained("skep_ernie_1.0_large_ch")
 
-    trans_func = partial(convert_example,
-                         tokenizer=tokenizer,
-                         max_seq_length=args.max_seq_length,
-                         is_test=True)
+    trans_func = partial(
+        convert_example,
+        tokenizer=tokenizer,
+        max_seq_length=args.max_seq_length,
+        is_test=True,
+    )
     batchify_fn = lambda samples, fn=Tuple(
         Pad(axis=0, pad_val=tokenizer.pad_token_id),  # input_ids
         Pad(axis=0, pad_val=tokenizer.pad_token_type_id),  # token_type_ids
     ): [data for data in fn(samples)]
 
-    test_data_loader = create_dataloader(test_ds,
-                                         mode='test',
-                                         batch_size=args.batch_size,
-                                         batchify_fn=batchify_fn,
-                                         trans_fn=trans_func)
+    test_data_loader = create_dataloader(
+        test_ds,
+        mode="test",
+        batch_size=args.batch_size,
+        batchify_fn=batchify_fn,
+        trans_fn=trans_func,
+    )
 
     if args.params_path and os.path.isfile(args.params_path):
         state_dict = paddle.load(args.params_path)
@@ -159,4 +161,4 @@ if __name__ == "__main__":
 
     results = predict(model, test_data_loader, label_map)
     for idx, text in enumerate(test_ds.data):
-        print('Data: {} \t Label: {}'.format(text, results[idx]))
+        print("Data: {} \t Label: {}".format(text, results[idx]))

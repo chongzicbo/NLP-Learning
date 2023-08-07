@@ -11,9 +11,23 @@ import time, random
 from threading import Thread, currentThread
 from queue import Queue, Empty
 
-foods = ("蒸羊羔", "蒸熊掌", "蒸鹿尾儿", "烧花鸭", "烧雏鸡", "烧子鹅",
-         "卤猪", "卤鸭", "酱鸡", "腊肉", "松花", "小肚儿", "晾肉", "香肠",
-         "什锦苏盘",)  # 食物列表
+foods = (
+    "蒸羊羔",
+    "蒸熊掌",
+    "蒸鹿尾儿",
+    "烧花鸭",
+    "烧雏鸡",
+    "烧子鹅",
+    "卤猪",
+    "卤鸭",
+    "酱鸡",
+    "腊肉",
+    "松花",
+    "小肚儿",
+    "晾肉",
+    "香肠",
+    "什锦苏盘",
+)  # 食物列表
 
 
 def producer(queue: Queue):
@@ -39,17 +53,18 @@ def consumer(queue: Queue):
             print("没菜吃了，[{}]走了".format(currentThread().name))
             break
 
-if __name__ == '__main__':
-    queue=Queue()
-    pds=[]
-    csm=[]
+
+if __name__ == "__main__":
+    queue = Queue()
+    pds = []
+    csm = []
     for i in range(4):
-        t=Thread(target=producer, args=(queue,))
+        t = Thread(target=producer, args=(queue,))
         t.start()
         pds.append(t)
 
     time.sleep(1)
     for i in range(2):
-        t=Thread(target=consumer, args=(queue,))
+        t = Thread(target=consumer, args=(queue,))
         t.start()
         csm.append(t)

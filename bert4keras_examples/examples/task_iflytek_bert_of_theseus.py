@@ -22,9 +22,9 @@ maxlen = 128
 batch_size = 32
 
 # BERT base
-config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
-dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
+config_path = "/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json"
+checkpoint_path = "/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt"
+dict_path = "/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt"
 
 
 def load_data(filename):
@@ -35,26 +35,23 @@ def load_data(filename):
     with open(filename) as f:
         for i, l in enumerate(f):
             l = json.loads(l)
-            text, label = l['sentence'], l['label']
+            text, label = l["sentence"], l["label"]
             D.append((text, int(label)))
     return D
 
 
 # 加载数据集
 train_data = load_data(
-    '/root/CLUE-master/baselines/CLUEdataset/iflytek/train.json.json'
+    "/root/CLUE-master/baselines/CLUEdataset/iflytek/train.json.json"
 )
-valid_data = load_data(
-    '/root/CLUE-master/baselines/CLUEdataset/iflytek/dev.json'
-)
+valid_data = load_data("/root/CLUE-master/baselines/CLUEdataset/iflytek/dev.json")
 
 # 建立分词器
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
 
 class data_generator(DataGenerator):
-    """数据生成器
-    """
+    """数据生成器"""
 
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
@@ -77,8 +74,7 @@ valid_generator = data_generator(valid_data, batch_size)
 
 
 class BinaryRandomChoice(Layer):
-    """随机二选一
-    """
+    """随机二选一"""
 
     def __init__(self, **kwargs):
         super(BinaryRandomChoice, self).__init__(**kwargs)
@@ -99,8 +95,7 @@ class BinaryRandomChoice(Layer):
 
 
 def bert_of_theseus(predecessor, successor, classfier):
-    """bert of theseus
-    """
+    """bert of theseus"""
     inputs = predecessor.inputs
     # 固定住已经训练好的层
     for layer in predecessor.model.layers:
@@ -127,7 +122,7 @@ def bert_of_theseus(predecessor, successor, classfier):
 
 
 def evaluate(data, model):
-    total, right = 0., 0.
+    total, right = 0.0, 0.0
     for x_true, y_true in data:
         y_pred = model.predict(x_true).argmax(axis=1)
         y_true = y_true[:, 0]
@@ -137,11 +132,10 @@ def evaluate(data, model):
 
 
 class Evaluator(keras.callbacks.Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self, savename):
-        self.best_val_acc = 0.
+        self.best_val_acc = 0.0
         self.savename = savename
 
     def on_epoch_end(self, epoch, logs=None):
@@ -149,10 +143,7 @@ class Evaluator(keras.callbacks.Callback):
         if val_acc > self.best_val_acc:
             self.best_val_acc = val_acc
             self.model.save_weights(self.savename)
-        print(
-            u'val_acc: %.5f, best_val_acc: %.5f\n' %
-            (val_acc, self.best_val_acc)
-        )
+        print("val_acc: %.5f, best_val_acc: %.5f\n" % (val_acc, self.best_val_acc))
 
 
 # 加载预训练模型（12层）
@@ -160,7 +151,7 @@ predecessor = build_transformer_model(
     config_path=config_path,
     checkpoint_path=checkpoint_path,
     return_keras_model=False,
-    prefix='Predecessor-'
+    prefix="Predecessor-",
 )
 
 # 加载预训练模型（3层）
@@ -169,64 +160,64 @@ successor = build_transformer_model(
     checkpoint_path=checkpoint_path,
     return_keras_model=False,
     num_hidden_layers=3,
-    prefix='Successor-'
+    prefix="Successor-",
 )
 
 # 判别模型
 x_in = Input(shape=K.int_shape(predecessor.output)[1:])
 x = Lambda(lambda x: x[:, 0])(x_in)
-x = Dense(units=num_classes, activation='softmax')(x)
+x = Dense(units=num_classes, activation="softmax")(x)
 classfier = Model(x_in, x)
 
 predecessor_model = Model(predecessor.inputs, classfier(predecessor.output))
 predecessor_model.compile(
-    loss='sparse_categorical_crossentropy',
+    loss="sparse_categorical_crossentropy",
     optimizer=Adam(2e-5),  # 用足够小的学习率
-    metrics=['sparse_categorical_accuracy'],
+    metrics=["sparse_categorical_accuracy"],
 )
 predecessor_model.summary()
 
 successor_model = Model(successor.inputs, classfier(successor.output))
 successor_model.compile(
-    loss='sparse_categorical_crossentropy',
+    loss="sparse_categorical_crossentropy",
     optimizer=Adam(2e-5),  # 用足够小的学习率
-    metrics=['sparse_categorical_accuracy'],
+    metrics=["sparse_categorical_accuracy"],
 )
 successor_model.summary()
 
 theseus_model = bert_of_theseus(predecessor, successor, classfier)
 theseus_model.compile(
-    loss='sparse_categorical_crossentropy',
+    loss="sparse_categorical_crossentropy",
     optimizer=Adam(2e-5),  # 用足够小的学习率
-    metrics=['sparse_categorical_accuracy'],
+    metrics=["sparse_categorical_accuracy"],
 )
 theseus_model.summary()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 训练predecessor
-    predecessor_evaluator = Evaluator('best_predecessor.weights')
+    predecessor_evaluator = Evaluator("best_predecessor.weights")
     predecessor_model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=5,
-        callbacks=[predecessor_evaluator]
+        callbacks=[predecessor_evaluator],
     )
 
     # 训练theseus
-    theseus_evaluator = Evaluator('best_theseus.weights')
+    theseus_evaluator = Evaluator("best_theseus.weights")
     theseus_model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=10,
-        callbacks=[theseus_evaluator]
+        callbacks=[theseus_evaluator],
     )
-    theseus_model.load_weights('best_theseus.weights')
+    theseus_model.load_weights("best_theseus.weights")
 
     # 训练successor
-    successor_evaluator = Evaluator('best_successor.weights')
+    successor_evaluator = Evaluator("best_successor.weights")
     successor_model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=5,
-        callbacks=[successor_evaluator]
+        callbacks=[successor_evaluator],
     )

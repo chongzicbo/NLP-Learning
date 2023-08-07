@@ -23,58 +23,50 @@ def load_data(filename):
     单条格式：(文本1, 文本2, 标签)
     """
     D = []
-    with open(filename, encoding='utf-8') as f:
+    with open(filename, encoding="utf-8") as f:
         for l in f:
-            l = l.strip().split('\t')
+            l = l.strip().split("\t")
             if len(l) == 3:
                 D.append((l[0], l[1], float(l[2])))
     return D
 
 
 def get_tokenizer(dict_path, pre_tokenize=None):
-    """建立分词器
-    """
+    """建立分词器"""
     return Tokenizer(dict_path, do_lower_case=True, pre_tokenize=pre_tokenize)
 
 
-def get_encoder(
-    config_path, checkpoint_path, model='bert', pooling='first-last-avg'
-):
-    """建立编码器
-    """
-    assert pooling in ['first-last-avg', 'last-avg', 'cls', 'pooler']
+def get_encoder(config_path, checkpoint_path, model="bert", pooling="first-last-avg"):
+    """建立编码器"""
+    assert pooling in ["first-last-avg", "last-avg", "cls", "pooler"]
 
-    if pooling == 'pooler':
+    if pooling == "pooler":
         bert = build_transformer_model(
-            config_path, checkpoint_path, model=model, with_pool='linear'
+            config_path, checkpoint_path, model=model, with_pool="linear"
         )
     else:
-        bert = build_transformer_model(
-            config_path, checkpoint_path, model=model
-        )
+        bert = build_transformer_model(config_path, checkpoint_path, model=model)
 
     outputs, count = [], 0
     while True:
         try:
-            output = bert.get_layer(
-                'Transformer-%d-FeedForward-Norm' % count
-            ).output
+            output = bert.get_layer("Transformer-%d-FeedForward-Norm" % count).output
             outputs.append(output)
             count += 1
         except:
             break
 
-    if pooling == 'first-last-avg':
+    if pooling == "first-last-avg":
         outputs = [
             keras.layers.GlobalAveragePooling1D()(outputs[0]),
-            keras.layers.GlobalAveragePooling1D()(outputs[-1])
+            keras.layers.GlobalAveragePooling1D()(outputs[-1]),
         ]
         output = keras.layers.Average()(outputs)
-    elif pooling == 'last-avg':
+    elif pooling == "last-avg":
         output = keras.layers.GlobalAveragePooling1D()(outputs[-1])
-    elif pooling == 'cls':
+    elif pooling == "cls":
         output = keras.layers.Lambda(lambda x: x[:, 0])(outputs[-1])
-    elif pooling == 'pooler':
+    elif pooling == "pooler":
         output = bert.output
 
     # 最后的编码器
@@ -83,8 +75,7 @@ def get_encoder(
 
 
 def convert_to_ids(data, tokenizer, maxlen=64):
-    """转换文本数据为id形式
-    """
+    """转换文本数据为id形式"""
     a_token_ids, b_token_ids, labels = [], [], []
     for d in tqdm(data):
         token_ids = tokenizer.encode(d[0], maxlen=maxlen)[0]
@@ -98,15 +89,10 @@ def convert_to_ids(data, tokenizer, maxlen=64):
 
 
 def convert_to_vecs(data, tokenizer, encoder, maxlen=64):
-    """转换文本数据为向量形式
-    """
+    """转换文本数据为向量形式"""
     a_token_ids, b_token_ids, labels = convert_to_ids(data, tokenizer, maxlen)
-    a_vecs = encoder.predict([a_token_ids,
-                              np.zeros_like(a_token_ids)],
-                             verbose=True)
-    b_vecs = encoder.predict([b_token_ids,
-                              np.zeros_like(b_token_ids)],
-                             verbose=True)
+    a_vecs = encoder.predict([a_token_ids, np.zeros_like(a_token_ids)], verbose=True)
+    b_vecs = encoder.predict([b_token_ids, np.zeros_like(b_token_ids)], verbose=True)
     return a_vecs, b_vecs, np.array(labels)
 
 
@@ -123,15 +109,13 @@ def compute_kernel_bias(vecs):
 
 
 def transform_and_normalize(vecs, kernel=None, bias=None):
-    """应用变换，然后标准化
-    """
+    """应用变换，然后标准化"""
     if not (kernel is None or bias is None):
         vecs = (vecs + bias).dot(kernel)
-    norms = (vecs**2).sum(axis=1, keepdims=True)**0.5
+    norms = (vecs**2).sum(axis=1, keepdims=True) ** 0.5
     return vecs / np.clip(norms, 1e-8, np.inf)
 
 
 def compute_corrcoef(x, y):
-    """Spearman相关系数
-    """
+    """Spearman相关系数"""
     return scipy.stats.spearmanr(x, y).correlation

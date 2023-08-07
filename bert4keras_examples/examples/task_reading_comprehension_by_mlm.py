@@ -30,21 +30,21 @@ batch_size = 32
 epochs = 10
 
 # bert配置
-config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
-dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
+config_path = "/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json"
+checkpoint_path = "/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt"
+dict_path = "/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt"
 
 # 标注数据
-webqa_data = json.load(open('/root/qa_datasets/WebQA.json'))
-sogou_data = json.load(open('/root/qa_datasets/SogouQA.json'))
+webqa_data = json.load(open("/root/qa_datasets/WebQA.json"))
+sogou_data = json.load(open("/root/qa_datasets/SogouQA.json"))
 
 # 保存一个随机序（供划分valid用）
-if not os.path.exists('../random_order.json'):
+if not os.path.exists("../random_order.json"):
     random_order = list(range(len(sogou_data)))
     np.random.shuffle(random_order)
-    json.dump(random_order, open('../random_order.json', 'w'), indent=4)
+    json.dump(random_order, open("../random_order.json", "w"), indent=4)
 else:
-    random_order = json.load(open('../random_order.json'))
+    random_order = json.load(open("../random_order.json"))
 
 # 划分valid
 train_data = [sogou_data[j] for i, j in enumerate(random_order) if i % 3 != 0]
@@ -56,14 +56,13 @@ train_data.extend(webqa_data)  # 将SogouQA和WebQA按2:1的比例混合
 token_dict, keep_tokens = load_vocab(
     dict_path=dict_path,
     simplified=True,
-    startswith=['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[MASK]'],
+    startswith=["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]"],
 )
 tokenizer = Tokenizer(token_dict, do_lower_case=True)
 
 
 class data_generator(DataGenerator):
-    """数据生成器
-    """
+    """数据生成器"""
 
     def __iter__(self, random=False):
         """单条样本格式为
@@ -72,26 +71,22 @@ class data_generator(DataGenerator):
         """
         batch_token_ids, batch_segment_ids, batch_a_token_ids = [], [], []
         for is_end, D in self.sample(random):
-            question = D['question']
-            answers = [p['answer'] for p in D['passages'] if p['answer']]
-            passage = np.random.choice(D['passages'])['passage']
-            passage = re.sub(u' |、|；|，', ',', passage)
-            final_answer = ''
+            question = D["question"]
+            answers = [p["answer"] for p in D["passages"] if p["answer"]]
+            passage = np.random.choice(D["passages"])["passage"]
+            passage = re.sub(" |、|；|，", ",", passage)
+            final_answer = ""
             for answer in answers:
-                if all([
-                    a in passage[:max_p_len - 2] for a in answer.split(' ')
-                ]):
-                    final_answer = answer.replace(' ', ',')
+                if all([a in passage[: max_p_len - 2] for a in answer.split(" ")]):
+                    final_answer = answer.replace(" ", ",")
                     break
-            a_token_ids, _ = tokenizer.encode(
-                final_answer, maxlen=max_a_len + 1
-            )
+            a_token_ids, _ = tokenizer.encode(final_answer, maxlen=max_a_len + 1)
             q_token_ids, _ = tokenizer.encode(question, maxlen=max_q_len + 1)
             p_token_ids, _ = tokenizer.encode(passage, maxlen=max_p_len + 1)
             token_ids = [tokenizer._token_start_id]
-            token_ids += ([tokenizer._token_mask_id] * max_a_len)
+            token_ids += [tokenizer._token_mask_id] * max_a_len
             token_ids += [tokenizer._token_end_id]
-            token_ids += (q_token_ids[1:] + p_token_ids[1:])
+            token_ids += q_token_ids[1:] + p_token_ids[1:]
             segment_ids = [0] * len(token_ids)
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
@@ -99,9 +94,7 @@ class data_generator(DataGenerator):
             if len(batch_token_ids) == self.batch_size or is_end:
                 batch_token_ids = sequence_padding(batch_token_ids)
                 batch_segment_ids = sequence_padding(batch_segment_ids)
-                batch_a_token_ids = sequence_padding(
-                    batch_a_token_ids, max_a_len
-                )
+                batch_a_token_ids = sequence_padding(batch_a_token_ids, max_a_len)
                 yield [batch_token_ids, batch_segment_ids], batch_a_token_ids
                 batch_token_ids, batch_segment_ids, batch_a_token_ids = [], [], []
 
@@ -112,14 +105,13 @@ model = build_transformer_model(
     with_mlm=True,
     keep_tokens=keep_tokens,  # 只保留keep_tokens中的字，精简原字表
 )
-output = Lambda(lambda x: x[:, 1:max_a_len + 1])(model.output)
+output = Lambda(lambda x: x[:, 1 : max_a_len + 1])(model.output)
 model = Model(model.input, output)
 model.summary()
 
 
 def masked_cross_entropy(y_true, y_pred):
-    """交叉熵作为loss，并mask掉padding部分的预测
-    """
+    """交叉熵作为loss，并mask掉padding部分的预测"""
     y_true = K.reshape(y_true, [K.shape(y_true)[0], -1])
     y_mask = K.cast(K.not_equal(y_true, 0), K.floatx())
     cross_entropy = K.sparse_categorical_crossentropy(y_true, y_pred)
@@ -136,7 +128,7 @@ def get_ngram_set(x, n):
     """
     result = {}
     for i in range(len(x) - n + 1):
-        k = tuple(x[i:i + n])
+        k = tuple(x[i : i + n])
         if k[:-1] not in result:
             result[k[:-1]] = set()
         result[k[:-1]].add(k[-1])
@@ -144,25 +136,24 @@ def get_ngram_set(x, n):
 
 
 def gen_answer(question, passages):
-    """由于是MLM模型，所以可以直接argmax解码。
-    """
+    """由于是MLM模型，所以可以直接argmax解码。"""
     all_p_token_ids, token_ids, segment_ids = [], [], []
     for passage in passages:
-        passage = re.sub(u' |、|；|，', ',', passage)
+        passage = re.sub(" |、|；|，", ",", passage)
         p_token_ids, _ = tokenizer.encode(passage, maxlen=max_p_len + 1)
         q_token_ids, _ = tokenizer.encode(question, maxlen=max_q_len + 1)
         all_p_token_ids.append(p_token_ids[1:])
         token_ids.append([tokenizer._token_start_id])
-        token_ids[-1] += ([tokenizer._token_mask_id] * max_a_len)
+        token_ids[-1] += [tokenizer._token_mask_id] * max_a_len
         token_ids[-1] += [tokenizer._token_end_id]
-        token_ids[-1] += (q_token_ids[1:] + p_token_ids[1:])
+        token_ids[-1] += q_token_ids[1:] + p_token_ids[1:]
         segment_ids.append([0] * len(token_ids[-1]))
     token_ids = sequence_padding(token_ids)
     segment_ids = sequence_padding(segment_ids)
     probas = model.predict([token_ids, segment_ids])
     results = {}
     for t, p in zip(all_p_token_ids, probas):
-        a, score = tuple(), 0.
+        a, score = tuple(), 0.0
         for i in range(max_a_len):
             idxs = list(get_ngram_set(t, i + 1)[a])
             if tokenizer._token_end_id not in idxs:
@@ -178,10 +169,7 @@ def gen_answer(question, passages):
         a = tokenizer.decode(a)
         if a:
             results[a] = results.get(a, []) + [score]
-    results = {
-        k: (np.array(v) ** 2).sum() / (sum(v) + 1)
-        for k, v in results.items()
-    }
+    results = {k: (np.array(v) ** 2).sum() / (sum(v) + 1) for k, v in results.items()}
     return results
 
 
@@ -191,38 +179,35 @@ def max_in_dict(d):
 
 
 def predict_to_file(data, filename):
-    """将预测结果输出到文件，方便评估
-    """
-    with open(filename, 'w', encoding='utf-8') as f:
-        for d in tqdm(iter(data), desc=u'正在预测(共%s条样本)' % len(data)):
-            q_text = d['question']
-            p_texts = [p['passage'] for p in d['passages']]
+    """将预测结果输出到文件，方便评估"""
+    with open(filename, "w", encoding="utf-8") as f:
+        for d in tqdm(iter(data), desc="正在预测(共%s条样本)" % len(data)):
+            q_text = d["question"]
+            p_texts = [p["passage"] for p in d["passages"]]
             a = gen_answer(q_text, p_texts)
             a = max_in_dict(a)
             if a:
-                s = u'%s\t%s\n' % (d['id'], a)
+                s = "%s\t%s\n" % (d["id"], a)
             else:
-                s = u'%s\t\n' % (d['id'])
+                s = "%s\t\n" % (d["id"])
             f.write(s)
             f.flush()
 
 
 class Evaluator(keras.callbacks.Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
         self.lowest = 1e10
 
     def on_epoch_end(self, epoch, logs=None):
         # 保存最优
-        if logs['loss'] <= self.lowest:
-            self.lowest = logs['loss']
-            model.save_weights('./best_model.weights')
+        if logs["loss"] <= self.lowest:
+            self.lowest = logs["loss"]
+            model.save_weights("./best_model.weights")
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
     train_generator = data_generator(train_data, batch_size)
 
@@ -230,9 +215,8 @@ if __name__ == '__main__':
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=epochs,
-        callbacks=[evaluator]
+        callbacks=[evaluator],
     )
 
 else:
-
-    model.load_weights('./best_model.weights')
+    model.load_weights("./best_model.weights")

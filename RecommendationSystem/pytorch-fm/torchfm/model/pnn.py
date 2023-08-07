@@ -7,8 +7,13 @@
 """
 import torch
 
-from torchfm.layer import FeaturesEmbedding, FeaturesLinear, InnerProductNetwork, \
-    OuterProductNetwork, MultiLayerPerceptron
+from torchfm.layer import (
+    FeaturesEmbedding,
+    FeaturesLinear,
+    InnerProductNetwork,
+    OuterProductNetwork,
+    MultiLayerPerceptron,
+)
 
 
 class ProductNeuralNetworkModel(torch.nn.Module):
@@ -18,19 +23,23 @@ class ProductNeuralNetworkModel(torch.nn.Module):
         Y Qu, et al. Product-based Neural Networks for User Response Prediction, 2016.
     """
 
-    def __init__(self, field_dims, embed_dim, mlp_dims, dropout, method='inner'):
+    def __init__(self, field_dims, embed_dim, mlp_dims, dropout, method="inner"):
         super().__init__()
         num_fields = len(field_dims)
-        if method == 'inner':
+        if method == "inner":
             self.pn = InnerProductNetwork()
-        elif method == 'outer':
+        elif method == "outer":
             self.pn = OuterProductNetwork(num_fields, embed_dim)
         else:
-            raise ValueError('unknown product type: ' + method)
+            raise ValueError("unknown product type: " + method)
         self.embedding = FeaturesEmbedding(field_dims, embed_dim)
         self.linear = FeaturesLinear(field_dims, embed_dim)
         self.embed_output_dim = num_fields * embed_dim
-        self.mlp = MultiLayerPerceptron(num_fields * (num_fields - 1) // 2 + self.embed_output_dim, mlp_dims, dropout)
+        self.mlp = MultiLayerPerceptron(
+            num_fields * (num_fields - 1) // 2 + self.embed_output_dim,
+            mlp_dims,
+            dropout,
+        )
 
     def forward(self, x):
         """

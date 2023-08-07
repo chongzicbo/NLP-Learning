@@ -7,7 +7,11 @@
 """
 import torch
 
-from torchfm.layer import FeaturesEmbedding, FeaturesLinear, AttentionalFactorizationMachine
+from torchfm.layer import (
+    FeaturesEmbedding,
+    FeaturesLinear,
+    AttentionalFactorizationMachine,
+)
 
 
 class AttentionalFactorizationMachineModel(torch.nn.Module):

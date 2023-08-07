@@ -7,7 +7,11 @@
 # version    ：python 3.8
 # Description：
 """
-from diffusers import DiffusionPipeline, EulerDiscreteScheduler, DPMSolverMultistepScheduler
+from diffusers import (
+    DiffusionPipeline,
+    EulerDiscreteScheduler,
+    DPMSolverMultistepScheduler,
+)
 
 repo_id = "runwayml/stable-diffusion-v1-5"
 

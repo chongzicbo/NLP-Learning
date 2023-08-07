@@ -23,4 +23,6 @@ url = "http://images.cocodataset.org/val2017/000000039769.jpg"
 init_image = Image.open(requests.get(url, stream=True).raw)
 prompt = "two tigers"
 n_prompt = "bad, deformed, ugly, bad anatomy"
-image = pipe(prompt=prompt, image=init_image, negative_prompt=n_prompt, strength=0.7).images[0]
+image = pipe(
+    prompt=prompt, image=init_image, negative_prompt=n_prompt, strength=0.7
+).images[0]

@@ -38,9 +38,11 @@ for t, i in sorted(token_dict.items(), key=lambda s: s[1]):
 
 tokenizer = Tokenizer(new_token_dict, do_lower_case=False)
 
-model = build_transformer_model(config_path, checkpoint_path, compound_tokens=compound_tokens)
+model = build_transformer_model(
+    config_path, checkpoint_path, compound_tokens=compound_tokens
+)
 
-text = u"Welcome to BEIJING."
+text = "Welcome to BEIJING."
 tokens = tokenizer.tokenize(text)
 
 print(tokens)

@@ -17,7 +17,7 @@
 
 import os
 
-os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
+os.environ["TF_KERAS"] = "1"  # 必须使用tf.keras
 
 import tensorflow as tf
 
@@ -39,7 +39,9 @@ from tqdm import tqdm
 
 maxlen = 128
 batch_size = 64
-bert_dir = "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_L-12_H-768_A-12/"
+bert_dir = (
+    "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_L-12_H-768_A-12/"
+)
 config_path = os.path.join(bert_dir, "bert_config.json")
 checkpoint_path = os.path.join(bert_dir, "bert_model.ckpt")
 dict_path = os.path.join(bert_dir, "vocab.txt")
@@ -51,30 +53,34 @@ def load_data(filename):
     单条格式：{'text': text, 'spo_list': [(s, p, o)]}
     """
     D = []
-    with open(filename, encoding='utf-8') as f:
+    with open(filename, encoding="utf-8") as f:
         lines = f.readlines()
         # 取10条样本用于debug
         for l in lines:  # [0:10]
             l = json.loads(l)
-            D.append({
-                'text': l['text'],
-                'spo_list': [(spo['subject'], spo['predicate'], spo['object'])
-                             for spo in l['spo_list']]
-            })
+            D.append(
+                {
+                    "text": l["text"],
+                    "spo_list": [
+                        (spo["subject"], spo["predicate"], spo["object"])
+                        for spo in l["spo_list"]
+                    ],
+                }
+            )
     return D
 
 
 # 加载数据集
-train_data = load_data(os.path.join(data_dir, 'train_data.json'))
-valid_data = load_data(os.path.join(data_dir, 'dev_data.json'))
+train_data = load_data(os.path.join(data_dir, "train_data.json"))
+valid_data = load_data(os.path.join(data_dir, "dev_data.json"))
 predicate2id, id2predicate = {}, {}  # 关系及其id
 
-with open(os.path.join(data_dir, 'all_50_schemas')) as f:
+with open(os.path.join(data_dir, "all_50_schemas")) as f:
     for l in f:
         l = json.loads(l)
-        if l['predicate'] not in predicate2id:
-            id2predicate[len(predicate2id)] = l['predicate']
-            predicate2id[l['predicate']] = len(predicate2id)
+        if l["predicate"] not in predicate2id:
+            id2predicate[len(predicate2id)] = l["predicate"]
+            predicate2id[l["predicate"]] = len(predicate2id)
 
 # 建立分词器
 tokenizer = Tokenizer(dict_path, do_lower_case=True)  # 转为小写
@@ -86,23 +92,22 @@ def search(pattern, sequence):
     """
     n = len(pattern)
     for i in range(len(sequence)):
-        if sequence[i:i + n] == pattern:
+        if sequence[i : i + n] == pattern:
             return i
     return -1
 
 
 class data_generator(DataGenerator):
-    """数据生成器
-    """
+    """数据生成器"""
 
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids = [], []
         batch_subject_labels, batch_subject_ids, batch_object_labels = [], [], []
         for is_end, d in self.sample(random):
-            token_ids, segment_ids = tokenizer.encode(d['text'], maxlen=maxlen)
+            token_ids, segment_ids = tokenizer.encode(d["text"], maxlen=maxlen)
             # 整理三元组 {s: [(o, p)]}
             spoes = {}
-            for s, p, o in d['spo_list']:
+            for s, p, o in d["spo_list"]:
                 s = tokenizer.encode(s)[0][1:-1]  # subject token id
                 p = predicate2id[p]  # 关系 id
                 o = tokenizer.encode(o)[0][1:-1]  # object token id
@@ -116,7 +121,9 @@ class data_generator(DataGenerator):
                     spoes[s].append(o)  # subject 可以对应多个object和关系
             if spoes:
                 # subject标签
-                subject_labels = np.zeros((len(token_ids), 2))  # subject位置对应的标签，1或者0  [seq_len,2]
+                subject_labels = np.zeros(
+                    (len(token_ids), 2)
+                )  # subject位置对应的标签，1或者0  [seq_len,2]
                 for s in spoes:
                     subject_labels[s[0], 0] = 1  # subject 的开始位置设置为1
                     subject_labels[s[1], 1] = 1  # subject的结束位置设置为1
@@ -126,7 +133,9 @@ class data_generator(DataGenerator):
                 end = np.random.choice(end[end >= start])  # 随机选择一个end
                 subject_ids = (start, end)
                 # 对应的object标签
-                object_labels = np.zeros((len(token_ids), len(predicate2id), 2))  # [seq_len,关系数量(49)，2]
+                object_labels = np.zeros(
+                    (len(token_ids), len(predicate2id), 2)
+                )  # [seq_len,关系数量(49)，2]
                 for o in spoes.get(subject_ids, []):
                     object_labels[o[0], o[2], 0] = 1  # object开始位置对应的标签
                     object_labels[o[1], o[2], 1] = 1  # object结束位置对应的标签
@@ -139,23 +148,26 @@ class data_generator(DataGenerator):
                 if len(batch_token_ids) == self.batch_size or is_end:
                     batch_token_ids = sequence_padding(batch_token_ids)
                     batch_segment_ids = sequence_padding(batch_segment_ids)
-                    batch_subject_labels = sequence_padding(
-                        batch_subject_labels
-                    )
+                    batch_subject_labels = sequence_padding(batch_subject_labels)
                     batch_subject_ids = np.array(batch_subject_ids)
                     batch_object_labels = sequence_padding(batch_object_labels)
                     yield [
-                              batch_token_ids, batch_segment_ids,
-                              batch_subject_labels, batch_subject_ids,
-                              batch_object_labels
-                          ], None
+                        batch_token_ids,
+                        batch_segment_ids,
+                        batch_subject_labels,
+                        batch_subject_ids,
+                        batch_object_labels,
+                    ], None
                     batch_token_ids, batch_segment_ids = [], []
-                    batch_subject_labels, batch_subject_ids, batch_object_labels = [], [], []
+                    batch_subject_labels, batch_subject_ids, batch_object_labels = (
+                        [],
+                        [],
+                        [],
+                    )
 
 
 def extract_subject(inputs):
-    """根据subject_ids从output中取出subject的向量表征
-    """
+    """根据subject_ids从output中取出subject的向量表征"""
     output, subject_ids = inputs
     start = batch_gather(output, subject_ids[:, :1])  # subject的开始索引
     end = batch_gather(output, subject_ids[:, 1:])  # subject的结束索引
@@ -164,9 +176,15 @@ def extract_subject(inputs):
 
 
 # 补充输入
-subject_labels = Input(shape=(None, 2), name='Subject-Labels')  # input shape [batch_size,seq_len,2]
-subject_ids = Input(shape=(2,), name='Subject-Ids')  # input shape [batch_size,2],开始位置和结束位置
-object_labels = Input(shape=(None, len(predicate2id), 2), name='Object-Labels')  # input shape [batch_size,seq_len,49,2]
+subject_labels = Input(
+    shape=(None, 2), name="Subject-Labels"
+)  # input shape [batch_size,seq_len,2]
+subject_ids = Input(
+    shape=(2,), name="Subject-Ids"
+)  # input shape [batch_size,2],开始位置和结束位置
+object_labels = Input(
+    shape=(None, len(predicate2id), 2), name="Object-Labels"
+)  # input shape [batch_size,seq_len,49,2]
 
 # 加载预训练模型
 bert = build_transformer_model(
@@ -176,10 +194,10 @@ bert = build_transformer_model(
 )
 
 # 预测subject
-output = Dense(
-    units=2, activation='sigmoid', kernel_initializer=bert.initializer
-)(bert.model.output)  # bert.model.output shape为[batch_size,seq_len,768],output shape 为[batch_size,seq_len,2]
-subject_preds = Lambda(lambda x: x ** 2)(output)  # 结果为什么要进行平方 :处理样本不平衡问题
+output = Dense(units=2, activation="sigmoid", kernel_initializer=bert.initializer)(
+    bert.model.output
+)  # bert.model.output shape为[batch_size,seq_len,768],output shape 为[batch_size,seq_len,2]
+subject_preds = Lambda(lambda x: x**2)(output)  # 结果为什么要进行平方 :处理样本不平衡问题
 
 subject_model = Model(bert.model.inputs, subject_preds)
 
@@ -190,18 +208,17 @@ subject = Lambda(extract_subject)([output, subject_ids])
 output = LayerNormalization(conditional=True)([output, subject])
 output = Dense(
     units=len(predicate2id) * 2,
-    activation='sigmoid',
-    kernel_initializer=bert.initializer
+    activation="sigmoid",
+    kernel_initializer=bert.initializer,
 )(output)
-output = Lambda(lambda x: x ** 4)(output)  # 4次方是为了处理样本标签不平衡
+output = Lambda(lambda x: x**4)(output)  # 4次方是为了处理样本标签不平衡
 object_preds = Reshape((-1, len(predicate2id), 2))(output)
 
 object_model = Model(bert.model.inputs + [subject_ids], object_preds)
 
 
 class TotalLoss(Loss):
-    """subject_loss与object_loss之和，都是二分类交叉熵
-    """
+    """subject_loss与object_loss之和，都是二分类交叉熵"""
 
     def compute_loss(self, inputs, mask=None):
         subject_labels, object_labels = inputs[:2]
@@ -222,25 +239,23 @@ class TotalLoss(Loss):
         return subject_loss + object_loss
 
 
-subject_preds, object_preds = TotalLoss([2, 3])([
-    subject_labels, object_labels, subject_preds, object_preds,
-    bert.model.output
-])
+subject_preds, object_preds = TotalLoss([2, 3])(
+    [subject_labels, object_labels, subject_preds, object_preds, bert.model.output]
+)
 
 # 训练模型
 train_model = Model(
     bert.model.inputs + [subject_labels, subject_ids, object_labels],
-    [subject_preds, object_preds]
+    [subject_preds, object_preds],
 )
 
-AdamEMA = extend_with_exponential_moving_average(Adam, name='AdamEMA')
+AdamEMA = extend_with_exponential_moving_average(Adam, name="AdamEMA")
 optimizer = AdamEMA(learning_rate=1e-5)
 train_model.compile(optimizer=optimizer)
 
 
 def extract_spoes(text):
-    """抽取输入text所包含的三元组
-    """
+    """抽取输入text所包含的三元组"""
     tokens = tokenizer.tokenize(text, maxlen=maxlen)
     mapping = tokenizer.rematch(text, tokens)
     token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
@@ -271,13 +286,17 @@ def extract_spoes(text):
                 for _end, predicate2 in zip(*end):
                     if _start <= _end and predicate1 == predicate2:
                         spoes.append(
-                            ((mapping[subject[0]][0],
-                              mapping[subject[1]][-1]), predicate1,
-                             (mapping[_start][0], mapping[_end][-1]))
+                            (
+                                (mapping[subject[0]][0], mapping[subject[1]][-1]),
+                                predicate1,
+                                (mapping[_start][0], mapping[_end][-1]),
+                            )
                         )
                         break
-        return [(text[s[0]:s[1] + 1], id2predicate[p], text[o[0]:o[1] + 1])
-                for s, p, o, in spoes]
+        return [
+            (text[s[0] : s[1] + 1], id2predicate[p], text[o[0] : o[1] + 1])
+            for s, p, o, in spoes
+        ]
     else:
         return []
 
@@ -303,59 +322,58 @@ class SPO(tuple):
 
 
 def evaluate(data):
-    """评估函数，计算f1、precision、recall
-    """
+    """评估函数，计算f1、precision、recall"""
     X, Y, Z = 1e-10, 1e-10, 1e-10
-    f = open('dev_pred.json', 'w', encoding='utf-8')
+    f = open("dev_pred.json", "w", encoding="utf-8")
     pbar = tqdm()
     for d in data:
-        R = set([SPO(spo) for spo in extract_spoes(d['text'])])
-        T = set([SPO(spo) for spo in d['spo_list']])
+        R = set([SPO(spo) for spo in extract_spoes(d["text"])])
+        T = set([SPO(spo) for spo in d["spo_list"]])
         X += len(R & T)
         Y += len(R)
         Z += len(T)
         f1, precision, recall = 2 * X / (Y + Z), X / Y, X / Z
         pbar.update()
         pbar.set_description(
-            'f1: %.5f, precision: %.5f, recall: %.5f' % (f1, precision, recall)
+            "f1: %.5f, precision: %.5f, recall: %.5f" % (f1, precision, recall)
         )
-        s = json.dumps({
-            'text': d['text'],
-            'spo_list': list(T),
-            'spo_list_pred': list(R),
-            'new': list(R - T),
-            'lack': list(T - R),
-        },
+        s = json.dumps(
+            {
+                "text": d["text"],
+                "spo_list": list(T),
+                "spo_list_pred": list(R),
+                "new": list(R - T),
+                "lack": list(T - R),
+            },
             ensure_ascii=False,
-            indent=4)
-        f.write(s + '\n')
+            indent=4,
+        )
+        f.write(s + "\n")
     pbar.close()
     f.close()
     return f1, precision, recall
 
 
 class Evaluator(keras.callbacks.Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
-        self.best_val_f1 = 0.
+        self.best_val_f1 = 0.0
 
     def on_epoch_end(self, epoch, logs=None):
         optimizer.apply_ema_weights()
         f1, precision, recall = evaluate(valid_data)
         if f1 >= self.best_val_f1:
             self.best_val_f1 = f1
-            train_model.save_weights('best_model.weights')
+            train_model.save_weights("best_model.weights")
         optimizer.reset_old_weights()
         print(
-            'f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f\n' %
-            (f1, precision, recall, self.best_val_f1)
+            "f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f\n"
+            % (f1, precision, recall, self.best_val_f1)
         )
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     train_generator = data_generator(train_data, batch_size)
     evaluator = Evaluator()
 
@@ -363,9 +381,8 @@ if __name__ == '__main__':
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=20,
-        callbacks=[evaluator]
+        callbacks=[evaluator],
     )
 
 else:
-
-    train_model.load_weights('best_model.weights')
+    train_model.load_weights("best_model.weights")

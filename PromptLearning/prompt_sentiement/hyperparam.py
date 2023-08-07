@@ -23,7 +23,7 @@ from transformers import (
     BertTokenizer,
     TrainingArguments,
     BertForSequenceClassification,
-    EarlyStoppingCallback
+    EarlyStoppingCallback,
 )
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -64,7 +64,9 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.encodings["input_ids"])
 
 
-def df_2_dataset(df: DataFrame, le: LabelEncoder, text: str, label: str, tokenizer) -> Dataset:
+def df_2_dataset(
+    df: DataFrame, le: LabelEncoder, text: str, label: str, tokenizer
+) -> Dataset:
     """Transform DataFrame into DataSet
 
     Args:
@@ -111,10 +113,7 @@ def compute_metrics(results: EvalPrediction) -> Optional[dict]:
     return {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
 
 
-def train(train_dataset: Dataset,
-          valid_dataset: Dataset,
-          pre_model_path: str
-          ) -> None:
+def train(train_dataset: Dataset, valid_dataset: Dataset, pre_model_path: str) -> None:
     args = TrainingArguments(
         report_to="wandb",
         output_dir="/data/christmas.wang/project/classification_base_project/output",
@@ -129,7 +128,9 @@ def train(train_dataset: Dataset,
     )
 
     def model_init():
-        return BertForSequenceClassification.from_pretrained(pre_model_path, num_labels=2)
+        return BertForSequenceClassification.from_pretrained(
+            pre_model_path, num_labels=2
+        )
 
     trainer = Trainer(
         model_init=model_init,
@@ -146,19 +147,18 @@ def train(train_dataset: Dataset,
             "weight_decay": trial.suggest_float("weight_decay", 0.01, 0.3),
             "num_train_epochs": trial.suggest_int("num_train_epochs", 2, 8),
             "seed": trial.suggest_int("seed", 20, 40),
-            "per_device_train_batch_size": trial.suggest_categorical("per_device_train_batch_size", [4, 8, 16]),
+            "per_device_train_batch_size": trial.suggest_categorical(
+                "per_device_train_batch_size", [4, 8, 16]
+            ),
         }
 
     best_trial = trainer.hyperparameter_search(
-        direction="maximize",
-        backend="optuna",
-        n_trials=10,
-        hp_space=hp_space
+        direction="maximize", backend="optuna", n_trials=10, hp_space=hp_space
     )
     print("*************************************")
     print(" Best run %s" % str(best_trial))
     print("*************************************")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     train(train_dataset, eval_dataset, ber_name_path)

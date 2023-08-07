@@ -7,6 +7,8 @@
 """
 import torch
 from torch import nn
+
+
 class NeuralNetwork(nn.Module):
     def __init__(self):
         super(NeuralNetwork, self).__init__()
@@ -23,14 +25,18 @@ class NeuralNetwork(nn.Module):
         x = self.flatten(x)
         logits = self.linear_relu_stack(x)
         return logits
+
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using {device} device")
-model=torch.load("model.pt")
-torch.onnx.export(model,
-                  torch.randn(1, 28, 28).to(device),
-                  "fashion_mnist_model.onnx",
-                  input_names=["input"],
-                  output_names=["output"])
+model = torch.load("model.pt")
+torch.onnx.export(
+    model,
+    torch.randn(1, 28, 28).to(device),
+    "fashion_mnist_model.onnx",
+    input_names=["input"],
+    output_names=["output"],
+)
 
 import onnx
 

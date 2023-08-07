@@ -50,5 +50,5 @@ flat_image = flatten(input_image)
 print(flat_image.size())
 model.training = True
 torch.save(model, "model.pt")
-model_loaded=torch.load("model.pt")
+model_loaded = torch.load("model.pt")
 print(model_loaded)

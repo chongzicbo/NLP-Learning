@@ -30,13 +30,13 @@ def load_dataset(datafiles):
 
 def parse_decodes(sentences, predictions, lengths, label_vocab):
     """Parse the padding result
-        Args:
-            sentences (list): the tagging sentences.
-            predictions (list): the prediction tags.
-            lengths (list): the valid length of each sentence.
-            label_vocab (dict): the label vocab.
-        Returns:
-            outputs (list): the formatted output.
+    Args:
+        sentences (list): the tagging sentences.
+        predictions (list): the prediction tags.
+        lengths (list): the valid length of each sentence.
+        label_vocab (dict): the label vocab.
+    Returns:
+        outputs (list): the formatted output.
     """
     predictions = [x for batch in predictions for x in batch]
     lengths = [x for batch in lengths for x in batch]
@@ -61,5 +61,3 @@ def parse_decodes(sentences, predictions, lengths, label_vocab):
             sent_out.append(words)
         outputs.append("".join([str((s, t)) for s, t in zip(sent_out, tags_out)]))
     return outputs
-
-

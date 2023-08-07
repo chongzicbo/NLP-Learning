@@ -7,7 +7,12 @@
 """
 import torch
 
-from torchfm.layer import FactorizationMachine, FeaturesEmbedding, MultiLayerPerceptron, FeaturesLinear
+from torchfm.layer import (
+    FactorizationMachine,
+    FeaturesEmbedding,
+    MultiLayerPerceptron,
+    FeaturesLinear,
+)
 
 
 class NeuralFactorizationMachineModel(torch.nn.Module):
@@ -24,7 +29,7 @@ class NeuralFactorizationMachineModel(torch.nn.Module):
         self.fm = torch.nn.Sequential(
             FactorizationMachine(reduce_sum=False),
             torch.nn.BatchNorm1d(embed_dim),
-            torch.nn.Dropout(dropouts[0])
+            torch.nn.Dropout(dropouts[0]),
         )
         self.mlp = MultiLayerPerceptron(embed_dim, mlp_dims, dropouts[1])
 

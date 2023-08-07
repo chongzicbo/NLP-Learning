@@ -12,7 +12,14 @@
 
 from bert4torch.tokenizers import Tokenizer
 from bert4torch.models import build_transformer_model, BaseModel
-from bert4torch.snippets import sequence_padding, Callback, text_segmentate, ListDataset, seed_everything, get_pool_emb
+from bert4torch.snippets import (
+    sequence_padding,
+    Callback,
+    text_segmentate,
+    ListDataset,
+    seed_everything,
+    get_pool_emb,
+)
 import torch.nn as nn
 import torch
 import torch.optim as optim
@@ -22,7 +29,9 @@ from tensorboardX import SummaryWriter
 
 maxlen = 256
 batch_size = 16
-root_model_path = "/mnt/e/working/huada_bgi/data/pretrained_model/huggingface/bert-base-chinese"
+root_model_path = (
+    "/mnt/e/working/huada_bgi/data/pretrained_model/huggingface/bert-base-chinese"
+)
 dict_path = root_model_path + "/vocab.txt"
 config_path = root_model_path + "/config.json"
 checkpoint_path = root_model_path + "/bert4torch_pytorch_model.bin"
@@ -32,9 +41,9 @@ train_data_path = os.path.join(data_dir, "sentiment.train.data")
 test_data_path = os.path.join(data_dir, "sentiment.test.data")
 valid_data_path = os.path.join(data_dir, "sentiment.valid.data")
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-writer = SummaryWriter(log_dir='./summary')  # prepare summary writer
-choice = 'train'  # train表示训练，infer表示推理
+device = "cuda" if torch.cuda.is_available() else "cpu"
+writer = SummaryWriter(log_dir="./summary")  # prepare summary writer
+choice = "train"  # train表示训练，infer表示推理
 
 # 固定seed
 seed_everything(42)
@@ -47,14 +56,13 @@ tokenizer = Tokenizer(dict_path, do_lower_case=True)
 class MyDataset(ListDataset):
     @staticmethod
     def load_data(filenames):
-        """加载数据，并尽量划分为不超过maxlen的句子
-        """
+        """加载数据，并尽量划分为不超过maxlen的句子"""
         D = []
-        seps, strips = u'\n。！？!?；;，, ', u'；;，, '
+        seps, strips = "\n。！？!?；;，, ", "；;，, "
         for filename in filenames:
-            with open(filename, encoding='utf-8') as f:
+            with open(filename, encoding="utf-8") as f:
                 for l in f:
-                    text, label = l.strip().split('\t')
+                    text, label = l.strip().split("\t")
                     for t in text_segmentate(text, maxlen - 2, seps, strips):
                         D.append((t, int(label)))
         return D
@@ -68,36 +76,63 @@ def collate_fn(batch):
         batch_segment_ids.append(segment_ids)
         batch_labels.append([label])
 
-    batch_token_ids = torch.tensor(sequence_padding(batch_token_ids), dtype=torch.long, device=device)
-    batch_segment_ids = torch.tensor(sequence_padding(batch_segment_ids), dtype=torch.long, device=device)
+    batch_token_ids = torch.tensor(
+        sequence_padding(batch_token_ids), dtype=torch.long, device=device
+    )
+    batch_segment_ids = torch.tensor(
+        sequence_padding(batch_segment_ids), dtype=torch.long, device=device
+    )
     batch_labels = torch.tensor(batch_labels, dtype=torch.long, device=device)
     return [batch_token_ids, batch_segment_ids], batch_labels.flatten()
 
 
 # 加载数据集
 train_dataloader = DataLoader(
-    MyDataset(['F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.train.data']),
-    batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+    MyDataset(
+        [
+            "F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.train.data"
+        ]
+    ),
+    batch_size=batch_size,
+    shuffle=True,
+    collate_fn=collate_fn,
+)
 valid_dataloader = DataLoader(
-    MyDataset(['F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.valid.data']),
-    batch_size=batch_size, collate_fn=collate_fn)
+    MyDataset(
+        [
+            "F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.valid.data"
+        ]
+    ),
+    batch_size=batch_size,
+    collate_fn=collate_fn,
+)
 test_dataloader = DataLoader(
-    MyDataset(['F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.test.data']), batch_size=batch_size,
-    collate_fn=collate_fn)
+    MyDataset(
+        [
+            "F:/Projects/data/corpus/sentence_classification/sentiment/sentiment.test.data"
+        ]
+    ),
+    batch_size=batch_size,
+    collate_fn=collate_fn,
+)
 
 
 # 定义bert上的模型结构
 class Model(BaseModel):
-    def __init__(self, pool_method='cls') -> None:
+    def __init__(self, pool_method="cls") -> None:
         super().__init__()
         self.pool_method = pool_method
-        self.bert = build_transformer_model(config_path=config_path, checkpoint_path=checkpoint_path, with_pool=True)
+        self.bert = build_transformer_model(
+            config_path=config_path, checkpoint_path=checkpoint_path, with_pool=True
+        )
         self.dropout = nn.Dropout(0.1)
-        self.dense = nn.Linear(self.bert.configs['hidden_size'], 2)
+        self.dense = nn.Linear(self.bert.configs["hidden_size"], 2)
 
     def forward(self, token_ids, segment_ids):
         hidden_states, pooling = self.bert([token_ids, segment_ids])
-        pooled_output = get_pool_emb(hidden_states, pooling, token_ids.gt(0).long(), self.pool_method)
+        pooled_output = get_pool_emb(
+            hidden_states, pooling, token_ids.gt(0).long(), self.pool_method
+        )
         output = self.dropout(pooled_output)
         output = self.dense(output)
         return output
@@ -109,16 +144,15 @@ model = Model().to(device)
 model.compile(
     loss=nn.CrossEntropyLoss(),
     optimizer=optim.Adam(model.parameters(), lr=2e-5),
-    metrics=['accuracy']
+    metrics=["accuracy"],
 )
 
 
 class Evaluator(Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
-        self.best_val_acc = 0.
+        self.best_val_acc = 0.0
 
     # def on_batch_end(self, global_step, batch, logs=None):
     #     if global_step % 10 == 0:
@@ -132,11 +166,13 @@ class Evaluator(Callback):
         if val_acc > self.best_val_acc:
             self.best_val_acc = val_acc
             # model.save_weights('best_model.pt')
-        print(f'val_acc: {val_acc:.5f}, test_acc: {test_acc:.5f}, best_val_acc: {self.best_val_acc:.5f}\n')
+        print(
+            f"val_acc: {val_acc:.5f}, test_acc: {test_acc:.5f}, best_val_acc: {self.best_val_acc:.5f}\n"
+        )
 
     # 定义评价函数
     def evaluate(self, data):
-        total, right = 0., 0.
+        total, right = 0.0, 0.0
         for x_true, y_true in data:
             y_pred = model.predict(x_true).argmax(axis=1)
             total += len(y_true)
@@ -145,22 +181,25 @@ class Evaluator(Callback):
 
 
 def inference(texts):
-    '''单条样本推理
-    '''
+    """单条样本推理"""
     for text in texts:
         token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
         token_ids = torch.tensor(token_ids, dtype=torch.long, device=device)[None, :]
-        segment_ids = torch.tensor(segment_ids, dtype=torch.long, device=device)[None, :]
+        segment_ids = torch.tensor(segment_ids, dtype=torch.long, device=device)[
+            None, :
+        ]
 
         logit = model.predict([token_ids, segment_ids])
         y_pred = torch.argmax(torch.softmax(logit, dim=-1)).cpu().numpy()
-        print(text, ' ----> ', y_pred)
+        print(text, " ----> ", y_pred)
 
 
-if __name__ == '__main__':
-    if choice == 'train':
+if __name__ == "__main__":
+    if choice == "train":
         evaluator = Evaluator()
-        model.fit(train_dataloader, epochs=10, steps_per_epoch=None, callbacks=[evaluator])
+        model.fit(
+            train_dataloader, epochs=10, steps_per_epoch=None, callbacks=[evaluator]
+        )
     else:
-        model.load_weights('best_model.pt')
-        inference(['我今天特别开心', '我今天特别生气'])
+        model.load_weights("best_model.pt")
+        inference(["我今天特别开心", "我今天特别生气"])

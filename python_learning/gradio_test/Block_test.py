@@ -48,4 +48,4 @@ with gr.Blocks() as demo:
     text_button.click(flip_text, inputs=text_input, outputs=text_output)
     image_button.click(flip_image, inputs=image_input, outputs=image_output)
 
-demo.launch(server_name='188.188.1.250',server_port=9988)
+demo.launch(server_name="188.188.1.250", server_port=9988)

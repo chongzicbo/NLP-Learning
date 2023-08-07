@@ -24,13 +24,15 @@ from tqdm import tqdm
 
 maxlen = 256
 batch_size = 16
-categories = ['LOC', 'PER', 'ORG']
+categories = ["LOC", "PER", "ORG"]
 
 # BERT base
-config_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/pytorch_model.bin'
-dict_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/vocab.txt'
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+config_path = "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/bert_config.json"
+checkpoint_path = "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/pytorch_model.bin"
+dict_path = (
+    "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/vocab.txt"
+)
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # 固定seed
 seed_everything(42)
@@ -41,18 +43,18 @@ class MyDataset(ListDataset):
     @staticmethod
     def load_data(filename):
         D = []
-        with open(filename, encoding='utf-8') as f:
+        with open(filename, encoding="utf-8") as f:
             f = f.read()
-            for l in f.split('\n\n'):
+            for l in f.split("\n\n"):
                 if not l:
                     continue
-                d = ['']
-                for i, c in enumerate(l.split('\n')):
-                    char, flag = c.split(' ')
+                d = [""]
+                for i, c in enumerate(l.split("\n")):
+                    char, flag = c.split(" ")
                     d[0] += char
-                    if flag[0] == 'B':
+                    if flag[0] == "B":
                         d.append([i, i, flag[2:]])
-                    elif flag[0] == 'I':
+                    elif flag[0] == "I":
                         d[-1][1] = i
                 D.append(d)
         return D
@@ -63,7 +65,12 @@ tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
 
 def collate_fn(batch):
-    batch_token_ids, batch_labels, batch_entity_ids, batch_entity_labels = [], [], [], []
+    batch_token_ids, batch_labels, batch_entity_ids, batch_entity_labels = (
+        [],
+        [],
+        [],
+        [],
+    )
     for d in batch:
         tokens = tokenizer.tokenize(d[0], maxlen=maxlen)
         mapping = tokenizer.rematch(d[0], tokens)
@@ -77,7 +84,7 @@ def collate_fn(batch):
                 start = start_mapping[start]
                 end = end_mapping[end]
                 labels[start] = 1  # 标记B
-                labels[start + 1:end + 1] = 2  # 标记I
+                labels[start + 1 : end + 1] = 2  # 标记I
                 entity_ids.append([start, end])
                 entity_labels.append(categories.index(label) + 1)
 
@@ -90,28 +97,46 @@ def collate_fn(batch):
         batch_entity_ids.append(entity_ids)
         batch_entity_labels.append(entity_labels)
 
-    batch_token_ids = torch.tensor(sequence_padding(batch_token_ids), dtype=torch.long, device=device)
-    batch_labels = torch.tensor(sequence_padding(batch_labels), dtype=torch.long, device=device)
-    batch_entity_ids = torch.tensor(sequence_padding(batch_entity_ids), dtype=torch.long,
-                                    device=device)  # [btz, 实体个数，start/end]
-    batch_entity_labels = torch.tensor(sequence_padding(batch_entity_labels), dtype=torch.long,
-                                       device=device)  # [btz, 实体个数]
+    batch_token_ids = torch.tensor(
+        sequence_padding(batch_token_ids), dtype=torch.long, device=device
+    )
+    batch_labels = torch.tensor(
+        sequence_padding(batch_labels), dtype=torch.long, device=device
+    )
+    batch_entity_ids = torch.tensor(
+        sequence_padding(batch_entity_ids), dtype=torch.long, device=device
+    )  # [btz, 实体个数，start/end]
+    batch_entity_labels = torch.tensor(
+        sequence_padding(batch_entity_labels), dtype=torch.long, device=device
+    )  # [btz, 实体个数]
     return [batch_token_ids, batch_entity_ids], [batch_labels, batch_entity_labels]
 
 
 # 转换数据集
-train_dataloader = DataLoader(MyDataset('F:/Projects/data/corpus/ner/china-people-daily-ner-corpus/example.train'),
-                              batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
-valid_dataloader = DataLoader(MyDataset('F:/Projects/data/corpus/ner/china-people-daily-ner-corpus/example.dev'),
-                              batch_size=batch_size, collate_fn=collate_fn)
+train_dataloader = DataLoader(
+    MyDataset(
+        "F:/Projects/data/corpus/ner/china-people-daily-ner-corpus/example.train"
+    ),
+    batch_size=batch_size,
+    shuffle=True,
+    collate_fn=collate_fn,
+)
+valid_dataloader = DataLoader(
+    MyDataset("F:/Projects/data/corpus/ner/china-people-daily-ner-corpus/example.dev"),
+    batch_size=batch_size,
+    collate_fn=collate_fn,
+)
 
 
 # 定义bert上的模型结构
 class Model(BaseModel):
     def __init__(self):
         super().__init__()
-        self.bert = build_transformer_model(config_path=config_path, checkpoint_path=checkpoint_path,
-                                            segment_vocab_size=0)
+        self.bert = build_transformer_model(
+            config_path=config_path,
+            checkpoint_path=checkpoint_path,
+            segment_vocab_size=0,
+        )
         self.dense1 = nn.Linear(768, len(categories))
         self.dense2 = nn.Linear(768, len(categories) + 1)  # 包含padding
         self.crf = CRF(len(categories))
@@ -127,8 +152,9 @@ class Model(BaseModel):
         btz, entity_count, _ = entity_ids.shape
         hidden_size = last_hidden_state.shape[-1]
         entity_ids = entity_ids.reshape(btz, -1, 1).repeat(1, 1, hidden_size)
-        entity_states = torch.gather(last_hidden_state, dim=1, index=entity_ids).reshape(btz, entity_count, -1,
-                                                                                         hidden_size)
+        entity_states = torch.gather(
+            last_hidden_state, dim=1, index=entity_ids
+        ).reshape(btz, entity_count, -1, hidden_size)
         entity_states = torch.mean(entity_states, dim=2)  # 取实体首尾hidden_states的均值
         entity_logit = self.dense2(entity_states)  # [btz, 实体个数，实体类型数]
 
@@ -141,7 +167,9 @@ class Model(BaseModel):
             last_hidden_state = self.bert([token_ids])  # [btz, seq_len, hdsz]
             emission_score = self.dense1(last_hidden_state)  # [bts, seq_len, tag_size]
             attention_mask = token_ids.gt(0)
-            best_path = self.crf.decode(emission_score, attention_mask)  # [bts, seq_len]
+            best_path = self.crf.decode(
+                emission_score, attention_mask
+            )  # [bts, seq_len]
 
             # 二阶段推理
             batch_entity_ids = []
@@ -159,14 +187,18 @@ class Model(BaseModel):
                 if not entity_ids:  # 至少要有一个标签
                     entity_ids.append([0, 0])  # 如果没有则用0填充
                 batch_entity_ids.append([i for i in entity_ids if i])
-            batch_entity_ids = torch.tensor(sequence_padding(batch_entity_ids), dtype=torch.long,
-                                            device=device)  # [btz, 实体个数，start/end]
+            batch_entity_ids = torch.tensor(
+                sequence_padding(batch_entity_ids), dtype=torch.long, device=device
+            )  # [btz, 实体个数，start/end]
 
             btz, entity_count, _ = batch_entity_ids.shape
             hidden_size = last_hidden_state.shape[-1]
-            gather_index = batch_entity_ids.reshape(btz, -1, 1).repeat(1, 1, hidden_size)
-            entity_states = torch.gather(last_hidden_state, dim=1, index=gather_index).reshape(btz, entity_count, -1,
-                                                                                               hidden_size)
+            gather_index = batch_entity_ids.reshape(btz, -1, 1).repeat(
+                1, 1, hidden_size
+            )
+            entity_states = torch.gather(
+                last_hidden_state, dim=1, index=gather_index
+            ).reshape(btz, entity_count, -1, hidden_size)
             entity_states = torch.mean(entity_states, dim=2)  # 取实体首尾hidden_states的均值
             entity_logit = self.dense2(entity_states)  # [btz, 实体个数，实体类型数]
             entity_pred = torch.argmax(entity_logit, dim=-1)  # [btz, 实体个数]
@@ -188,8 +220,10 @@ class Loss(nn.Module):
         emission_score, attention_mask, entity_logit = outputs
         seq_labels, entity_labels = labels
         loss1 = model.crf(emission_score, attention_mask, seq_labels)
-        loss2 = self.loss2(entity_logit.reshape(-1, entity_logit.shape[-1]), entity_labels.flatten())
-        return {'loss': loss1 + loss2, 'loss1': loss1, 'loss2': loss2}
+        loss2 = self.loss2(
+            entity_logit.reshape(-1, entity_logit.shape[-1]), entity_labels.flatten()
+        )
+        return {"loss": loss1 + loss2, "loss1": loss1, "loss2": loss2}
 
 
 # Loss返回的key会自动计入metrics，下述metrics不写仍可以打印loss1和loss2
@@ -219,38 +253,38 @@ def evaluate(data):
 
 
 def trans_entity2tuple(entity_ids, entity_labels):
-    '''把tensor转为(样本id, start, end, 实体类型)的tuple用于计算指标
-    '''
+    """把tensor转为(样本id, start, end, 实体类型)的tuple用于计算指标"""
     entity_true = set()
     for i, one_sample in enumerate(entity_ids):
         for j, item in enumerate(one_sample):
             if item[0].item() * item[1].item() != 0:
-                entity_true.add((i, item[0].item(), item[1].item(), entity_labels[i, j].item()))
+                entity_true.add(
+                    (i, item[0].item(), item[1].item(), entity_labels[i, j].item())
+                )
     return entity_true
 
 
 class Evaluator(Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
-        self.best_val_f1 = 0.
+        self.best_val_f1 = 0.0
 
     def on_epoch_end(self, steps, epoch, logs=None):
         f1, precision, recall, f2, precision2, recall2 = evaluate(valid_dataloader)
         if f2 > self.best_val_f1:
             self.best_val_f1 = f2
             # model.save_weights('best_model.pt')
-        print(f'[val-1阶段] f1: {f1:.5f}, p: {precision:.5f} r: {recall:.5f}')
-        print(f'[val-2阶段] f1: {f2:.5f}, p: {precision2:.5f} r: {recall2:.5f} best_f1: {self.best_val_f1:.5f}\n')
+        print(f"[val-1阶段] f1: {f1:.5f}, p: {precision:.5f} r: {recall:.5f}")
+        print(
+            f"[val-2阶段] f1: {f2:.5f}, p: {precision2:.5f} r: {recall2:.5f} best_f1: {self.best_val_f1:.5f}\n"
+        )
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
 
     model.fit(train_dataloader, epochs=20, steps_per_epoch=None, callbacks=[evaluator])
 
 else:
-
-    model.load_weights('best_model.pt')
+    model.load_weights("best_model.pt")

@@ -16,7 +16,12 @@ from torch.utils.data import DataLoader
 
 import evaluate
 from datasets import load_dataset
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, get_linear_schedule_with_warmup, set_seed
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    get_linear_schedule_with_warmup,
+    set_seed,
+)
 from tqdm import tqdm
 import peft
 
@@ -44,12 +49,16 @@ if getattr(tokenizer, "pad_token_id") is None:
 
 
 def process_function(examples):
-    tokenized_examples = tokenizer(examples["review"], truncation=True, max_length=max_length)
+    tokenized_examples = tokenizer(
+        examples["review"], truncation=True, max_length=max_length
+    )
     tokenized_examples["labels"] = examples["label"]
     return tokenized_examples
 
 
-tokenized_datasets = datasets.map(process_function, batched=True, remove_columns=datasets["train"].column_names)
+tokenized_datasets = datasets.map(
+    process_function, batched=True, remove_columns=datasets["train"].column_names
+)
 accuracy_metric = evaluate.load("accuracy")
 
 
@@ -64,12 +73,22 @@ def collate_fn(examples):
 
 
 # Instantiate dataloaders.
-train_dataloader = DataLoader(tokenized_datasets["train"], shuffle=True, collate_fn=collate_fn, batch_size=batch_size)
+train_dataloader = DataLoader(
+    tokenized_datasets["train"],
+    shuffle=True,
+    collate_fn=collate_fn,
+    batch_size=batch_size,
+)
 eval_dataloader = DataLoader(
-    tokenized_datasets["test"], shuffle=False, collate_fn=collate_fn, batch_size=batch_size
+    tokenized_datasets["test"],
+    shuffle=False,
+    collate_fn=collate_fn,
+    batch_size=batch_size,
 )
 
-model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path, num_labels=2)
+model = AutoModelForSequenceClassification.from_pretrained(
+    model_name_or_path, num_labels=2
+)
 
 optimizer = AdamW(params=model.parameters(), lr=lr)
 
@@ -99,7 +118,7 @@ for epoch in range(num_epochs):
         optimizer.zero_grad()
 
     model.eval()
-    total_loss = 0.
+    total_loss = 0.0
     for step, batch in enumerate(tqdm(eval_dataloader)):
         batch.to(device)
         with torch.no_grad():

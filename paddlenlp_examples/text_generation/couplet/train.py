@@ -24,21 +24,26 @@ def do_train(args):
     pad_id = vocab[vocab.eos_token]
 
     model = paddle.Model(
-        Seq2SeqAttnModel(vocab_size, args.hidden_size, args.hidden_size,
-                         args.num_layers, pad_id))
+        Seq2SeqAttnModel(
+            vocab_size, args.hidden_size, args.hidden_size, args.num_layers, pad_id
+        )
+    )
 
     optimizer = paddle.optimizer.Adam(
-        learning_rate=args.learning_rate, parameters=model.parameters())
+        learning_rate=args.learning_rate, parameters=model.parameters()
+    )
     ppl_metric = Perplexity()
     model.prepare(optimizer, CrossEntropyCriterion(), ppl_metric)
 
     print(args)
-    model.fit(train_data=train_loader,
-              epochs=args.max_epoch,
-              eval_freq=1,
-              save_freq=1,
-              save_dir=args.model_path,
-              log_freq=args.log_freq)
+    model.fit(
+        train_data=train_loader,
+        epochs=args.max_epoch,
+        eval_freq=1,
+        save_freq=1,
+        save_dir=args.model_path,
+        log_freq=args.log_freq,
+    )
 
 
 if __name__ == "__main__":

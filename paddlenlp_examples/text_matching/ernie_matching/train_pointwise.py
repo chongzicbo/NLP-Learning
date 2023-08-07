@@ -73,11 +73,13 @@ def do_train():
     train_ds, dev_ds = load_dataset("lcqmc", splits=["train.json", "dev"])
     pretrain_model = ppnlp.transformers.ErnieGramModel.from_pretrained("ernie-gram-zh")
     tokenizer = ppnlp.transformers.ErnieGramTokenizer.from_pretrained("ernie-gram-zh")
-    trans_func = partial(convert_example, tokenizer=tokenizer, max_seq_length=args.max_seq_length)
+    trans_func = partial(
+        convert_example, tokenizer=tokenizer, max_seq_length=args.max_seq_length
+    )
     batchify_fn = lambda samples, fn=Tuple(
         Pad(axis=0, pad_val=tokenizer.pad_token_id),  # text_pair_input
         Pad(axis=0, pad_val=tokenizer.pad_token_type_id),  # text_pair_segment
-        Stack(dtype="int64")
+        Stack(dtype="int64"),
     ): [data for data in fn(samples)]
 
     train_data_loader = create_dataloader(
@@ -85,15 +87,16 @@ def do_train():
         mode="train.json",
         batch_size=args.batch_size,
         batchify_fn=batchify_fn,
-        transfn=trans_func
+        transfn=trans_func,
     )
 
-    dev_data_loader = create_dataloader(dev_ds,
-                                        mode="dev",
-                                        batch_size=args.batch_size,
-                                        batchify_fn=batchify_fn,
-                                        transfn=trans_func
-                                        )
+    dev_data_loader = create_dataloader(
+        dev_ds,
+        mode="dev",
+        batch_size=args.batch_size,
+        batchify_fn=batchify_fn,
+        transfn=trans_func,
+    )
     model = PointwiseMatching(pretrain_model)
     if args.init_from_ckpt and os.path.isfile(args.init_from_ckpt):
         state_dict = paddle.load(args.init_from_ckpt)
@@ -101,15 +104,19 @@ def do_train():
     model = paddle.DataParallel(model)
 
     num_training_steps = len(train_data_loader) * args.epochs
-    lr_scheduler = LinearDecayWithWarmup(args.learning_rate, num_training_steps, args.warmup_proportion)
+    lr_scheduler = LinearDecayWithWarmup(
+        args.learning_rate, num_training_steps, args.warmup_proportion
+    )
     decay_params = [
-        p.name for n, p in model.named_parameters() if not any(nd in n for nd in ["bias", "norm"])
+        p.name
+        for n, p in model.named_parameters()
+        if not any(nd in n for nd in ["bias", "norm"])
     ]
     optimizer = paddle.optimizer.AdamW(
         learning_rate=lr_scheduler,
         parameters=model.parameters(),
         weight_decay=args.weight_decay,
-        apply_decay_param_fun=lambda x: x in decay_params
+        apply_decay_param_fun=lambda x: x in decay_params,
     )
     criterion = paddle.nn.loss.CrossEntropyLoss()
     metric = paddle.metric.Accuracy()
@@ -130,8 +137,15 @@ def do_train():
             if global_step % 10 == 0 and rank == 0:
                 print(
                     "global step %d, epoch: %d, batch: %d, loss: %.5f, accu: %.5f, speed: %.2f step/s"
-                    % (global_step, epoch, step, loss, acc,
-                       10 / (time.time() - tic_train)))
+                    % (
+                        global_step,
+                        epoch,
+                        step,
+                        loss,
+                        acc,
+                        10 / (time.time() - tic_train),
+                    )
+                )
                 tic_train = time.time()
             loss.backward()
             optimizer.step()
@@ -156,5 +170,5 @@ def do_train():
     tokenizer.save_pretrained(save_dir)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     do_train()

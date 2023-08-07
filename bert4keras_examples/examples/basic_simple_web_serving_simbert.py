@@ -21,9 +21,9 @@ from bert4keras.snippets import WebServing
 maxlen = 32
 
 # bert配置
-config_path = '/root/kg/bert/chinese_simbert_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '/root/kg/bert/chinese_simbert_L-12_H-768_A-12/bert_model.ckpt'
-dict_path = '/root/kg/bert/chinese_simbert_L-12_H-768_A-12/vocab.txt'
+config_path = "/root/kg/bert/chinese_simbert_L-12_H-768_A-12/bert_config.json"
+checkpoint_path = "/root/kg/bert/chinese_simbert_L-12_H-768_A-12/bert_model.ckpt"
+dict_path = "/root/kg/bert/chinese_simbert_L-12_H-768_A-12/vocab.txt"
 
 # 建立分词器
 tokenizer = Tokenizer(dict_path, do_lower_case=True)  # 建立分词器
@@ -32,8 +32,8 @@ tokenizer = Tokenizer(dict_path, do_lower_case=True)  # 建立分词器
 bert = build_transformer_model(
     config_path,
     checkpoint_path,
-    with_pool='linear',
-    application='unilm',
+    with_pool="linear",
+    application="unilm",
     return_keras_model=False,
 )
 
@@ -42,10 +42,9 @@ seq2seq = keras.models.Model(bert.model.inputs, bert.model.outputs[1])
 
 
 class SynonymsGenerator(AutoRegressiveDecoder):
-    """seq2seq解码器
-    """
+    """seq2seq解码器"""
 
-    @AutoRegressiveDecoder.wraps(default_rtype='probas')
+    @AutoRegressiveDecoder.wraps(default_rtype="probas")
     def predict(self, inputs, output_ids, states):
         token_ids, segment_ids = inputs
         token_ids = np.concatenate([token_ids, output_ids], 1)
@@ -54,8 +53,9 @@ class SynonymsGenerator(AutoRegressiveDecoder):
 
     def generate(self, text, n=1, topp=0.95):
         token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
-        output_ids = self.random_sample([token_ids, segment_ids], n,
-                                        topp=topp)  # 基于随机采样
+        output_ids = self.random_sample(
+            [token_ids, segment_ids], n, topp=topp
+        )  # 基于随机采样
         return [tokenizer.decode(ids) for ids in output_ids]
 
 
@@ -65,7 +65,7 @@ synonyms_generator = SynonymsGenerator(
 
 
 def gen_synonyms(text, n=100, k=20):
-    """"含义： 产生sent的n个相似句，然后返回最相似的k个。
+    """ "含义： 产生sent的n个相似句，然后返回最相似的k个。
     做法：用seq2seq生成，并用encoder算相似度并排序。
     """
     r = synonyms_generator.generate(text, n)
@@ -79,14 +79,14 @@ def gen_synonyms(text, n=100, k=20):
     X = sequence_padding(X)
     S = sequence_padding(S)
     Z = encoder.predict([X, S])
-    Z /= (Z ** 2).sum(axis=1, keepdims=True) ** 0.5
+    Z /= (Z**2).sum(axis=1, keepdims=True) ** 0.5
     argsort = np.dot(Z[1:], -Z[0]).argsort()
     return [r[i + 1] for i in argsort[:k]]
 
 
-if __name__ == '__main__':
-    arguments = {'text': (None, True), 'n': (int, False), 'k': (int, False)}
+if __name__ == "__main__":
+    arguments = {"text": (None, True), "n": (int, False), "k": (int, False)}
     web = WebServing(port=8864)
-    web.route('/gen_synonyms', gen_synonyms, arguments)
+    web.route("/gen_synonyms", gen_synonyms, arguments)
     web.start()
     # 现在可以测试访问 http://127.0.0.1:8864/gen_synonyms?text=苹果多少钱一斤

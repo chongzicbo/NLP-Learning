@@ -41,16 +41,30 @@ def process(example):
     text = example["review"]
     # text = ["399真的很值得之前也住过别的差不多价位的酒店式公寓没有这间好厨房很像厨房很大整个格局也都很舒服早上的早餐我订的8点半的已经冷了。。。位置啊什么还是很好的下次还会去服务也很周到"]
     batch_size = len(text)
-    inputs = tokenizer(text, add_special_tokens=False, truncation=True, max_length=max_length)
+    inputs = tokenizer(
+        text, add_special_tokens=False, truncation=True, max_length=max_length
+    )
     inputs["labels"] = []
     for i in range(batch_size):
         input_ids = inputs["input_ids"][i]
         if len(input_ids) + 1 <= max_length:
-            inputs["input_ids"][i] = input_ids + [tokenizer.pad_token_id] + [0] * (max_length - len(input_ids) - 1)
-            inputs["labels"].append(input_ids + [tokenizer.pad_token_id] + [-100] * (max_length - len(input_ids) - 1))
-            inputs["attention_mask"][i] = [1] * len(input_ids) + [0] + [0] * (max_length - len(input_ids) - 1)
+            inputs["input_ids"][i] = (
+                input_ids
+                + [tokenizer.pad_token_id]
+                + [0] * (max_length - len(input_ids) - 1)
+            )
+            inputs["labels"].append(
+                input_ids
+                + [tokenizer.pad_token_id]
+                + [-100] * (max_length - len(input_ids) - 1)
+            )
+            inputs["attention_mask"][i] = (
+                [1] * len(input_ids) + [0] + [0] * (max_length - len(input_ids) - 1)
+            )
         else:
-            inputs["input_ids"][i] = input_ids[:max_length - 1] + [tokenizer.pad_token_id]
+            inputs["input_ids"][i] = input_ids[: max_length - 1] + [
+                tokenizer.pad_token_id
+            ]
             inputs["labels"].append(inputs["input_ids"][i])
             inputs["attention_mask"][i] = [1] * max_length
 
@@ -63,15 +77,26 @@ def process(example):
 
 # process(None)
 
-train_dataset = dataset["train"].map(process, batched=True, num_proc=1, remove_columns=dataset["train"].column_names)
-test_dataset = dataset["test"].map(process, batched=True, num_proc=1, remove_columns=dataset["test"].column_names)
+train_dataset = dataset["train"].map(
+    process, batched=True, num_proc=1, remove_columns=dataset["train"].column_names
+)
+test_dataset = dataset["test"].map(
+    process, batched=True, num_proc=1, remove_columns=dataset["test"].column_names
+)
 
 train_dataloader = DataLoader(
-    train_dataset, collate_fn=default_data_collator, shuffle=True, batch_size=train_batch_size, pin_memory=True
+    train_dataset,
+    collate_fn=default_data_collator,
+    shuffle=True,
+    batch_size=train_batch_size,
+    pin_memory=True,
 )
 
 test_dataloader = DataLoader(
-    test_dataset, collate_fn=default_data_collator, batch_size=eval_batch_size, pin_memory=True
+    test_dataset,
+    collate_fn=default_data_collator,
+    batch_size=eval_batch_size,
+    pin_memory=True,
 )
 
 # optimizer

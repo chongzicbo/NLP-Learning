@@ -18,7 +18,7 @@ model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-unca
 from transformers import TrainingArguments
 
 training_args = TrainingArguments(
-    output_dir='./model',
+    output_dir="./model",
     learning_rate=2e-5,
     per_device_train_batch_size=8,
     per_device_eval_batch_size=8,
@@ -31,26 +31,28 @@ tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
 
 from datasets import load_dataset
 
-dataset = load_dataset('rotten_tomatoes')
+dataset = load_dataset("rotten_tomatoes")
 # print(dataset["train"]["text"])
 
+
 def tokenize_dataset(dataset):
-    return tokenizer(dataset['text'])
+    return tokenizer(dataset["text"])
 
 
-dataset=dataset.map(tokenize_dataset,batched=True)
+dataset = dataset.map(tokenize_dataset, batched=True)
 
 from transformers import DataCollatorWithPadding
-data_collator=DataCollatorWithPadding(tokenizer=tokenizer)
+
+data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 from transformers import Trainer
 
-trainer=Trainer(
+trainer = Trainer(
     model=model,
     args=training_args,
-    train_dataset=dataset['train'],
-    eval_dataset=dataset['test'],
+    train_dataset=dataset["train"],
+    eval_dataset=dataset["test"],
     tokenizer=tokenizer,
-    data_collator=data_collator
+    data_collator=data_collator,
 )
 
 trainer.train()

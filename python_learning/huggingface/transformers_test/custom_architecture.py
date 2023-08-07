@@ -7,18 +7,20 @@
 # version    ：python 3.8
 # Description：
 """
-from transformers import DistilBertConfig,DistilBertModel
+from transformers import DistilBertConfig, DistilBertModel
 
 config = DistilBertConfig()
 print(config)
 
-myconfig = DistilBertConfig(activation='relu', attention_dropout=0.4)
+myconfig = DistilBertConfig(activation="relu", attention_dropout=0.4)
 print(myconfig)
-model=DistilBertModel.from_pretrained("distilbert-base-uncased",config=myconfig)
+model = DistilBertModel.from_pretrained("distilbert-base-uncased", config=myconfig)
 print(model)
 
 from transformers import ViTImageProcessor
-vit_extrator=ViTImageProcessor()
-print(vit_extrator)
-my_vit_extractor = ViTImageProcessor(resample="PIL.Image.BOX", do_normalize=False, image_mean=[0.3, 0.3, 0.3])
 
+vit_extrator = ViTImageProcessor()
+print(vit_extrator)
+my_vit_extractor = ViTImageProcessor(
+    resample="PIL.Image.BOX", do_normalize=False, image_mean=[0.3, 0.3, 0.3]
+)

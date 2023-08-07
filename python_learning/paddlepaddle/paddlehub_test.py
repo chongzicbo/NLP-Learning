@@ -8,8 +8,8 @@
 # Description：
 """
 
-a_list=[[1,2],[3,4]]
-print([1,2] in a_list)
+a_list = [[1, 2], [3, 4]]
+print([1, 2] in a_list)
 
-if([]):
+if []:
     print(True)

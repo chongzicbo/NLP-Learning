@@ -31,8 +31,10 @@ class Args:
         self.lr = 0.001
         self.epochs = 10
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.data_train = np.array([-2, -1, 0, 2, 3, 4, 5, 6.0, 7, 8, 9, 10, 11, 12, 13, 14, 18, 20])
-        self.data_val = np.array([15.0, 16., 17., 0.1, -3, -4])
+        self.data_train = np.array(
+            [-2, -1, 0, 2, 3, 4, 5, 6.0, 7, 8, 9, 10, 11, 12, 13, 14, 18, 20]
+        )
+        self.data_val = np.array([15.0, 16.0, 17.0, 0.1, -3, -4])
 
 
 args = Args()
@@ -58,6 +60,7 @@ class Net(nn.Module):
 
 # 3.定义数据集
 
+
 class Dataset_num(Dataset):
     def __init__(self, flag="train") -> None:
         self.flag = flag
@@ -81,11 +84,16 @@ class Dataset_num(Dataset):
 
 # 4.训练循环
 
+
 def train():
     train_dataset = Dataset_num(flag="train")
-    train_dataloader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True)
+    train_dataloader = DataLoader(
+        dataset=train_dataset, batch_size=args.batch_size, shuffle=True
+    )
     val_dataset = Dataset_num("val")
-    val_dataloader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=True)
+    val_dataloader = DataLoader(
+        dataset=val_dataset, batch_size=args.batch_size, shuffle=True
+    )
     model = Net(1, 32, 16, 2).to(args.device)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
@@ -98,7 +106,7 @@ def train():
         train_epoch_loss = []
         acc, nums = 0, 0
         for idx, (label, inputs) in enumerate(tqdm(train_dataloader)):
-            inputs = inputs.to(args.device,torch.float32)
+            inputs = inputs.to(args.device, torch.float32)
             label = label.to(args.device)
             outputs = model(inputs)
             optimizer.zero_grad()
@@ -112,7 +120,11 @@ def train():
             nums += label.size()[0]
         train_epochs_loss.append(np.average(train_epoch_loss))
         train_acc.append(100 * acc / nums)
-        print("train acc = {:.3f}%, loss = {}".format(100 * acc / nums, np.average(train_epoch_loss)))
+        print(
+            "train acc = {:.3f}%, loss = {}".format(
+                100 * acc / nums, np.average(train_epoch_loss)
+            )
+        )
         with torch.no_grad():
             model.eval()
             val_epoch_loss = []
@@ -129,8 +141,11 @@ def train():
             valid_epochs_loss.append(np.average(val_epoch_loss))
             val_acc.append(100 * acc / nums)
 
-            print("epoch = {}, valid acc = {:.2f}%, loss = {}".format(epoch, 100 * acc / nums,
-                                                                      np.average(val_epoch_loss)))
+            print(
+                "epoch = {}, valid acc = {:.2f}%, loss = {}".format(
+                    epoch, 100 * acc / nums, np.average(val_epoch_loss)
+                )
+            )
 
     plt.figure(figsize=(12, 4))
     plt.subplot(121)
@@ -142,22 +157,26 @@ def train():
     plt.title("epochs_loss")
     plt.legend()
     plt.show()
-    torch.save(model.state_dict(),"./model.pth")
+    torch.save(model.state_dict(), "./model.pth")
+
 
 def pred(val):
     model = Net(1, 32, 16, 2)
-    model.load_state_dict(torch.load('model.pth'))
+    model.load_state_dict(torch.load("model.pth"))
     model.eval()
     val = torch.tensor(val).reshape(1, -1).float()
     # 需要转换成相应的输入shape，而且得带上batch_size，因此转换成shape=(1,1)这样的形状
     res = model(val)
     # real: tensor([[-5.2095, -0.9326]], grad_fn=<AddmmBackward0>) 需要找到最大值所在的列数，就是标签
     res = res.max(axis=1)[1].item()
-    print("predicted label is {}, {} {} 8".format(res, val.item(), ('>' if res == 1 else '<')))
+    print(
+        "predicted label is {}, {} {} 8".format(
+            res, val.item(), (">" if res == 1 else "<")
+        )
+    )
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     train()
     pred(24)
     pred(3.14)

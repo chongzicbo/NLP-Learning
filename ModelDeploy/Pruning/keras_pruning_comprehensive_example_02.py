@@ -21,10 +21,9 @@ y_train = tf.keras.utils.to_categorical(np.random.randn(1), num_classes=20)
 
 
 def setup_model():
-    model = tf.keras.Sequential([
-        tf.keras.layers.Dense(20, input_shape=input_shape),
-        tf.keras.layers.Flatten()
-    ])
+    model = tf.keras.Sequential(
+        [tf.keras.layers.Dense(20, input_shape=input_shape), tf.keras.layers.Flatten()]
+    )
     return model
 
 
@@ -33,14 +32,14 @@ def setup_pretrained_weights():
 
     model.compile(
         loss=tf.keras.losses.categorical_crossentropy,
-        optimizer='adam',
-        metrics=['accuracy']
+        optimizer="adam",
+        metrics=["accuracy"],
     )
 
     model.summary()
     model.fit(x_train, y_train)
 
-    _, pretrained_weights = tempfile.mkstemp('.tf')
+    _, pretrained_weights = tempfile.mkstemp(".tf")
 
     model.save_weights(pretrained_weights)
 
@@ -52,11 +51,11 @@ def get_gzipped_model_size(model):
     import os
     import zipfile
 
-    _, keras_file = tempfile.mkstemp('.h5')
+    _, keras_file = tempfile.mkstemp(".h5")
     model.save(keras_file, include_optimizer=False)
 
-    _, zipped_file = tempfile.mkstemp('.zip')
-    with zipfile.ZipFile(zipped_file, 'w', compression=zipfile.ZIP_DEFLATED) as f:
+    _, zipped_file = tempfile.mkstemp(".zip")
+    with zipfile.ZipFile(zipped_file, "w", compression=zipfile.ZIP_DEFLATED) as f:
         f.write(keras_file)
 
     return os.path.getsize(zipped_file)
@@ -66,7 +65,9 @@ setup_model()
 pretrained_weights = setup_pretrained_weights()
 
 base_model = setup_model()
-base_model.load_weights(pretrained_weights).expect_partial()  # optional but recommended.
+base_model.load_weights(
+    pretrained_weights
+).expect_partial()  # optional but recommended.
 
 model_for_pruning = tfmot.sparsity.keras.prune_low_magnitude(base_model)
 
@@ -74,7 +75,9 @@ model_for_pruning.summary()
 
 # Create a base model
 base_model = setup_model()
-base_model.load_weights(pretrained_weights).expect_partial()  # optional but recommended for model accuracy
+base_model.load_weights(
+    pretrained_weights
+).expect_partial()  # optional but recommended for model accuracy
 
 
 # Helper function uses `prune_low_magnitude` to make only the
@@ -133,7 +136,9 @@ print("自定义训练完成")
 # 模型剪枝后压缩
 # Define the model.
 base_model = setup_model()
-base_model.load_weights(pretrained_weights).expect_partial()  # optional but recommended for model accuracy
+base_model.load_weights(
+    pretrained_weights
+).expect_partial()  # optional but recommended for model accuracy
 model_for_pruning = tfmot.sparsity.keras.prune_low_magnitude(base_model)
 
 # Typically you train the model here.
@@ -144,5 +149,11 @@ print("final model")
 model_for_export.summary()
 
 print("\n")
-print("Size of gzipped pruned model without stripping: %.2f bytes" % (get_gzipped_model_size(model_for_pruning)))
-print("Size of gzipped pruned model with stripping: %.2f bytes" % (get_gzipped_model_size(model_for_export)))
+print(
+    "Size of gzipped pruned model without stripping: %.2f bytes"
+    % (get_gzipped_model_size(model_for_pruning))
+)
+print(
+    "Size of gzipped pruned model with stripping: %.2f bytes"
+    % (get_gzipped_model_size(model_for_export))
+)

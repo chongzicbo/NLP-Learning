@@ -22,12 +22,12 @@ def evaluate(ckpt, hparams_file, gpus=[0, 1], max_length=300):
         map_location=None,
         batch_size=1,
         max_length=max_length,
-        workers=0
+        workers=0,
     )
     trainer.test(model=model)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # example of running evaluate.py
     # CHECKPOINTS = "/mnt/mrc/train_logs/zh_msra/zh_msra_20200911_for_flat_debug/epoch=2_v1.ckpt"
     # HPARAMS = "/mnt/mrc/train_logs/zh_msra/zh_msra_20200911_for_flat_debug/lightning_logs/version_2/hparams.yaml"
@@ -45,4 +45,9 @@ if __name__ == '__main__':
     except:
         MAXLEN = 300
 
-    evaluate(ckpt=CHECKPOINTS, hparams_file=HPARAMS, gpus=GPUS, max_length=MAXLEN, )
+    evaluate(
+        ckpt=CHECKPOINTS,
+        hparams_file=HPARAMS,
+        gpus=GPUS,
+        max_length=MAXLEN,
+    )

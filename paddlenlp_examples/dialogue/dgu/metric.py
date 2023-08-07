@@ -20,7 +20,7 @@ class RecallAtK(Metric):
     classification task.
     """
 
-    def __init__(self, name='Recall@K', *args, **kwargs):
+    def __init__(self, name="Recall@K", *args, **kwargs):
         super(RecallAtK, self).__init__(*args, **kwargs)
         self._name = name
         self.softmax = nn.Softmax()
@@ -40,7 +40,7 @@ class RecallAtK(Metric):
         calculate precision in recall n
         """
         pos_score = data[idx][0]
-        curr = data[idx:idx + m]
+        curr = data[idx : idx + m]
         curr = sorted(curr, key=lambda x: x[0], reverse=True)
         if curr[n - 1][0] <= pos_score:
             return 1
@@ -82,7 +82,7 @@ class RecallAtK(Metric):
         metrics_out = [
             self.p_at_1_in_10 / self.num_sampls,
             self.p_at_2_in_10 / self.num_sampls,
-            self.p_at_5_in_10 / self.num_sampls
+            self.p_at_5_in_10 / self.num_sampls,
         ]
         return metrics_out
 
@@ -102,7 +102,7 @@ class JointAccuracy(Metric):
     it is equal to 0.
     """
 
-    def __init__(self, name='JointAccuracy', *args, **kwargs):
+    def __init__(self, name="JointAccuracy", *args, **kwargs):
         super(JointAccuracy, self).__init__(*args, **kwargs)
         self._name = name
         self.sigmoid = nn.Sigmoid()
@@ -166,7 +166,7 @@ class F1Score(Metric):
     Slot Filling.
     """
 
-    def __init__(self, name='F1Score', *args, **kwargs):
+    def __init__(self, name="F1Score", *args, **kwargs):
         super(F1Score, self).__init__(*args, **kwargs)
         self._name = name
         self.reset()

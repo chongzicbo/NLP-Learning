@@ -27,8 +27,11 @@ def evaluate(model, criterion, metric, data_loader):
     metric.reset()
     losses = []
     for batch in data_loader:
-        input_ids, token_type_ids, labels = batch['input_ids'], batch[
-            'token_type_ids'], batch['labels']
+        input_ids, token_type_ids, labels = (
+            batch["input_ids"],
+            batch["token_type_ids"],
+            batch["labels"],
+        )
         logits = model(input_ids, token_type_ids)
         loss = criterion(logits, labels)
         probs = F.sigmoid(logits)
@@ -36,8 +39,10 @@ def evaluate(model, criterion, metric, data_loader):
         metric.update(probs, labels)
 
     micro_f1_score, macro_f1_score = metric.accumulate()
-    logger.info("eval loss: %.5f, micro f1 score: %.5f, macro f1 score: %.5f" %
-                (np.mean(losses), micro_f1_score, macro_f1_score))
+    logger.info(
+        "eval loss: %.5f, micro f1 score: %.5f, macro f1 score: %.5f"
+        % (np.mean(losses), micro_f1_score, macro_f1_score)
+    )
     model.train()
     metric.reset()
 
@@ -62,15 +67,14 @@ def preprocess_function(examples, tokenizer, max_seq_length, label_nums):
     result = tokenizer(text=examples["sentence"], max_seq_len=max_seq_length)
     # One-Hot label
     result["labels"] = [
-        float(1) if i in examples["label"] else float(0)
-        for i in range(label_nums)
+        float(1) if i in examples["label"] else float(0) for i in range(label_nums)
     ]
     return result
 
 
 def read_local_dataset(path, label_list):
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, "r", encoding="utf-8") as f:
         for line in f:
-            sentence, label = line.strip().split('\t')
-            labels = [label_list[l] for l in label.split(',')]
-            yield {'sentence': sentence, 'label': labels}
+            sentence, label = line.strip().split("\t")
+            labels = [label_list[l] for l in label.split(",")]
+            yield {"sentence": sentence, "label": labels}

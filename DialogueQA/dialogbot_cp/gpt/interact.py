@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from transformers import BertTokenizerFast, GPT2LMHeadModel
 from loguru import logger
 
-PAD = '[PAD]'
+PAD = "[PAD]"
 pad_id = 0
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -21,15 +21,15 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Inference:
     def __init__(
-            self,
-            model_name_or_path,
-            device=device,
-            max_history_len=3,
-            max_len=25,
-            repetition_penalty=1.0,
-            temperature=1.0,
-            topk=8,
-            topp=0.0
+        self,
+        model_name_or_path,
+        device=device,
+        max_history_len=3,
+        max_len=25,
+        repetition_penalty=1.0,
+        temperature=1.0,
+        topk=8,
+        topp=0.0,
     ):
         self.device = device
         self.tokenizer = BertTokenizerFast.from_pretrained(model_name_or_path)
@@ -50,7 +50,7 @@ class Inference:
         self.history.append(text_ids)
         input_ids = [self.tokenizer.cls_token_id]  # 每个input以[CLS]为开头
 
-        for history_id, history_utr in enumerate(self.history[-self.max_history_len:]):
+        for history_id, history_utr in enumerate(self.history[-self.max_history_len :]):
             input_ids.extend(history_utr)
             input_ids.append(self.tokenizer.sep_token_id)
         input_ids = torch.tensor(input_ids).long().to(self.device)
@@ -66,10 +66,16 @@ class Inference:
                 next_token_logits[id] /= self.repetition_penalty
             next_token_logits = next_token_logits / self.temperature
             # 对于[UNK]的概率设为无穷小，也就是说模型的预测结果不可能是[UNK]这个token
-            next_token_logits[self.tokenizer.convert_tokens_to_ids('[UNK]')] = -float('Inf')
-            filtered_logits = top_k_top_p_filtering(next_token_logits, top_k=self.topk, top_p=self.topp)
+            next_token_logits[self.tokenizer.convert_tokens_to_ids("[UNK]")] = -float(
+                "Inf"
+            )
+            filtered_logits = top_k_top_p_filtering(
+                next_token_logits, top_k=self.topk, top_p=self.topp
+            )
             # torch.multinomial表示从候选集合中无放回地进行抽取num_samples个元素，权重越高，抽到的几率越高，返回元素的下标
-            next_token = torch.multinomial(F.softmax(filtered_logits, dim=-1), num_samples=1)
+            next_token = torch.multinomial(
+                F.softmax(filtered_logits, dim=-1), num_samples=1
+            )
             if next_token == self.tokenizer.sep_token_id:  # 遇到[SEP]则表明response生成结束
                 break
             response.append(next_token.item())
@@ -79,16 +85,18 @@ class Inference:
         return "".join(response_tokens)
 
 
-def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')):
-    """ Filter a distribution of logits using top-k and/or nucleus (top-p) filtering
-        Args:
-            logits: logits distribution shape (vocab size)
-            top_k > 0: keep only top k tokens with highest probability (top-k filtering).
-            top_p > 0.0: keep the top tokens with cumulative probability >= top_p (nucleus filtering).
-                Nucleus filtering is described in Holtzman et al. (http://arxiv.org/abs/1904.09751)
-        From: https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317
+def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float("Inf")):
+    """Filter a distribution of logits using top-k and/or nucleus (top-p) filtering
+    Args:
+        logits: logits distribution shape (vocab size)
+        top_k > 0: keep only top k tokens with highest probability (top-k filtering).
+        top_p > 0.0: keep the top tokens with cumulative probability >= top_p (nucleus filtering).
+            Nucleus filtering is described in Holtzman et al. (http://arxiv.org/abs/1904.09751)
+    From: https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317
     """
-    assert logits.dim() == 1  # batch size 1 for now - could be updated for more but the code would be less clear
+    assert (
+        logits.dim() == 1
+    )  # batch size 1 for now - could be updated for more but the code would be less clear
     top_k = min(top_k, logits.size(-1))  # Safety check
     if top_k > 0:
         # Remove all tokens with a probability less than the last token of the top-k
@@ -98,7 +106,9 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')
         logits[indices_to_remove] = filter_value  # 对于topk之外的其他元素的logits值设为负无穷
 
     if top_p > 0.0:
-        sorted_logits, sorted_indices = torch.sort(logits, descending=True)  # 对logits进行递减排序
+        sorted_logits, sorted_indices = torch.sort(
+            logits, descending=True
+        )  # 对logits进行递减排序
         cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
 
         # Remove tokens with cumulative probability above the threshold
@@ -111,34 +121,54 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')
         logits[indices_to_remove] = filter_value
     return logits
 
+
 def set_args():
     """
     Sets up the arguments.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device', default='0', type=str, help='设备')
-    parser.add_argument('--temperature', default=1, type=float, help='生成的temperature')
-    parser.add_argument('--topk', default=8, type=int, help='最高k选1')
-    parser.add_argument('--topp', default=0, type=float, help='最高积累概率')
-    parser.add_argument('--log_path', default='interact.log', type=str, help='interact日志存放位置')
-    parser.add_argument('--model_dir', default='./outputs/min_ppl_model/', type=str, help='对话模型文件夹路径')
-    parser.add_argument('--repetition_penalty', default=1.0, type=float, help="重复惩罚参数，若生成的对话重复性较高，可适当提高该参数")
-    parser.add_argument('--max_len', type=int, default=25, help='每个utterance的最大长度,超过指定长度则进行截断')
-    parser.add_argument('--max_history_len', type=int, default=3, help="dialogue history的最大长度")
-    parser.add_argument('--no_cuda', action='store_true', help='不使用GPU进行预测')
+    parser.add_argument("--device", default="0", type=str, help="设备")
+    parser.add_argument("--temperature", default=1, type=float, help="生成的temperature")
+    parser.add_argument("--topk", default=8, type=int, help="最高k选1")
+    parser.add_argument("--topp", default=0, type=float, help="最高积累概率")
+    parser.add_argument(
+        "--log_path", default="interact.log", type=str, help="interact日志存放位置"
+    )
+    parser.add_argument(
+        "--model_dir", default="./outputs/min_ppl_model/", type=str, help="对话模型文件夹路径"
+    )
+    parser.add_argument(
+        "--repetition_penalty",
+        default=1.0,
+        type=float,
+        help="重复惩罚参数，若生成的对话重复性较高，可适当提高该参数",
+    )
+    parser.add_argument(
+        "--max_len", type=int, default=25, help="每个utterance的最大长度,超过指定长度则进行截断"
+    )
+    parser.add_argument(
+        "--max_history_len", type=int, default=3, help="dialogue history的最大长度"
+    )
+    parser.add_argument("--no_cuda", action="store_true", help="不使用GPU进行预测")
     return parser.parse_args()
 
 
 def interact():
     args = set_args()
-    inference = Inference(args.model_dir, device, args.max_history_len, args.max_len, args.repetition_penalty,
-                          args.temperature)
-    print('开始和chatbot聊天，输入q以退出')
+    inference = Inference(
+        args.model_dir,
+        device,
+        args.max_history_len,
+        args.max_len,
+        args.repetition_penalty,
+        args.temperature,
+    )
+    print("开始和chatbot聊天，输入q以退出")
 
     while True:
         try:
             query = input("user:")
-            if query.strip() == 'q':
+            if query.strip() == "q":
                 raise ValueError("exit")
             # query = "你好"
             text = inference.predict(query)
@@ -147,5 +177,5 @@ def interact():
             break
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     interact()

@@ -17,7 +17,9 @@ class MyDenseLayer(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         print("enter build method...")
-        self.kernel = self.add_weight("kernel", shape=[int(input_shape[-1]), self.num_outputs])
+        self.kernel = self.add_weight(
+            "kernel", shape=[int(input_shape[-1]), self.num_outputs]
+        )
 
     def call(self, inputs):
         print("enter call method...")
@@ -37,7 +39,7 @@ class ResnetIdentityBlock(tf.keras.Model):
         self.conv2a = tf.keras.layers.Conv2D(filters1, (1, 1))
         self.bn2a = tf.keras.layers.BatchNormalization()
 
-        self.conv2b = tf.keras.layers.Conv2D(filters2, kernel_size, padding='same')
+        self.conv2b = tf.keras.layers.Conv2D(filters2, kernel_size, padding="same")
         self.bn2b = tf.keras.layers.BatchNormalization()
 
         self.conv2c = tf.keras.layers.Conv2D(filters3, (1, 1))
@@ -67,11 +69,14 @@ class Linear(keras.models.Layer):
     def __init__(self, units=32, input_dim=32):
         super(Linear, self).__init__()
         w_init = tf.random_normal_initializer()
-        self.w = tf.Variable(initial_value=w_init(shape=(input_dim, units), dtype="float32"), trainable=True
-                             )
+        self.w = tf.Variable(
+            initial_value=w_init(shape=(input_dim, units), dtype="float32"),
+            trainable=True,
+        )
         b_init = tf.zeros_initializer()
-        self.b = tf.Variable(initial_value=b_init(shape=(units,), dtype="float32"), trainable=True
-                             )
+        self.b = tf.Variable(
+            initial_value=b_init(shape=(units,), dtype="float32"), trainable=True
+        )
 
     def call(self, inputs, *args, **kwargs):
         return tf.matmul(inputs, self.w) + self.b
@@ -80,8 +85,9 @@ class Linear(keras.models.Layer):
 class Linear1(keras.models.Layer):
     def __init__(self, units=32, input_dim=32):
         super(Linear1, self).__init__()
-        self.w = self.add_weight(shape=(input_dim, units), initializer="random_normal", trainable=True
-                                 )
+        self.w = self.add_weight(
+            shape=(input_dim, units), initializer="random_normal", trainable=True
+        )
         self.b = self.add_weight(shape=(units,), initializer="zeros", trainable=True)
 
     def call(self, inputs, *args, **kwargs):
@@ -94,8 +100,14 @@ class Linear(keras.models.Layer):
         self.units = units
 
     def build(self, input_shape):
-        self.w = self.add_weight(shape=(input_shape[-1], self.units), initializer="random_normal", trainable=True)
-        self.b = self.add_weight(shape=(self.units,), initializer="random_normal", trainable=True)
+        self.w = self.add_weight(
+            shape=(input_shape[-1], self.units),
+            initializer="random_normal",
+            trainable=True,
+        )
+        self.b = self.add_weight(
+            shape=(self.units,), initializer="random_normal", trainable=True
+        )
 
     def call(self, inputs, *args, **kwargs):
         return tf.matmul(inputs, self.w) + self.b
@@ -172,6 +184,7 @@ class LogisticEndpoint(keras.models.Layer):
 
         return tf.nn.softmax(logits)
 
+
 class Linear(keras.layers.Layer):
     def __init__(self, units=32, **kwargs):
         super(Linear, self).__init__(**kwargs)
@@ -195,7 +208,8 @@ class Linear(keras.layers.Layer):
         config.update({"units": self.units})
         return config
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     x = tf.ones((2, 2))
     linear_layer = Linear1(4, 2)
     y = linear_layer(x)

@@ -9,7 +9,7 @@
 # 数据集 http://s3.bmio.net/kashgari/china-people-daily-ner-corpus.tar.gz
 import os
 
-os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
+os.environ["TF_KERAS"] = "1"  # 必须使用tf.keras
 
 import tensorflow as tf
 
@@ -34,7 +34,9 @@ learning_rate = 2e-5
 categories = set()
 
 # bert配置
-model_dir = "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_L-12_H-768_A-12/"
+model_dir = (
+    "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_L-12_H-768_A-12/"
+)
 config_path = os.path.join(model_dir, "bert_config.json")
 checkpoint_path = os.path.join(model_dir, "bert_model.ckpt")
 dict_path = os.path.join(model_dir, "vocab.txt")
@@ -46,19 +48,19 @@ def load_data(filename):
               意味着text[start:end + 1]是类型为label的实体。
     """
     D = []
-    with open(filename, encoding='utf-8') as f:
+    with open(filename, encoding="utf-8") as f:
         f = f.read()
-        for l in f.split('\n\n'):
+        for l in f.split("\n\n"):
             if not l:
                 continue
-            d = ['']
-            for i, c in enumerate(l.split('\n')):
-                char, flag = c.split(' ')
+            d = [""]
+            for i, c in enumerate(l.split("\n")):
+                char, flag = c.split(" ")
                 d[0] += char
-                if flag[0] == 'B':
+                if flag[0] == "B":
                     d.append([i, i, flag[2:]])
                     categories.add(flag[2:])
-                elif flag[0] == 'I':
+                elif flag[0] == "I":
                     d[-1][1] = i
             D.append(d)
     return D[:4]  # 取4个样本用于测试
@@ -66,9 +68,9 @@ def load_data(filename):
 
 # 标注数据
 data_dir = "/mnt/e/opensource_data/信息抽取/china-people-daily-ner-corpus/china-people-daily-ner-corpus/"
-train_data = load_data(os.path.join(data_dir, 'example.train'))
-valid_data = load_data(os.path.join(data_dir, 'example.dev'))
-test_data = load_data(os.path.join(data_dir, 'example.test'))
+train_data = load_data(os.path.join(data_dir, "example.train"))
+valid_data = load_data(os.path.join(data_dir, "example.dev"))
+test_data = load_data(os.path.join(data_dir, "example.test"))
 categories = list(sorted(categories))
 
 # 建立分词器
@@ -76,8 +78,7 @@ tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
 
 class data_generator(DataGenerator):
-    """数据生成器
-    """
+    """数据生成器"""
 
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
@@ -97,7 +98,7 @@ class data_generator(DataGenerator):
                     labels[label, start, end] = 1
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
-            batch_labels.append(labels[:, :len(token_ids), :len(token_ids)])
+            batch_labels.append(labels[:, : len(token_ids), : len(token_ids)])
             if len(batch_token_ids) == self.batch_size or is_end:
                 batch_token_ids = sequence_padding(batch_token_ids)
                 batch_segment_ids = sequence_padding(batch_segment_ids)
@@ -107,8 +108,7 @@ class data_generator(DataGenerator):
 
 
 def global_pointer_crossentropy(y_true, y_pred):
-    """给GlobalPointer设计的交叉熵
-    """
+    """给GlobalPointer设计的交叉熵"""
     bh = K.prod(K.shape(y_pred)[:2])
     y_true = K.reshape(y_true, (bh, -1))
     y_pred = K.reshape(y_pred, (bh, -1))
@@ -116,8 +116,7 @@ def global_pointer_crossentropy(y_true, y_pred):
 
 
 def global_pointer_f1_score(y_true, y_pred):
-    """给GlobalPointer设计的F1
-    """
+    """给GlobalPointer设计的F1"""
     y_pred = K.cast(K.greater(y_pred, 0), K.floatx())
     return 2 * K.sum(y_true * y_pred) / K.sum(y_true + y_pred)
 
@@ -131,13 +130,12 @@ model.summary()
 model.compile(
     loss=global_pointer_crossentropy,
     optimizer=Adam(learning_rate),
-    metrics=[global_pointer_f1_score]
+    metrics=[global_pointer_f1_score],
 )
 
 
 class NamedEntityRecognizer(object):
-    """命名实体识别器
-    """
+    """命名实体识别器"""
 
     def recognize(self, text, threshold=0):
         tokens = tokenizer.tokenize(text, maxlen=512)
@@ -150,9 +148,7 @@ class NamedEntityRecognizer(object):
         scores[:, :, [0, -1]] -= np.inf
         entities = []
         for l, start, end in zip(*np.where(scores > threshold)):
-            entities.append(
-                (mapping[start][0], mapping[end][-1], categories[l])
-            )
+            entities.append((mapping[start][0], mapping[end][-1], categories[l]))
         return entities
 
 
@@ -160,8 +156,7 @@ NER = NamedEntityRecognizer()
 
 
 def evaluate(data):
-    """评测函数
-    """
+    """评测函数"""
     X, Y, Z = 1e-10, 1e-10, 1e-10
     for d in tqdm(data, ncols=100):
         R = set(NER.recognize(d[0]))
@@ -174,8 +169,7 @@ def evaluate(data):
 
 
 class Evaluator(keras.callbacks.Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
         self.best_val_f1 = 0
@@ -185,20 +179,18 @@ class Evaluator(keras.callbacks.Callback):
         # 保存最优
         if f1 >= self.best_val_f1:
             self.best_val_f1 = f1
-            model.save_weights('./best_model_peopledaily_globalpointer.weights')
+            model.save_weights("./best_model_peopledaily_globalpointer.weights")
         print(
-            'valid:  f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f\n' %
-            (f1, precision, recall, self.best_val_f1)
+            "valid:  f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f\n"
+            % (f1, precision, recall, self.best_val_f1)
         )
         f1, precision, recall = evaluate(test_data)
         print(
-            'test:  f1: %.5f, precision: %.5f, recall: %.5f\n' %
-            (f1, precision, recall)
+            "test:  f1: %.5f, precision: %.5f, recall: %.5f\n" % (f1, precision, recall)
         )
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
     train_generator = data_generator(train_data, batch_size)
 
@@ -206,9 +198,8 @@ if __name__ == '__main__':
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=epochs,
-        callbacks=[evaluator]
+        callbacks=[evaluator],
     )
 
 else:
-
-    model.load_weights('./best_model_peopledaily_globalpointer.weights')
+    model.load_weights("./best_model_peopledaily_globalpointer.weights")

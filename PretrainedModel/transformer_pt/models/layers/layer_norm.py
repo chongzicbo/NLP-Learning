@@ -26,7 +26,7 @@ class LayerNorm(nn.Module):
         return out
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     x = torch.randn(size=(3, 4))
     print(x)
     print(torch.mean(x, -1))

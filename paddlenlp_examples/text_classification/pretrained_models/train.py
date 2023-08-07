@@ -85,18 +85,27 @@ def evaluate(model, criterion, metric, data_loader):
     metric.reset()
 
 
-def create_dataloader(dataset, mode="train.json", batch_size=1, batchify_fn=None, trans_fn=None):
+def create_dataloader(
+    dataset, mode="train.json", batch_size=1, batchify_fn=None, trans_fn=None
+):
     if trans_fn:
         dataset = dataset.map(trans_fn)
     shuffle = True if mode == "train.json" else False
     if mode == "train.json":
-        batch_sampler = paddle.io.DistributedBatchSampler(dataset,
-                                                          batch_size=batch_size,
-                                                          shuffle=shuffle)
+        batch_sampler = paddle.io.DistributedBatchSampler(
+            dataset, batch_size=batch_size, shuffle=shuffle
+        )
     else:
-        batch_sampler = paddle.io.BatchSampler(dataset, batch_size=batch_size, shuffle=shuffle)
+        batch_sampler = paddle.io.BatchSampler(
+            dataset, batch_size=batch_size, shuffle=shuffle
+        )
 
-    return paddle.io.DataLoader(dataset=dataset, batch_sampler=batch_sampler, collate_fn=batchify_fn, return_list=True)
+    return paddle.io.DataLoader(
+        dataset=dataset,
+        batch_sampler=batch_sampler,
+        collate_fn=batchify_fn,
+        return_list=True,
+    )
 
 
 def do_train():
@@ -107,39 +116,54 @@ def do_train():
 
     set_seed(args.seed)
 
-    train_ds, dev_ds, test_ds = load_dataset(args.dataset, splits=["train.json", "dev", "test"])
+    train_ds, dev_ds, test_ds = load_dataset(
+        args.dataset, splits=["train.json", "dev", "test"]
+    )
 
-    model = AutoModelForSequenceClassification.from_pretrained("ernie-1.0", num_classes=len(train_ds.label_list))
-    tokenizer = AutoTokenizer.from_pretrained('ernie-1.0')
-    trans_func = partial(convert_example, tokenizer=tokenizer, max_seq_length=args.max_seq_length,
-                         is_pair=args.dataset == "xnli_cn")
+    model = AutoModelForSequenceClassification.from_pretrained(
+        "ernie-1.0", num_classes=len(train_ds.label_list)
+    )
+    tokenizer = AutoTokenizer.from_pretrained("ernie-1.0")
+    trans_func = partial(
+        convert_example,
+        tokenizer=tokenizer,
+        max_seq_length=args.max_seq_length,
+        is_pair=args.dataset == "xnli_cn",
+    )
     batchify_fn = lambda samples, fn=Tuple(
         Pad(axis=0, pad_val=tokenizer.pad_token_id),
         Pad(axis=0, pad_val=tokenizer.pad_token_type_id),
-        Stack(dtype="int64")
+        Stack(dtype="int64"),
     ): [data for data in fn(samples)]
 
-    train_data_loader = create_dataloader(train_ds,
-                                          mode="train.json",
-                                          batch_size=args.batch_size,
-                                          batchify_fn=batchify_fn,
-                                          trans_fn=trans_func)
-    dev_data_loader = create_dataloader(dev_ds,
-                                        mode="dev",
-                                        batch_size=args.batch_size,
-                                        batchify_fn=batchify_fn,
-                                        trans_fn=trans_func)
+    train_data_loader = create_dataloader(
+        train_ds,
+        mode="train.json",
+        batch_size=args.batch_size,
+        batchify_fn=batchify_fn,
+        trans_fn=trans_func,
+    )
+    dev_data_loader = create_dataloader(
+        dev_ds,
+        mode="dev",
+        batch_size=args.batch_size,
+        batchify_fn=batchify_fn,
+        trans_fn=trans_func,
+    )
     if args.init_from_ckpt and os.path.isfile(args.init_from_ckpt):
         state_dict = paddle.load(args.init_from_ckpt)
         model.set_dict(state_dict)
     model = paddle.DataParallel(model)
     num_training_steps = len(train_data_loader) * args.epochs
-    lr_scheduler = LinearDecayWithWarmup(args.learning_rate, num_training_steps, args.warmup_proportion)
+    lr_scheduler = LinearDecayWithWarmup(
+        args.learning_rate, num_training_steps, args.warmup_proportion
+    )
 
     # Generate parameter names needed to perform weight decay.
     # All bias and LayerNorm parameters are excluded.
     decay_params = [
-        p.name for n, p in model.named_parameters()
+        p.name
+        for n, p in model.named_parameters()
         if not any(nd in n for nd in ["bias", "norm"])
     ]
 
@@ -147,7 +171,7 @@ def do_train():
         learning_rate=lr_scheduler,
         parameters=model.parameters(),
         weight_decay=args.weight_decay,
-        apply_decay_param_fun=lambda x: x in decay_params
+        apply_decay_param_fun=lambda x: x in decay_params,
     )
     criterion = paddle.nn.loss.CrossEntropyLoss()
     metric = paddle.metric.Accuracy()
@@ -158,7 +182,10 @@ def do_train():
     for epoch in range(1, args.epochs + 1):
         for step, batch in enumerate(train_data_loader, start=1):
             input_ids, token_type_ids, labels = batch
-            with paddle.amp.auto_cast(args.use_amp, custom_white_list=["layer_norm", "softmax", "gelu"], ):
+            with paddle.amp.auto_cast(
+                args.use_amp,
+                custom_white_list=["layer_norm", "softmax", "gelu"],
+            ):
                 logits = model(input_ids, token_type_ids)
                 loss = criterion(logits, labels)
             probs = F.softmax(logits, axis=1)
@@ -178,8 +205,15 @@ def do_train():
                 time_diff = time.time() - tic_train
                 print(
                     "global step %d, epoch: %d, batch: %d, loss: %.5f, accuracy: %.5f, speed: %.2f step/s"
-                    % (global_step, epoch, step, loss, acc,
-                       args.logging_steps / time_diff))
+                    % (
+                        global_step,
+                        epoch,
+                        step,
+                        loss,
+                        acc,
+                        args.logging_steps / time_diff,
+                    )
+                )
                 tic_train = time.time()
 
             if global_step % args.valid_steps == 0 and rank == 0:
@@ -195,5 +229,5 @@ def do_train():
                 tic_train = time.time()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     do_train()

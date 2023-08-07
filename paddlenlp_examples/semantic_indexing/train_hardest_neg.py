@@ -67,24 +67,21 @@ def do_train():
 
     set_seed(args.seed)
 
-    train_ds = load_dataset(read_text_pair,
-                            data_path=args.train_set_file,
-                            lazy=False)
+    train_ds = load_dataset(read_text_pair, data_path=args.train_set_file, lazy=False)
 
     # If you wanna use bert/roberta pretrained model,
     # pretrained_model = ppnlp.transformers.BertModel.from_pretrained('bert-base-chinese')
     # pretrained_model = ppnlp.transformers.RobertaModel.from_pretrained('roberta-wwm-ext')
-    pretrained_model = ppnlp.transformers.ErnieModel.from_pretrained(
-        'ernie-1.0')
+    pretrained_model = ppnlp.transformers.ErnieModel.from_pretrained("ernie-1.0")
 
     # If you wanna use bert/roberta pretrained model,
     # tokenizer = ppnlp.transformers.BertTokenizer.from_pretrained('bert-base-chinese')
     # tokenizer = ppnlp.transformers.RobertaTokenizer.from_pretrained('roberta-wwm-ext')
-    tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained('ernie-1.0')
+    tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained("ernie-1.0")
 
-    trans_func = partial(convert_example,
-                         tokenizer=tokenizer,
-                         max_seq_length=args.max_seq_length)
+    trans_func = partial(
+        convert_example, tokenizer=tokenizer, max_seq_length=args.max_seq_length
+    )
 
     batchify_fn = lambda samples, fn=Tuple(
         Pad(axis=0, pad_val=tokenizer.pad_token_id),  # query_input
@@ -93,15 +90,17 @@ def do_train():
         Pad(axis=0, pad_val=tokenizer.pad_token_type_id),  # tilte_segment
     ): [data for data in fn(samples)]
 
-    train_data_loader = create_dataloader(train_ds,
-                                          mode='train.json',
-                                          batch_size=args.batch_size,
-                                          batchify_fn=batchify_fn,
-                                          trans_fn=trans_func)
+    train_data_loader = create_dataloader(
+        train_ds,
+        mode="train.json",
+        batch_size=args.batch_size,
+        batchify_fn=batchify_fn,
+        trans_fn=trans_func,
+    )
 
-    model = SemanticIndexHardestNeg(pretrained_model,
-                                    margin=args.margin,
-                                    output_emb_size=args.output_emb_size)
+    model = SemanticIndexHardestNeg(
+        pretrained_model, margin=args.margin, output_emb_size=args.output_emb_size
+    )
 
     if args.init_from_ckpt and os.path.isfile(args.init_from_ckpt):
         state_dict = paddle.load(args.init_from_ckpt)
@@ -112,38 +111,48 @@ def do_train():
 
     num_training_steps = len(train_data_loader) * args.epochs
 
-    lr_scheduler = LinearDecayWithWarmup(args.learning_rate, num_training_steps,
-                                         args.warmup_proportion)
+    lr_scheduler = LinearDecayWithWarmup(
+        args.learning_rate, num_training_steps, args.warmup_proportion
+    )
 
     # Generate parameter names needed to perform weight decay.
     # All bias and LayerNorm parameters are excluded.
     decay_params = [
-        p.name for n, p in model.named_parameters()
+        p.name
+        for n, p in model.named_parameters()
         if not any(nd in n for nd in ["bias", "norm"])
     ]
     optimizer = paddle.optimizer.AdamW(
         learning_rate=lr_scheduler,
         parameters=model.parameters(),
         weight_decay=args.weight_decay,
-        apply_decay_param_fun=lambda x: x in decay_params)
+        apply_decay_param_fun=lambda x: x in decay_params,
+    )
 
     global_step = 0
     tic_train = time.time()
     for epoch in range(1, args.epochs + 1):
         for step, batch in enumerate(train_data_loader, start=1):
-            query_input_ids, query_token_type_ids, title_input_ids, title_token_type_ids = batch
+            (
+                query_input_ids,
+                query_token_type_ids,
+                title_input_ids,
+                title_token_type_ids,
+            ) = batch
 
-            loss = model(query_input_ids=query_input_ids,
-                         title_input_ids=title_input_ids,
-                         query_token_type_ids=query_token_type_ids,
-                         title_token_type_ids=title_token_type_ids)
+            loss = model(
+                query_input_ids=query_input_ids,
+                title_input_ids=title_input_ids,
+                query_token_type_ids=query_token_type_ids,
+                title_token_type_ids=title_token_type_ids,
+            )
 
             global_step += 1
             if global_step % 10 == 0 and rank == 0:
                 print(
                     "global step %d, epoch: %d, batch: %d, loss: %.5f, speed: %.2f step/s"
-                    % (global_step, epoch, step, loss, 10 /
-                       (time.time() - tic_train)))
+                    % (global_step, epoch, step, loss, 10 / (time.time() - tic_train))
+                )
                 tic_train = time.time()
             loss.backward()
             optimizer.step()
@@ -153,7 +162,7 @@ def do_train():
                 save_dir = os.path.join(args.save_dir, "model_%d" % global_step)
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)
-                save_param_path = os.path.join(save_dir, 'model_state.pdparams')
+                save_param_path = os.path.join(save_dir, "model_state.pdparams")
                 paddle.save(model.state_dict(), save_param_path)
                 tokenizer.save_pretrained(save_dir)
 

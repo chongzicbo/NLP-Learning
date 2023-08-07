@@ -26,22 +26,28 @@ https://www.ncbi.nlm.nih.gov/pmc/oai/oai.cgi?verb=GetRecord&identifier=oai:pubme
 """
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--save_dir",
-                    default="E:\\working\\huada_bgi\\data\\other_data\\付费文献\\for_test2",
-                    type=str,
-                    # required=True,
-                    help="filepath saved")
+parser.add_argument(
+    "--save_dir",
+    default="E:\\working\\huada_bgi\\data\\other_data\\付费文献\\for_test2",
+    type=str,
+    # required=True,
+    help="filepath saved",
+)
 
-parser.add_argument("--input_file_list",
-                    default="E:\\working\\huada_bgi\\data\\test_data\\for_test2.txt",
-                    type=str,
-                    # required=True,
-                    help="待爬取的文献清单")
-parser.add_argument("--log_file",
-                    default="file_spyder_for_test.log",
-                    type=str,
-                    # required=True,
-                    help="日志文件")
+parser.add_argument(
+    "--input_file_list",
+    default="E:\\working\\huada_bgi\\data\\test_data\\for_test2.txt",
+    type=str,
+    # required=True,
+    help="待爬取的文献清单",
+)
+parser.add_argument(
+    "--log_file",
+    default="file_spyder_for_test.log",
+    type=str,
+    # required=True,
+    help="日志文件",
+)
 
 
 # save_dir = "E:\\working\\huada_bgi\\data\\other_data\\付费文献\\"
@@ -106,10 +112,18 @@ def download_by_pmcid(save_dir, pmcid):
         new_pmcid = pmcid[3:]
     else:
         new_pmcid = pmcid
-    url = "https://www.ncbi.nlm.nih.gov/pmc/oai/oai.cgi?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:%s&metadataPrefix=oai_dc" % new_pmcid
-    url = "https://www.ncbi.nlm.nih.gov/pmc/oai/oai.cgi?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:%s&metadataPrefix=pmc" % new_pmcid
+    url = (
+        "https://www.ncbi.nlm.nih.gov/pmc/oai/oai.cgi?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:%s&metadataPrefix=oai_dc"
+        % new_pmcid
+    )
+    url = (
+        "https://www.ncbi.nlm.nih.gov/pmc/oai/oai.cgi?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:%s&metadataPrefix=pmc"
+        % new_pmcid
+    )
     # url = "https://www.ncbi.nlm.nih.gov/pmc/oai/oai.cgi?verb=GetRecord&identifier=oai:pubmedcentral.nih.gov:%s&metadataPrefix=pmc_fm" % new_pmcid
-    url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=%s" % pmcid
+    url = (
+        "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=%s" % pmcid
+    )
     # xml_res = requests.get(
     #     url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=%s" % pmcid)
     xml_res = requests.get(url=url)
@@ -121,7 +135,9 @@ def download_by_pmcid(save_dir, pmcid):
         return
     elif "<error>" in xml_res.text:
         print("Exception from Backend: bePMCXML, Couldn't+resolve failed %s" % pmcid)
-        logging.info("Exception from Backend: bePMCXML, Couldn't+resolve failed %s" % pmcid)
+        logging.info(
+            "Exception from Backend: bePMCXML, Couldn't+resolve failed %s" % pmcid
+        )
         write_failed(os.path.join(save_dir, "failed_pmcid.txt"), pmcid)
         return
     elif xml_res.text is None:
@@ -132,7 +148,7 @@ def download_by_pmcid(save_dir, pmcid):
     else:
         # print(xml_res.text)
         url = "http://10.227.4.138/lit-anno/api/litAnno/article/transfer2json"
-        header = {'Content-Type': 'application/json'}
+        header = {"Content-Type": "application/json"}
         content = {"content": xml_res.text}
         content = json.dumps(content)
         # print(content)
@@ -150,29 +166,32 @@ def download_by_pmcid(save_dir, pmcid):
             write_failed(os.path.join(save_dir, "failed_pmcid.txt"), pmcid)
             return
         try:
-
             annotations = {}
             if res["result"] is not None:
                 abstract = is_abstract(res)
-                annotations["doi"] = res['result'].get('doi', "")
-                annotations["passages"] = res['result'].get('passages', "")
+                annotations["doi"] = res["result"].get("doi", "")
+                annotations["passages"] = res["result"].get("passages", "")
                 annotations["pmc"] = pmcid
-                annotations["pmid"] = res['result'].get('pmid', "")
-                annotations["title"] = res['result'].get('title', "")
+                annotations["pmid"] = res["result"].get("pmid", "")
+                annotations["title"] = res["result"].get("title", "")
                 filename = pmcid + ".json"
                 # print(annotations)
                 if abstract:
                     save_dir = save_dir + "/abstract"
                     if not os.path.exists(save_dir):
                         os.mkdir(save_dir)
-                    with open(os.path.join(save_dir, filename), encoding="utf-8", mode="w") as fw:
+                    with open(
+                        os.path.join(save_dir, filename), encoding="utf-8", mode="w"
+                    ) as fw:
                         fw.write(json.dumps(annotations, ensure_ascii=False))
                     # print("文献 %s 已经下载成功" % pmcid)
                 else:
                     save_dir = save_dir + "/fulltext"
                     if not os.path.exists(save_dir):
                         os.mkdir(save_dir)
-                    with open(os.path.join(save_dir, filename), encoding="utf-8", mode="w") as fw:
+                    with open(
+                        os.path.join(save_dir, filename), encoding="utf-8", mode="w"
+                    ) as fw:
                         fw.write(json.dumps(annotations, ensure_ascii=False))
             else:
                 print("文献 %s 下载失败" % pmcid)
@@ -187,16 +206,20 @@ def download_by_pmcid(save_dir, pmcid):
 
 def get_xml_pmid(pmid):
     xml_res = requests.get(
-        url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=%s&retmode=xml" % pmid)
+        url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=%s&retmode=xml"
+        % pmid
+    )
     print(xml_res.text)
 
 
 def download_by_pmid(save_dir, pmid):
     xml_res = requests.get(
-        url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=%s&retmode=xml" % pmid)
+        url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=%s&retmode=xml"
+        % pmid
+    )
     url = "http://10.227.4.138/lit-anno/api/litAnno/article/transfer2json"
     print(xml_res.text)
-    header = {'Content-Type': 'application/json'}
+    header = {"Content-Type": "application/json"}
     content = {"content": xml_res.text}
     content = json.dumps(content)
     re = requests.post(url=url, headers=header, data=content)
@@ -204,11 +227,11 @@ def download_by_pmid(save_dir, pmid):
     # print(json.dumps(res))
     annotations = {}
     if res["result"] is not None:
-        annotations["doi"] = res['result'].get('doi', "")
-        annotations["passages"] = res['result'].get('passages', "")
-        annotations["pmc"] = res['result'].get('pmcId', "")
-        annotations["pmid"] = res['result'].get('pmid', "")
-        annotations["title"] = res['result'].get('title', "")
+        annotations["doi"] = res["result"].get("doi", "")
+        annotations["passages"] = res["result"].get("passages", "")
+        annotations["pmc"] = res["result"].get("pmcId", "")
+        annotations["pmid"] = res["result"].get("pmid", "")
+        annotations["title"] = res["result"].get("title", "")
         filename = "pmid-" + pmid + ".json"
         # print(annotations)
         with open(os.path.join(save_dir, filename), encoding="utf-8", mode="w") as fw:
@@ -225,11 +248,11 @@ def is_abstract(res):
     :param res:
     :return:
     """
-    passages = res['result'].get('passages', None)
+    passages = res["result"].get("passages", None)
     sections = []
     if passages is not None:
         for passage in passages:
-            sections.append(passage["metas"]['section'].lower())
+            sections.append(passage["metas"]["section"].lower())
     if "introduction" not in sections and "reference" not in sections:
         return True
     return False
@@ -252,12 +275,14 @@ def exists(pmcid_list, id):
     return False
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import time
 
     start_time = time.time()
     args = parser.parse_args()
-    save_dir = args.save_dir  # "E:\\working\\huada_bgi\\data\\other_data\\付费文献\\pmcid\\"
+    save_dir = (
+        args.save_dir
+    )  # "E:\\working\\huada_bgi\\data\\other_data\\付费文献\\pmcid\\"
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
     log_file_path = os.path.join(args.save_dir, args.log_file)

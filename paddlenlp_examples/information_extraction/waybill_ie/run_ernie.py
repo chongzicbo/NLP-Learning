@@ -29,13 +29,16 @@ args = parser.parse_args()
 
 def convert_to_features(example, tokenizer, label_vocab):
     tokens, labels = example
-    tokenized_input = tokenizer(
-        tokens, return_length=True, is_split_into_words=True)
+    tokenized_input = tokenizer(tokens, return_length=True, is_split_into_words=True)
     # Token '[CLS]' and '[SEP]' will get label 'O'
-    labels = ['O'] + labels + ['O']
-    tokenized_input['labels'] = [label_vocab[x] for x in labels]
-    return tokenized_input['input_ids'], tokenized_input[
-        'token_type_ids'], tokenized_input['seq_len'], tokenized_input['labels']
+    labels = ["O"] + labels + ["O"]
+    tokenized_input["labels"] = [label_vocab[x] for x in labels]
+    return (
+        tokenized_input["input_ids"],
+        tokenized_input["token_type_ids"],
+        tokenized_input["seq_len"],
+        tokenized_input["labels"],
+    )
 
 
 @paddle.no_grad()
@@ -48,8 +51,7 @@ def evaluate(model, metric, data_loader):
         n_infer, n_label, n_correct = metric.compute(lens, preds, labels)
         metric.update(n_infer.numpy(), n_label.numpy(), n_correct.numpy())
         precision, recall, f1_score = metric.accumulate()
-    print("[EVAL] Precision: %f - Recall: %f - F1: %f" %
-          (precision, recall, f1_score))
+    print("[EVAL] Precision: %f - Recall: %f - F1: %f" % (precision, recall, f1_score))
     model.train()
 
 
@@ -69,30 +71,31 @@ def predict(model, data_loader, ds, label_vocab):
     return results
 
 
-def create_dataloader(dataset,
-                      mode='train.json',
-                      batch_size=1,
-                      batchify_fn=None,
-                      trans_fn=None):
+def create_dataloader(
+    dataset, mode="train.json", batch_size=1, batchify_fn=None, trans_fn=None
+):
     if trans_fn:
         dataset = dataset.map(trans_fn)
 
-    shuffle = True if mode == 'train.json' else False
-    if mode == 'train.json':
+    shuffle = True if mode == "train.json" else False
+    if mode == "train.json":
         batch_sampler = paddle.io.DistributedBatchSampler(
-            dataset, batch_size=batch_size, shuffle=shuffle)
+            dataset, batch_size=batch_size, shuffle=shuffle
+        )
     else:
         batch_sampler = paddle.io.BatchSampler(
-            dataset, batch_size=batch_size, shuffle=shuffle)
+            dataset, batch_size=batch_size, shuffle=shuffle
+        )
 
     return paddle.io.DataLoader(
         dataset=dataset,
         batch_sampler=batch_sampler,
         collate_fn=batchify_fn,
-        return_list=True)
+        return_list=True,
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     paddle.set_device(args.device)
     rank = paddle.distributed.get_rank()
     trainer_num = paddle.distributed.get_world_size()
@@ -100,15 +103,19 @@ if __name__ == '__main__':
         paddle.distributed.init_parallel_env()
     # Create dataset, tokenizer and dataloader.
     train_ds, dev_ds, test_ds = load_dataset(
-        datafiles=(os.path.join(args.data_dir, 'train.json.txt'),
-                   os.path.join(args.data_dir, 'dev.txt'),
-                   os.path.join(args.data_dir, 'test.txt')))
+        datafiles=(
+            os.path.join(args.data_dir, "train.json.txt"),
+            os.path.join(args.data_dir, "dev.txt"),
+            os.path.join(args.data_dir, "test.txt"),
+        )
+    )
 
-    label_vocab = load_dict(os.path.join(args.data_dir, 'tag.dic'))
-    tokenizer = ErnieTokenizer.from_pretrained('ernie-1.0')
+    label_vocab = load_dict(os.path.join(args.data_dir, "tag.dic"))
+    tokenizer = ErnieTokenizer.from_pretrained("ernie-1.0")
 
     trans_func = partial(
-        convert_to_features, tokenizer=tokenizer, label_vocab=label_vocab)
+        convert_to_features, tokenizer=tokenizer, label_vocab=label_vocab
+    )
 
     train_ds.map(trans_func)
     dev_ds.map(trans_func)
@@ -116,39 +123,43 @@ if __name__ == '__main__':
 
     ignore_label = -1
     batchify_fn = lambda samples, fn=Tuple(
-        Pad(axis=0, pad_val=tokenizer.pad_token_id, dtype='int64'),  # input_ids
-        Pad(axis=0, pad_val=tokenizer.pad_token_type_id, dtype='int64'),  # token_type_ids
-        Stack(dtype='int64'),  # seq_len
-        Pad(axis=0, pad_val=ignore_label, dtype='int64')  # labels
+        Pad(axis=0, pad_val=tokenizer.pad_token_id, dtype="int64"),  # input_ids
+        Pad(
+            axis=0, pad_val=tokenizer.pad_token_type_id, dtype="int64"
+        ),  # token_type_ids
+        Stack(dtype="int64"),  # seq_len
+        Pad(axis=0, pad_val=ignore_label, dtype="int64"),  # labels
     ): fn(samples)
 
     train_loader = create_dataloader(
         dataset=train_ds,
-        mode='train.json',
+        mode="train.json",
         batch_size=args.batch_size,
-        batchify_fn=batchify_fn)
+        batchify_fn=batchify_fn,
+    )
 
     dev_loader = create_dataloader(
-        dataset=dev_ds,
-        mode='dev',
-        batch_size=args.batch_size,
-        batchify_fn=batchify_fn)
+        dataset=dev_ds, mode="dev", batch_size=args.batch_size, batchify_fn=batchify_fn
+    )
 
     test_loader = create_dataloader(
         dataset=test_ds,
-        mode='test',
+        mode="test",
         batch_size=args.batch_size,
-        batchify_fn=batchify_fn)
+        batchify_fn=batchify_fn,
+    )
 
     # Define the model netword and its loss
     model = ErnieForTokenClassification.from_pretrained(
-        "ernie-1.0", num_classes=len(label_vocab))
+        "ernie-1.0", num_classes=len(label_vocab)
+    )
     if trainer_num > 1:
         model = paddle.DataParallel(model)
     metric = ChunkEvaluator(label_list=label_vocab.keys(), suffix=True)
     loss_fn = paddle.nn.loss.CrossEntropyLoss(ignore_index=ignore_label)
     optimizer = paddle.optimizer.AdamW(
-        learning_rate=2e-5, parameters=model.parameters())
+        learning_rate=2e-5, parameters=model.parameters()
+    )
 
     step = 0
     for epoch in range(args.epochs):
@@ -161,10 +172,10 @@ if __name__ == '__main__':
             step += 1
             print("[TRAIN] Epoch:%d - Step:%d - Loss: %f" % (epoch, step, loss))
         evaluate(model, metric, dev_loader)
-        model_to_save = model._layers if isinstance(
-            model, paddle.DataParallel) else model
-        model_to_save.save_pretrained(
-            os.path.join(args.save_dir, 'model_%d' % step))
+        model_to_save = (
+            model._layers if isinstance(model, paddle.DataParallel) else model
+        )
+        model_to_save.save_pretrained(os.path.join(args.save_dir, "model_%d" % step))
 
     if rank == 0:
         preds = predict(model, test_loader, test_ds, label_vocab)
@@ -174,5 +185,6 @@ if __name__ == '__main__':
         # Print some examples
         print(
             "The results have been saved in the file: %s, some examples are shown below: "
-            % file_path)
+            % file_path
+        )
         print("\n".join(preds[:10]))

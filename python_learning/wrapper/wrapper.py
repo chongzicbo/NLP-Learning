@@ -40,7 +40,7 @@ def use_logging(level):
 
 
 @use_logging(level="warn")
-def foo(name='foo'):
+def foo(name="foo"):
     print("i am %s" % name)
 
 

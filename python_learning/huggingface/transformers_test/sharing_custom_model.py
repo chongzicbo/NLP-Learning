@@ -28,9 +28,13 @@ class ResnetConfig(PretrainedConfig):
         **kwargs,
     ):
         if block_type not in ["basic", "bottleneck"]:
-            raise ValueError(f"`block_type` must be 'basic' or bottleneck', got {block_type}.")
+            raise ValueError(
+                f"`block_type` must be 'basic' or bottleneck', got {block_type}."
+            )
         if stem_type not in ["", "deep", "deep-tiered"]:
-            raise ValueError(f"`stem_type` must be '', 'deep' or 'deep-tiered', got {stem_type}.")
+            raise ValueError(
+                f"`stem_type` must be '', 'deep' or 'deep-tiered', got {stem_type}."
+            )
 
         self.block_type = block_type
         self.layers = layers
@@ -42,6 +46,7 @@ class ResnetConfig(PretrainedConfig):
         self.stem_type = stem_type
         self.avg_down = avg_down
         super().__init__(**kwargs)
+
 
 # resnet50d_config = ResnetConfig(block_type="bottleneck", stem_width=32, stem_type="deep", avg_down=True)
 # resnet50d_config.save_pretrained("custom-resnet")

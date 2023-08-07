@@ -21,11 +21,15 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddlenlp.data import Stack, Tuple, Pad
-from paddlenlp.transformers import ErnieTokenizer, ErnieForTokenClassification, LinearDecayWithWarmup
+from paddlenlp.transformers import (
+    ErnieTokenizer,
+    ErnieForTokenClassification,
+    LinearDecayWithWarmup,
+)
 from paddlenlp.metrics import ChunkEvaluator
 from utils import read_by_lines, write_by_lines, load_dict
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
 # yapf: disable
 parser = argparse.ArgumentParser(__doc__)

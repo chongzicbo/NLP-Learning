@@ -11,7 +11,7 @@ import numpy as np
 from loguru import logger
 from dialogbot_cp.utils.tokenizer import Tokenizer
 
-PAD_TOKEN, GO_TOKEN, EOS_TOKEN, UNK_TOKEN = '<pad>', '<go>', '<eos>', '<unk>'
+PAD_TOKEN, GO_TOKEN, EOS_TOKEN, UNK_TOKEN = "<pad>", "<go>", "<eos>", "<unk>"
 PAD_ID, GO_ID, EOS_ID, UNK_ID = 0, 1, 2, 3
 max_seq_len = 60
 
@@ -33,10 +33,12 @@ def load_dataset(vocab_path, train_path=None, vocab_size=0):
     :return: word2id, id2word, training_samples
     """
     with open(vocab_path, "r", encoding="utf-8") as rfd:
-        word2id = {PAD_TOKEN: PAD_ID,
-                   GO_TOKEN: GO_ID,
-                   EOS_TOKEN: EOS_ID,
-                   UNK_TOKEN: UNK_ID}
+        word2id = {
+            PAD_TOKEN: PAD_ID,
+            GO_TOKEN: GO_ID,
+            EOS_TOKEN: EOS_ID,
+            UNK_TOKEN: UNK_ID,
+        }
         id2word = {v: k for k, v in word2id.items()}
         cnt = 4
         vocab_data = rfd.readlines()
@@ -44,7 +46,9 @@ def load_dataset(vocab_path, train_path=None, vocab_size=0):
         for line in vocab_data_user:
             items = line.split("\t")
             if len(items) != 2:
-                logger.error('error file path: {}, line at: {}'.format(vocab_path, line))
+                logger.error(
+                    "error file path: {}, line at: {}".format(vocab_path, line)
+                )
                 continue
             word = items[0]
             word2id[word] = cnt
@@ -55,11 +59,15 @@ def load_dataset(vocab_path, train_path=None, vocab_size=0):
         with open(train_path, "r", encoding="utf-8") as rfd:
             data = rfd.read().splitlines()
             data = [line.split("\t") for line in data]
-            training_samples = [[text2id(item[0], word2id),
-                                 text2id(item[1], word2id)] for item in data]
+            training_samples = [
+                [text2id(item[0], word2id), text2id(item[1], word2id)] for item in data
+            ]
             training_samples.sort(key=lambda x: len(x[0]))
-            training_samples = [item for item in training_samples if
-                                (len(item[0]) >= 1 and len(item[1]) >= 1)]
+            training_samples = [
+                item
+                for item in training_samples
+                if (len(item[0]) >= 1 and len(item[1]) >= 1)
+            ]
         logger.debug("Load train data from %s done." % train_path)
         return word2id, id2word, training_samples
     else:
@@ -100,7 +108,7 @@ def get_batches(data, batch_size):
 
     def gen_next_samples():
         for i in range(0, data_len, batch_size):
-            yield data[i:min(i + batch_size, data_len)]
+            yield data[i : min(i + batch_size, data_len)]
 
     for samples in gen_next_samples():
         batch = create_batch(samples)
@@ -127,7 +135,8 @@ def corpus2enco(corpus, word2id):
 def dump_word_embeddings(word2id, emb_size, word2vec_path, embeddings_path):
     vocab_size = len(word2id)
     word2vec = gensim.models.KeyedVectors.load_word2vec_format(
-        word2vec_path, binary=False)
+        word2vec_path, binary=False
+    )
     embeddings = np.random.randn(vocab_size, emb_size)
     for word, idx in word2id.items():
         if word in word2vec.wv.key_to_index:

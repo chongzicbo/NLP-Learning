@@ -46,12 +46,7 @@ def build_vocab(corpus, tokenizer, encoding_model, feat):
         word_vocab = Vocab.build_vocab(
             word_examples,
             min_freq=2,
-            token_to_idx={
-                "[PAD]": 0,
-                "[UNK]": 1,
-                "[BOS]": 2,
-                "[EOS]": 3
-            },
+            token_to_idx={"[PAD]": 0, "[UNK]": 1, "[BOS]": 2, "[EOS]": 3},
             unk_token="[UNK]",
             pad_token="[PAD]",
             bos_token="[BOS]",
@@ -60,22 +55,14 @@ def build_vocab(corpus, tokenizer, encoding_model, feat):
         if feat == "pos":
             feat_vocab = Vocab.build_vocab(
                 feat_examples,
-                token_to_idx={
-                    "[BOS]": 0,
-                    "[EOS]": 1
-                },
+                token_to_idx={"[BOS]": 0, "[EOS]": 1},
                 bos_token="[BOS]",
                 eos_token="[EOS]",
             )
         else:
             feat_vocab = Vocab.build_vocab(
                 feat_examples,
-                token_to_idx={
-                    "[PAD]": 0,
-                    "[UNK]": 1,
-                    "[BOS]": 2,
-                    "[EOS]": 3
-                },
+                token_to_idx={"[PAD]": 0, "[UNK]": 1, "[BOS]": 2, "[EOS]": 3},
                 unk_token="[UNK]",
                 pad_token="[PAD]",
                 bos_token="[BOS]",
@@ -88,11 +75,7 @@ def build_vocab(corpus, tokenizer, encoding_model, feat):
     # Build relation vocab
     rel_vocab = Vocab.build_vocab(
         rel_examples,
-        token_to_idx={
-            "[BOS]": 0,
-            "[EOS]": 1,
-            "[UNK]": 2
-        },
+        token_to_idx={"[BOS]": 0, "[EOS]": 1, "[UNK]": 2},
         bos_token="[BOS]",
         eos_token="[EOS]",
         unk_token="[UNK]",
@@ -112,12 +95,14 @@ def load_vocab(vocab_dir):
     return word_vocab, feat_vocab, rel_vocab
 
 
-def convert_example(example,
-                    vocabs,
-                    encoding_model='ernie-1.0',
-                    feat=None,
-                    mode='train.json',
-                    fix_len=20):
+def convert_example(
+    example,
+    vocabs,
+    encoding_model="ernie-1.0",
+    feat=None,
+    mode="train.json",
+    fix_len=20,
+):
     """Builds model inputs for dependency parsing task."""
     word_vocab, feat_vocab, rel_vocab = vocabs
     if encoding_model == "lstm":
@@ -155,32 +140,33 @@ def convert_example(example,
             feats = [feat_bos_index] + feats + [feat_eos_index]
             feats = np.array(feats, dtype=int)
         else:
-            feats = [[feat_vocab.to_indices(token) for token in word]
-                     for word in example["FORM"]]
+            feats = [
+                [feat_vocab.to_indices(token) for token in word]
+                for word in example["FORM"]
+            ]
             feats = [[feat_bos_index]] + feats + [[feat_eos_index]]
             feats = pad_sequence(
-                [np.array(ids[:fix_len], dtype=int) for ids in feats],
-                fix_len=fix_len)
+                [np.array(ids[:fix_len], dtype=int) for ids in feats], fix_len=fix_len
+            )
         if mode == "test":
             return words, feats
         return words, feats, arcs, rels
     else:
-        words = [[word_vocab.to_indices(char) for char in word]
-                 for word in example["FORM"]]
+        words = [
+            [word_vocab.to_indices(char) for char in word] for word in example["FORM"]
+        ]
         words = [[word_bos_index]] + words + [[word_eos_index]]
         words = pad_sequence(
-            [np.array(ids[:fix_len], dtype=int) for ids in words],
-            fix_len=fix_len)
+            [np.array(ids[:fix_len], dtype=int) for ids in words], fix_len=fix_len
+        )
         if mode == "test":
             return [words]
         return words, arcs, rels
 
 
-def create_dataloader(dataset,
-                      batch_size,
-                      mode="train.json",
-                      n_buckets=None,
-                      trans_fn=None):
+def create_dataloader(
+    dataset, batch_size, mode="train.json", n_buckets=None, trans_fn=None
+):
     """
     Create dataloader.
     Args:
@@ -226,22 +212,20 @@ def create_dataloader(dataset,
 
     # According to the api of `paddle.io.DataLoader` set `batch_size`
     # and `batch_sampler` to `None` to disable batchify dataset automatically
-    data_loader = paddle.io.DataLoader(dataset=dataset,
-                                       batch_sampler=None,
-                                       batch_size=None,
-                                       return_list=True)
+    data_loader = paddle.io.DataLoader(
+        dataset=dataset, batch_sampler=None, batch_size=None, return_list=True
+    )
     return data_loader, buckets
 
 
 class Batchify(Dataset):
-
     def __init__(self, dataset, batch_sampler):
-
         self.batches = []
         for batch_sample_id in batch_sampler:
             batch = []
             raw_batch = self._collate_fn(
-                [dataset[sample_id] for sample_id in batch_sample_id])
+                [dataset[sample_id] for sample_id in batch_sample_id]
+            )
             for data in raw_batch:
                 if isinstance(data[0], np.ndarray):
                     data = pad_sequence(data)
@@ -265,8 +249,9 @@ class BucketsSampler(object):
     def __init__(self, buckets, batch_size, shuffle=False):
         self.batch_size = batch_size
         self.shuffle = shuffle
-        self.sizes, self.buckets = zip(*[(size, bucket)
-                                         for size, bucket in buckets.items()])
+        self.sizes, self.buckets = zip(
+            *[(size, bucket) for size, bucket in buckets.items()]
+        )
         # The number of chunks in each bucket, which is clipped by range [1, len(bucket)]
         self.chunks = []
         for size, bucket in zip(self.sizes, self.buckets):
@@ -278,10 +263,13 @@ class BucketsSampler(object):
         """Returns an iterator, randomly or sequentially returns a batch id"""
         range_fn = np.random.permutation if self.shuffle else np.arange
         for i in range_fn(len(self.buckets)).tolist():
-            split_sizes = [(len(self.buckets[i]) - j - 1) // self.chunks[i] + 1
-                           for j in range(self.chunks[i])]
-            for batch in np.split(range_fn(len(self.buckets[i])),
-                                  np.cumsum(split_sizes)):
+            split_sizes = [
+                (len(self.buckets[i]) - j - 1) // self.chunks[i] + 1
+                for j in range(self.chunks[i])
+            ]
+            for batch in np.split(
+                range_fn(len(self.buckets[i])), np.cumsum(split_sizes)
+            ):
                 if len(batch):
                     yield [self.buckets[i][j] for j in batch.tolist()]
 

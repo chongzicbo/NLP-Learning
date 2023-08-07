@@ -8,6 +8,7 @@ from torch.utils.data import Dataset
 
 class TruncateDataset(Dataset):
     """Truncate dataset to certain num"""
+
     def __init__(self, dataset: Dataset, max_num: int = 100):
         self.dataset = dataset
         self.max_num = min(max_num, len(self.dataset))

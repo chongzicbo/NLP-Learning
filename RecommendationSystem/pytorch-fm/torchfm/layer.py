@@ -33,7 +33,9 @@ class FeaturesEmbedding(torch.nn.Module):
 
     def __init__(self, field_dims, embed_dim):
         super().__init__()
-        self.embedding = torch.nn.Embedding(sum(field_dims), embed_dim)  # shape [用户数+电影数，embed_dim]
+        self.embedding = torch.nn.Embedding(
+            sum(field_dims), embed_dim
+        )  # shape [用户数+电影数，embed_dim]
         self.offsets = np.array((0, *np.cumsum(field_dims)[:-1]), dtype=np.long)  # 偏置项
         torch.nn.init.xavier_uniform_(self.embedding.weight.data)  # embdedding初始化
 
@@ -46,13 +48,15 @@ class FeaturesEmbedding(torch.nn.Module):
 
 
 class FieldAwareFactorizationMachine(torch.nn.Module):
-
     def __init__(self, field_dims, embed_dim):
         super().__init__()
         self.num_fields = len(field_dims)
-        self.embeddings = torch.nn.ModuleList([
-            torch.nn.Embedding(sum(field_dims), embed_dim) for _ in range(self.num_fields)
-        ])
+        self.embeddings = torch.nn.ModuleList(
+            [
+                torch.nn.Embedding(sum(field_dims), embed_dim)
+                for _ in range(self.num_fields)
+            ]
+        )
         self.offsets = np.array((0, *np.cumsum(field_dims)[:-1]), dtype=np.long)
         for embedding in self.embeddings:
             torch.nn.init.xavier_uniform_(embedding.weight.data)
@@ -72,7 +76,6 @@ class FieldAwareFactorizationMachine(torch.nn.Module):
 
 
 class FactorizationMachine(torch.nn.Module):
-
     def __init__(self, reduce_sum=True):
         super().__init__()
         self.reduce_sum = reduce_sum
@@ -82,7 +85,7 @@ class FactorizationMachine(torch.nn.Module):
         :param x: Float tensor of size ``(batch_size, num_fields, embed_dim)``
         """
         square_of_sum = torch.sum(x, dim=1) ** 2
-        sum_of_square = torch.sum(x ** 2, dim=1)
+        sum_of_square = torch.sum(x**2, dim=1)
         ix = square_of_sum - sum_of_square
         if self.reduce_sum:
             ix = torch.sum(ix, dim=1, keepdim=True)
@@ -90,7 +93,6 @@ class FactorizationMachine(torch.nn.Module):
 
 
 class MultiLayerPerceptron(torch.nn.Module):
-
     def __init__(self, input_dim, embed_dims, dropout, output_layer=True):
         super().__init__()
         layers = list()
@@ -112,7 +114,6 @@ class MultiLayerPerceptron(torch.nn.Module):
 
 
 class InnerProductNetwork(torch.nn.Module):
-
     def forward(self, x):
         """
         :param x: Float tensor of size ``(batch_size, num_fields, embed_dim)``
@@ -126,18 +127,17 @@ class InnerProductNetwork(torch.nn.Module):
 
 
 class OuterProductNetwork(torch.nn.Module):
-
-    def __init__(self, num_fields, embed_dim, kernel_type='mat'):
+    def __init__(self, num_fields, embed_dim, kernel_type="mat"):
         super().__init__()
         num_ix = num_fields * (num_fields - 1) // 2
-        if kernel_type == 'mat':
+        if kernel_type == "mat":
             kernel_shape = embed_dim, num_ix, embed_dim
-        elif kernel_type == 'vec':
+        elif kernel_type == "vec":
             kernel_shape = num_ix, embed_dim
-        elif kernel_type == 'num':
+        elif kernel_type == "num":
             kernel_shape = num_ix, 1
         else:
-            raise ValueError('unknown kernel type: ' + kernel_type)
+            raise ValueError("unknown kernel type: " + kernel_type)
         self.kernel_type = kernel_type
         self.kernel = torch.nn.Parameter(torch.zeros(kernel_shape))
         torch.nn.init.xavier_uniform_(self.kernel.data)
@@ -152,7 +152,7 @@ class OuterProductNetwork(torch.nn.Module):
             for j in range(i + 1, num_fields):
                 row.append(i), col.append(j)
         p, q = x[:, row], x[:, col]
-        if self.kernel_type == 'mat':
+        if self.kernel_type == "mat":
             kp = torch.sum(p.unsqueeze(1) * self.kernel, dim=-1).permute(0, 2, 1)
             return torch.sum(kp * q, -1)
         else:
@@ -160,16 +160,15 @@ class OuterProductNetwork(torch.nn.Module):
 
 
 class CrossNetwork(torch.nn.Module):
-
     def __init__(self, input_dim, num_layers):
         super().__init__()
         self.num_layers = num_layers
-        self.w = torch.nn.ModuleList([
-            torch.nn.Linear(input_dim, 1, bias=False) for _ in range(num_layers)
-        ])
-        self.b = torch.nn.ParameterList([
-            torch.nn.Parameter(torch.zeros((input_dim,))) for _ in range(num_layers)
-        ])
+        self.w = torch.nn.ModuleList(
+            [torch.nn.Linear(input_dim, 1, bias=False) for _ in range(num_layers)]
+        )
+        self.b = torch.nn.ParameterList(
+            [torch.nn.Parameter(torch.zeros((input_dim,))) for _ in range(num_layers)]
+        )
 
     def forward(self, x):
         """
@@ -183,7 +182,6 @@ class CrossNetwork(torch.nn.Module):
 
 
 class AttentionalFactorizationMachine(torch.nn.Module):
-
     def __init__(self, embed_dim, attn_size, dropouts):
         super().__init__()
         self.attention = torch.nn.Linear(embed_dim, attn_size)
@@ -211,7 +209,6 @@ class AttentionalFactorizationMachine(torch.nn.Module):
 
 
 class CompressedInteractionNetwork(torch.nn.Module):
-
     def __init__(self, input_dim, cross_layer_sizes, split_half=True):
         super().__init__()
         self.num_layers = len(cross_layer_sizes)
@@ -220,8 +217,16 @@ class CompressedInteractionNetwork(torch.nn.Module):
         prev_dim, fc_input_dim = input_dim, 0
         for i in range(self.num_layers):
             cross_layer_size = cross_layer_sizes[i]
-            self.conv_layers.append(torch.nn.Conv1d(input_dim * prev_dim, cross_layer_size, 1,
-                                                    stride=1, dilation=1, bias=True))
+            self.conv_layers.append(
+                torch.nn.Conv1d(
+                    input_dim * prev_dim,
+                    cross_layer_size,
+                    1,
+                    stride=1,
+                    dilation=1,
+                    bias=True,
+                )
+            )
             if self.split_half and i != self.num_layers - 1:
                 cross_layer_size //= 2
             prev_dim = cross_layer_size
@@ -248,7 +253,6 @@ class CompressedInteractionNetwork(torch.nn.Module):
 
 
 class AnovaKernel(torch.nn.Module):
-
     def __init__(self, order, reduce_sum=True):
         super().__init__()
         self.order = order
@@ -259,10 +263,14 @@ class AnovaKernel(torch.nn.Module):
         :param x: Float tensor of size ``(batch_size, num_fields, embed_dim)``
         """
         batch_size, num_fields, embed_dim = x.shape
-        a_prev = torch.ones((batch_size, num_fields + 1, embed_dim), dtype=torch.float).to(x.device)
+        a_prev = torch.ones(
+            (batch_size, num_fields + 1, embed_dim), dtype=torch.float
+        ).to(x.device)
         for t in range(self.order):
-            a = torch.zeros((batch_size, num_fields + 1, embed_dim), dtype=torch.float).to(x.device)
-            a[:, t + 1:, :] += x[:, t:, :] * a_prev[:, t:-1, :]
+            a = torch.zeros(
+                (batch_size, num_fields + 1, embed_dim), dtype=torch.float
+            ).to(x.device)
+            a[:, t + 1 :, :] += x[:, t:, :] * a_prev[:, t:-1, :]
             a = torch.cumsum(a, dim=1)
             a_prev = a
         if self.reduce_sum:

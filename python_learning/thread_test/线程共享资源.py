@@ -31,7 +31,7 @@ def task2():
     lock.release()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("这里是主线程")
     # 创建线程对象
     t1 = Thread(target=task1)

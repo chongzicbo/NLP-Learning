@@ -18,12 +18,12 @@ class KGBot:
         self.searcher = AnswerSearcher()
 
     def answer(self, sent):
-        answer = '您好，我是医药智能助理，希望可以帮到您。祝您身体棒棒！'
+        answer = "您好，我是医药智能助理，希望可以帮到您。祝您身体棒棒！"
         res_classify = self.classifier.classify(sent)
         if not res_classify:
             return answer
         res_sql = self.parser.parser(res_classify)
         final_answers = self.searcher.search(res_sql)
         if final_answers:
-            return '\n'.join(final_answers)
+            return "\n".join(final_answers)
         return answer

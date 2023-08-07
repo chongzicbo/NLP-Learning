@@ -17,7 +17,12 @@ from bert4keras.layers import Loss
 from bert4keras.models import build_transformer_model
 from bert4keras.tokenizers import Tokenizer, load_vocab
 from bert4keras.optimizers import Adam
-from bert4keras.snippets import sequence_padding, open, DataGenerator, AutoRegressiveDecoder
+from bert4keras.snippets import (
+    sequence_padding,
+    open,
+    DataGenerator,
+    AutoRegressiveDecoder,
+)
 from keras.models import Model
 
 # 基本参数
@@ -38,26 +43,23 @@ txts = glob.glob("E:\\opensource_data\\分类\\新闻分类英文--THUCNews\\THU
 token_dict, keep_tokens = load_vocab(
     dict_path=dict_path,
     simplified=True,
-    startswith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
+    startswith=["[PAD]", "[UNK]", "[CLS]", "[SEP]"],
 )
 tokenizer = Tokenizer(token_dict, do_lower_case=True)
 
 
 class data_generator(DataGenerator):
-    """数据生成器
-    """
+    """数据生成器"""
 
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids = [], []
         for is_end, txt in self.sample(random):
-            text = open(txt, encoding='utf-8').read()
-            text = text.split('\n')
+            text = open(txt, encoding="utf-8").read()
+            text = text.split("\n")
             if len(text) > 1:
                 title = text[0]
-                content = '\n'.join(text[1:])
-                token_ids, segment_ids = tokenizer.encode(
-                    content, title, maxlen=maxlen
-                )
+                content = "\n".join(text[1:])
+                token_ids, segment_ids = tokenizer.encode(content, title, maxlen=maxlen)
                 batch_token_ids.append(token_ids)
                 batch_segment_ids.append(segment_ids)
             if len(batch_token_ids) == self.batch_size or is_end:
@@ -68,8 +70,7 @@ class data_generator(DataGenerator):
 
 
 class CrossEntropy(Loss):
-    """交叉熵作为loss，并mask掉输入部分
-    """
+    """交叉熵作为loss，并mask掉输入部分"""
 
     def compute_loss(self, inputs, mask=None):
         y_true, y_mask, y_pred = inputs
@@ -84,7 +85,7 @@ class CrossEntropy(Loss):
 model = build_transformer_model(
     config_path,
     checkpoint_path,
-    application='unilm',
+    application="unilm",
     keep_tokens=keep_tokens,  # 只保留keep_tokens中的字，精简原字表
 )
 
@@ -96,10 +97,9 @@ model.summary()
 
 
 class AutoTitle(AutoRegressiveDecoder):
-    """seq2seq解码器
-    """
+    """seq2seq解码器"""
 
-    @AutoRegressiveDecoder.wraps(default_rtype='probas')
+    @AutoRegressiveDecoder.wraps(default_rtype="probas")
     def predict(self, inputs, output_ids, states):
         token_ids, segment_ids = inputs
         token_ids = np.concatenate([token_ids, output_ids], 1)  # 把预测的id和输入的id拼接起来作为新的输入
@@ -109,8 +109,9 @@ class AutoTitle(AutoRegressiveDecoder):
     def generate(self, text, topk=1):
         max_c_len = maxlen - self.maxlen
         token_ids, segment_ids = tokenizer.encode(text, maxlen=max_c_len)
-        output_ids = self.beam_search([token_ids, segment_ids],
-                                      topk=topk)  # 基于beam search
+        output_ids = self.beam_search(
+            [token_ids, segment_ids], topk=topk
+        )  # 基于beam search
         return tokenizer.decode(output_ids)
 
 
@@ -118,31 +119,29 @@ autotitle = AutoTitle(start_id=None, end_id=tokenizer._token_end_id, maxlen=32)
 
 
 def just_show():
-    s1 = u'夏天来临，皮肤在强烈紫外线的照射下，晒伤不可避免，因此，晒后及时修复显得尤为重要，否则可能会造成长期伤害。专家表示，选择晒后护肤品要慎重，芦荟凝胶是最安全，有效的一种选择，晒伤严重者，还请及 时 就医 。'
-    s2 = u'8月28日，网络爆料称，华住集团旗下连锁酒店用户数据疑似发生泄露。从卖家发布的内容看，数据包含华住旗下汉庭、禧玥、桔子、宜必思等10余个品牌酒店的住客信息。泄露的信息包括华住官网注册资料、酒店入住登记的身份信息及酒店开房记录，住客姓名、手机号、邮箱、身份证号、登录账号密码等。卖家对这个约5亿条数据打包出售。第三方安全平台威胁猎人对信息出售者提供的三万条数据进行验证，认为数据真实性非常高。当天下午 ，华 住集 团发声明称，已在内部迅速开展核查，并第一时间报警。当晚，上海警方消息称，接到华住集团报案，警方已经介入调查。'
+    s1 = "夏天来临，皮肤在强烈紫外线的照射下，晒伤不可避免，因此，晒后及时修复显得尤为重要，否则可能会造成长期伤害。专家表示，选择晒后护肤品要慎重，芦荟凝胶是最安全，有效的一种选择，晒伤严重者，还请及 时 就医 。"
+    s2 = "8月28日，网络爆料称，华住集团旗下连锁酒店用户数据疑似发生泄露。从卖家发布的内容看，数据包含华住旗下汉庭、禧玥、桔子、宜必思等10余个品牌酒店的住客信息。泄露的信息包括华住官网注册资料、酒店入住登记的身份信息及酒店开房记录，住客姓名、手机号、邮箱、身份证号、登录账号密码等。卖家对这个约5亿条数据打包出售。第三方安全平台威胁猎人对信息出售者提供的三万条数据进行验证，认为数据真实性非常高。当天下午 ，华 住集 团发声明称，已在内部迅速开展核查，并第一时间报警。当晚，上海警方消息称，接到华住集团报案，警方已经介入调查。"
     for s in [s1, s2]:
-        print(u'生成标题:', autotitle.generate(s))
+        print("生成标题:", autotitle.generate(s))
     print()
 
 
 class Evaluator(keras.callbacks.Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
         self.lowest = 1e10
 
     def on_epoch_end(self, epoch, logs=None):
         # 保存最优
-        if logs['loss'] <= self.lowest:
-            self.lowest = logs['loss']
-            model.save_weights('./best_model.weights')
+        if logs["loss"] <= self.lowest:
+            self.lowest = logs["loss"]
+            model.save_weights("./best_model.weights")
         # 演示效果
         just_show()
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
     train_generator = data_generator(txts, batch_size)
 
@@ -150,8 +149,8 @@ if __name__ == '__main__':
         train_generator.forfit(),
         steps_per_epoch=steps_per_epoch,
         epochs=epochs,
-        callbacks=[evaluator]
+        callbacks=[evaluator],
     )
 
 else:
-    model.load_weights('./best_model.weights')
+    model.load_weights("./best_model.weights")

@@ -36,11 +36,11 @@ class LNN(torch.nn.Module):
         if bias:
             self.bias = torch.nn.Parameter(torch.Tensor(LNN_dim, embed_dim))
         else:
-            self.register_parameter('bias', None)
+            self.register_parameter("bias", None)
         self.reset_parameters()
 
     def reset_parameters(self):
-        stdv = 1. / math.sqrt(self.weight.size(1))
+        stdv = 1.0 / math.sqrt(self.weight.size(1))
         self.weight.data.uniform_(-stdv, stdv)
         if self.bias is not None:
             self.bias.data.uniform_(-stdv, stdv)
@@ -49,7 +49,9 @@ class LNN(torch.nn.Module):
         """
         :param x: Long tensor of size ``(batch_size, num_fields, embedding_size)``
         """
-        embed_x_abs = torch.abs(x)  # Computes the element-wise absolute value of the given input tensor.
+        embed_x_abs = torch.abs(
+            x
+        )  # Computes the element-wise absolute value of the given input tensor.
         embed_x_afn = torch.add(embed_x_abs, 1e-7)
         # Logarithmic Transformation
         embed_x_log = torch.log1p(embed_x_afn)  # torch.log1p and torch.expm1

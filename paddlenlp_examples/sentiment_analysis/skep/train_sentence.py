@@ -76,11 +76,9 @@ def evaluate(model, criterion, metric, data_loader):
     metric.reset()
 
 
-def convert_example(example,
-                    tokenizer,
-                    max_seq_length=512,
-                    is_test=False,
-                    dataset_name="chnsenticorp"):
+def convert_example(
+    example, tokenizer, max_seq_length=512, is_test=False, dataset_name="chnsenticorp"
+):
     """
     Builds model inputs from a sequence or a pair of sequence for sequence classification tasks
     by concatenating and adding special tokens. And creates a mask from the two sequences passed
@@ -109,11 +107,9 @@ def convert_example(example,
         label(obj:`numpy.array`, data type of int64, optional): The input label if not is_test.
     """
     if dataset_name == "sst-2":
-        encoded_inputs = tokenizer(text=example["sentence"],
-                                   max_seq_len=max_seq_length)
+        encoded_inputs = tokenizer(text=example["sentence"], max_seq_len=max_seq_length)
     elif dataset_name == "chnsenticorp":
-        encoded_inputs = tokenizer(text=example["text"],
-                                   max_seq_len=max_seq_length)
+        encoded_inputs = tokenizer(text=example["text"], max_seq_len=max_seq_length)
 
     input_ids = np.array(encoded_inputs["input_ids"], dtype="int64")
     token_type_ids = np.array(encoded_inputs["token_type_ids"], dtype="int64")
@@ -133,28 +129,28 @@ def convert_example(example,
         return input_ids, token_type_ids
 
 
-def create_dataloader(dataset,
-                      mode='train.json',
-                      batch_size=1,
-                      batchify_fn=None,
-                      trans_fn=None):
+def create_dataloader(
+    dataset, mode="train.json", batch_size=1, batchify_fn=None, trans_fn=None
+):
     if trans_fn:
         dataset = dataset.map(trans_fn)
 
-    shuffle = True if mode == 'train.json' else False
-    if mode == 'train.json':
-        batch_sampler = paddle.io.DistributedBatchSampler(dataset,
-                                                          batch_size=batch_size,
-                                                          shuffle=shuffle)
+    shuffle = True if mode == "train.json" else False
+    if mode == "train.json":
+        batch_sampler = paddle.io.DistributedBatchSampler(
+            dataset, batch_size=batch_size, shuffle=shuffle
+        )
     else:
-        batch_sampler = paddle.io.BatchSampler(dataset,
-                                               batch_size=batch_size,
-                                               shuffle=shuffle)
+        batch_sampler = paddle.io.BatchSampler(
+            dataset, batch_size=batch_size, shuffle=shuffle
+        )
 
-    return paddle.io.DataLoader(dataset=dataset,
-                                batch_sampler=batch_sampler,
-                                collate_fn=batchify_fn,
-                                return_list=True)
+    return paddle.io.DataLoader(
+        dataset=dataset,
+        batch_sampler=batch_sampler,
+        collate_fn=batchify_fn,
+        return_list=True,
+    )
 
 
 if __name__ == "__main__":
@@ -170,35 +166,42 @@ if __name__ == "__main__":
 
     else:
         dataset_name = "sst-2"
-        train_ds, dev_ds = load_dataset("glue",
-                                        dataset_name,
-                                        splits=["train.json", "dev"])
-    label_map = {0: 'negative', 1: 'positive'}
+        train_ds, dev_ds = load_dataset(
+            "glue", dataset_name, splits=["train.json", "dev"]
+        )
+    label_map = {0: "negative", 1: "positive"}
 
     model = SkepForSequenceClassification.from_pretrained(
-        args.model_name, num_classes=len(label_map))
+        args.model_name, num_classes=len(label_map)
+    )
     tokenizer = SkepTokenizer.from_pretrained(args.model_name)
 
-    trans_func = partial(convert_example,
-                         tokenizer=tokenizer,
-                         max_seq_length=args.max_seq_length,
-                         dataset_name=dataset_name)
+    trans_func = partial(
+        convert_example,
+        tokenizer=tokenizer,
+        max_seq_length=args.max_seq_length,
+        dataset_name=dataset_name,
+    )
     batchify_fn = lambda samples, fn=Tuple(
         Pad(axis=0, pad_val=tokenizer.pad_token_id),  # input_ids
         Pad(axis=0, pad_val=tokenizer.pad_token_type_id),  # token_type_ids
-        Stack(dtype="int64")  # labels
+        Stack(dtype="int64"),  # labels
     ): [data for data in fn(samples)]
 
-    train_data_loader = create_dataloader(train_ds,
-                                          mode='train.json',
-                                          batch_size=args.batch_size,
-                                          batchify_fn=batchify_fn,
-                                          trans_fn=trans_func)
-    dev_data_loader = create_dataloader(dev_ds,
-                                        mode='dev',
-                                        batch_size=args.batch_size,
-                                        batchify_fn=batchify_fn,
-                                        trans_fn=trans_func)
+    train_data_loader = create_dataloader(
+        train_ds,
+        mode="train.json",
+        batch_size=args.batch_size,
+        batchify_fn=batchify_fn,
+        trans_fn=trans_func,
+    )
+    dev_data_loader = create_dataloader(
+        dev_ds,
+        mode="dev",
+        batch_size=args.batch_size,
+        batchify_fn=batchify_fn,
+        trans_fn=trans_func,
+    )
 
     if args.init_from_ckpt and os.path.isfile(args.init_from_ckpt):
         state_dict = paddle.load(args.init_from_ckpt)
@@ -209,14 +212,16 @@ if __name__ == "__main__":
     # Generate parameter names needed to perform weight decay.
     # All bias and LayerNorm parameters are excluded.
     decay_params = [
-        p.name for n, p in model.named_parameters()
+        p.name
+        for n, p in model.named_parameters()
         if not any(nd in n for nd in ["bias", "norm"])
     ]
     optimizer = paddle.optimizer.AdamW(
         learning_rate=args.learning_rate,
         parameters=model.parameters(),
         weight_decay=args.weight_decay,
-        apply_decay_param_fun=lambda x: x in decay_params)
+        apply_decay_param_fun=lambda x: x in decay_params,
+    )
     criterion = paddle.nn.loss.CrossEntropyLoss()
     metric = paddle.metric.Accuracy()
 
@@ -236,8 +241,15 @@ if __name__ == "__main__":
             if global_step % 10 == 0 and rank == 0:
                 print(
                     "global step %d, epoch: %d, batch: %d, loss: %.5f, accu: %.5f, speed: %.2f step/s"
-                    % (global_step, epoch, step, loss, acc, 10 /
-                       (time.time() - tic_train)))
+                    % (
+                        global_step,
+                        epoch,
+                        step,
+                        loss,
+                        acc,
+                        10 / (time.time() - tic_train),
+                    )
+                )
                 tic_train = time.time()
             loss.backward()
             optimizer.step()

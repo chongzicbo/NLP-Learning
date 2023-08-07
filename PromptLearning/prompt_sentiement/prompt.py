@@ -24,7 +24,7 @@ from transformers import (
     BertTokenizer,
     TrainingArguments,
     BertForMaskedLM,
-    EarlyStoppingCallback
+    EarlyStoppingCallback,
 )
 
 torch.cuda.empty_cache()
@@ -39,7 +39,7 @@ id_2_label = {"1": "好", "0": "差"}
 
 data_dict = {
     "train": os.path.join(source_data_path, "hotel_review_few_shot_train.csv"),
-    "test": os.path.join(source_data_path, "hotel_review_few_shot_test.csv")
+    "test": os.path.join(source_data_path, "hotel_review_few_shot_test.csv"),
 }
 
 z_or_f = "f"
@@ -51,9 +51,11 @@ model = BertForMaskedLM.from_pretrained(ber_name_path)
 def compute_metrics(pred):
     labels = pred.label_ids[:, 3]
     preds = pred.predictions[:, 3].argmax(-1)
-    precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average='weighted')
+    precision, recall, f1, _ = precision_recall_fscore_support(
+        labels, preds, average="weighted"
+    )
     acc = accuracy_score(labels, preds)
-    return {'accuracy': acc, 'f1': f1, 'precision': precision, 'recall': recall}
+    return {"accuracy": acc, "f1": f1, "precision": precision, "recall": recall}
 
 
 df_train = pd.read_csv(data_dict["train"], encoding="utf-8")
@@ -61,7 +63,7 @@ df_test = pd.read_csv(data_dict["test"], encoding="utf-8")
 
 text = []
 label = []
-punc = "＂!＃＄％＆＇?（）()/＊＋，－／：；,.＜＝＞＠［＼］\"＾＿｀｛｜｝～?????　、〃〈〉《》「」『』【】〔〕〖〗?????〝〞????–—‘’?“”??…?﹏﹑﹔·！？?。"
+punc = '＂!＃＄％＆＇?（）()/＊＋，－／：；,.＜＝＞＠［＼］"＾＿｀｛｜｝～?????　、〃〈〉《》「」『』【】〔〕〖〗?????〝〞????–—‘’?“”??…?﹏﹑﹔·！？?。'
 """
 1.循环遍历每一对（text, label）
 2.对text进行结巴分词
@@ -73,7 +75,13 @@ for index, row in tqdm(iterable=df_train.iterrows(), total=df_train.shape[0]):
     words = jieba.lcut(sentence)
     for i in range(len(words)):
         sentence_train = "".join(words[:i]) + "，酒店[MASK]，" + "".join(words[i:])
-        sentence_test = "".join(words[:i]) + "，酒店" + id_2_label[str(row["label"])] + "，" + "".join(words[i:])
+        sentence_test = (
+            "".join(words[:i])
+            + "，酒店"
+            + id_2_label[str(row["label"])]
+            + "，"
+            + "".join(words[i:])
+        )
         text.append(sentence_train)
         label.append(sentence_test)
 text, label = shuffle(text, label)
@@ -82,14 +90,24 @@ print(text[:3])
 print(label[:3])
 
 
-def dataset_builder(x: List[str], y: List[str], tokenizer: BertTokenizer, max_len: int) -> Dataset:
-    data_dict = {'text': x, 'label_text': y}
+def dataset_builder(
+    x: List[str], y: List[str], tokenizer: BertTokenizer, max_len: int
+) -> Dataset:
+    data_dict = {"text": x, "label_text": y}
     result = Dataset.from_dict(data_dict)
 
     def preprocess_function(examples):
-        text_token = tokenizer(examples['text'], padding=True, truncation=True, max_length=max_len)
-        text_token['labels'] = np.array(
-            tokenizer(examples['label_text'], padding=True, truncation=True, max_length=max_len)["input_ids"])
+        text_token = tokenizer(
+            examples["text"], padding=True, truncation=True, max_length=max_len
+        )
+        text_token["labels"] = np.array(
+            tokenizer(
+                examples["label_text"],
+                padding=True,
+                truncation=True,
+                max_length=max_len,
+            )["input_ids"]
+        )
         return text_token
 
     result = result.map(preprocess_function, batched=True)
@@ -136,10 +154,10 @@ for index, row in tqdm(iterable=df_test.iterrows(), total=df_test.shape[0]):
     segments_ids = [0] * len(tokenized_text)
 
     # Convert inputs to PyTorch tensors
-    tokens_tensor = torch.tensor([indexed_tokens]).to('cuda')
-    segments_tensors = torch.tensor([segments_ids]).to('cuda')
+    tokens_tensor = torch.tensor([indexed_tokens]).to("cuda")
+    segments_tensors = torch.tensor([segments_ids]).to("cuda")
 
-    masked_index = tokenized_text.index('[MASK]')
+    masked_index = tokenized_text.index("[MASK]")
 
     # Predict all tokens
     with torch.no_grad():
@@ -153,9 +171,9 @@ for index, row in tqdm(iterable=df_test.iterrows(), total=df_test.shape[0]):
     y_pred = label_2_id[predicted_token]
     pred.append(y_pred)
     true.append(row["label"])
-precision, recall, f1, _ = precision_recall_fscore_support(true, pred, average='binary')
+precision, recall, f1, _ = precision_recall_fscore_support(true, pred, average="binary")
 acc = accuracy_score(true, pred)
-print({'accuracy': acc, 'f1': f1, 'precision': precision, 'recall': recall})
+print({"accuracy": acc, "f1": f1, "precision": precision, "recall": recall})
 print(external_words)
 print(len(external_words))
 
@@ -186,10 +204,10 @@ for index, row in tqdm(iterable=df_test.iterrows(), total=df_test.shape[0]):
     segments_ids = [0] * len(tokenized_text)
 
     # Convert inputs to PyTorch tensors
-    tokens_tensor = torch.tensor([indexed_tokens]).to('cuda')
-    segments_tensors = torch.tensor([segments_ids]).to('cuda')
+    tokens_tensor = torch.tensor([indexed_tokens]).to("cuda")
+    segments_tensors = torch.tensor([segments_ids]).to("cuda")
 
-    masked_index = tokenized_text.index('[MASK]')
+    masked_index = tokenized_text.index("[MASK]")
 
     # Predict all tokens
     with torch.no_grad():
@@ -201,7 +219,6 @@ for index, row in tqdm(iterable=df_test.iterrows(), total=df_test.shape[0]):
         words.append(predicted_token)
     pred.append(get_label(words))
     true.append(row["label"])
-precision, recall, f1, _ = precision_recall_fscore_support(true, pred, average='binary')
+precision, recall, f1, _ = precision_recall_fscore_support(true, pred, average="binary")
 acc = accuracy_score(true, pred)
-print({'accuracy': acc, 'f1': f1, 'precision': precision, 'recall': recall})
-
+print({"accuracy": acc, "f1": f1, "precision": precision, "recall": recall})

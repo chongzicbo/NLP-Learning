@@ -11,6 +11,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def load_weight(model, state_dict):
     old_keys = []
     new_keys = []
@@ -40,14 +41,22 @@ def load_weight(model, state_dict):
     def load(module, prefix=""):
         local_metadata = {} if metadata is None else metadata.get(prefix[:-1], {})
         module._load_from_state_dict(
-            state_dict, prefix, local_metadata, True, missing_keys, unexpected_keys, error_msgs
+            state_dict,
+            prefix,
+            local_metadata,
+            True,
+            missing_keys,
+            unexpected_keys,
+            error_msgs,
         )
         for name, child in module._modules.items():
             if child is not None:
                 load(child, prefix + name + ".")
 
     start_model = model
-    if hasattr(model, "transformer") and all(not s.startswith('transformer.') for s in state_dict.keys()):
+    if hasattr(model, "transformer") and all(
+        not s.startswith("transformer.") for s in state_dict.keys()
+    ):
         start_model = model.transformer
     load(start_model, prefix="")
 

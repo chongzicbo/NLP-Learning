@@ -28,9 +28,9 @@ learning_rate = 2e-5
 categories = set()
 
 # bert配置
-config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
-dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
+config_path = "/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json"
+checkpoint_path = "/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt"
+dict_path = "/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt"
 
 
 def load_data(filename):
@@ -40,9 +40,9 @@ def load_data(filename):
     """
     D = []
     for d in json.load(open(filename)):
-        D.append([d['text']])
-        for e in d['entities']:
-            start, end, label = e['start_idx'], e['end_idx'], e['type']
+        D.append([d["text"]])
+        for e in d["entities"]:
+            start, end, label = e["start_idx"], e["end_idx"], e["type"]
             if start <= end:
                 D[-1].append((start, end, label))
             categories.add(label)
@@ -50,8 +50,8 @@ def load_data(filename):
 
 
 # 标注数据
-train_data = load_data('/root/ner/CMeEE/CMeEE_train.json')
-valid_data = load_data('/root/ner/CMeEE/CMeEE_dev.json')
+train_data = load_data("/root/ner/CMeEE/CMeEE_train.json")
+valid_data = load_data("/root/ner/CMeEE/CMeEE_dev.json")
 categories = list(sorted(categories))
 
 # 建立分词器
@@ -59,8 +59,7 @@ tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
 
 class data_generator(DataGenerator):
-    """数据生成器
-    """
+    """数据生成器"""
 
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
@@ -80,7 +79,7 @@ class data_generator(DataGenerator):
                     labels[label, start, end] = 1
             batch_token_ids.append(token_ids)
             batch_segment_ids.append(segment_ids)
-            batch_labels.append(labels[:, :len(token_ids), :len(token_ids)])
+            batch_labels.append(labels[:, : len(token_ids), : len(token_ids)])
             if len(batch_token_ids) == self.batch_size or is_end:
                 batch_token_ids = sequence_padding(batch_token_ids)
                 batch_segment_ids = sequence_padding(batch_segment_ids)
@@ -90,8 +89,7 @@ class data_generator(DataGenerator):
 
 
 def global_pointer_crossentropy(y_true, y_pred):
-    """给GlobalPointer设计的交叉熵
-    """
+    """给GlobalPointer设计的交叉熵"""
     bh = K.prod(K.shape(y_pred)[:2])
     y_true = K.reshape(y_true, (bh, -1))
     y_pred = K.reshape(y_pred, (bh, -1))
@@ -99,8 +97,7 @@ def global_pointer_crossentropy(y_true, y_pred):
 
 
 def global_pointer_f1_score(y_true, y_pred):
-    """给GlobalPointer设计的F1
-    """
+    """给GlobalPointer设计的F1"""
     y_pred = K.cast(K.greater(y_pred, 0), K.floatx())
     return 2 * K.sum(y_true * y_pred) / K.sum(y_true + y_pred)
 
@@ -114,13 +111,12 @@ model.summary()
 model.compile(
     loss=global_pointer_crossentropy,
     optimizer=Adam(learning_rate),
-    metrics=[global_pointer_f1_score]
+    metrics=[global_pointer_f1_score],
 )
 
 
 class NamedEntityRecognizer(object):
-    """命名实体识别器
-    """
+    """命名实体识别器"""
 
     def recognize(self, text, threshold=0):
         tokens = tokenizer.tokenize(text, maxlen=512)
@@ -133,9 +129,7 @@ class NamedEntityRecognizer(object):
         scores[:, :, [0, -1]] -= np.inf
         entities = []
         for l, start, end in zip(*np.where(scores > threshold)):
-            entities.append(
-                (mapping[start][0], mapping[end][-1], categories[l])
-            )
+            entities.append((mapping[start][0], mapping[end][-1], categories[l]))
         return entities
 
 
@@ -143,8 +137,7 @@ NER = NamedEntityRecognizer()
 
 
 def evaluate(data):
-    """评测函数
-    """
+    """评测函数"""
     X, Y, Z = 1e-10, 1e-10, 1e-10
     for d in tqdm(data, ncols=100):
         R = set(NER.recognize(d[0]))
@@ -157,8 +150,7 @@ def evaluate(data):
 
 
 class Evaluator(keras.callbacks.Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
         self.best_val_f1 = 0
@@ -168,10 +160,10 @@ class Evaluator(keras.callbacks.Callback):
         # 保存最优
         if f1 >= self.best_val_f1:
             self.best_val_f1 = f1
-            model.save_weights('./best_model_cmeee_globalpointer.weights')
+            model.save_weights("./best_model_cmeee_globalpointer.weights")
         print(
-            'valid:  f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f\n' %
-            (f1, precision, recall, self.best_val_f1)
+            "valid:  f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f\n"
+            % (f1, precision, recall, self.best_val_f1)
         )
 
 
@@ -181,24 +173,14 @@ def predict_to_file(in_file, out_file):
     """
     data = json.load(open(in_file))
     for d in tqdm(data, ncols=100):
-        d['entities'] = []
-        entities = NER.recognize(d['text'])
+        d["entities"] = []
+        entities = NER.recognize(d["text"])
         for e in entities:
-            d['entities'].append({
-                'start_idx': e[0],
-                'end_idx': e[1],
-                'type': e[2]
-            })
-    json.dump(
-        data,
-        open(out_file, 'w', encoding='utf-8'),
-        indent=4,
-        ensure_ascii=False
-    )
+            d["entities"].append({"start_idx": e[0], "end_idx": e[1], "type": e[2]})
+    json.dump(data, open(out_file, "w", encoding="utf-8"), indent=4, ensure_ascii=False)
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
     train_generator = data_generator(train_data, batch_size)
 
@@ -206,10 +188,9 @@ if __name__ == '__main__':
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=epochs,
-        callbacks=[evaluator]
+        callbacks=[evaluator],
     )
 
 else:
-
-    model.load_weights('./best_model_cmeee_globalpointer.weights')
+    model.load_weights("./best_model_cmeee_globalpointer.weights")
     # predict_to_file('/root/ner/CMeEE/CMeEE_test.json', 'CMeEE_test.json')

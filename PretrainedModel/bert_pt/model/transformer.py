@@ -26,13 +26,17 @@ class TransformerBlock(nn.Module):
         super().__init__()
         self.attention = MultiHeadedAttention(h=attn_heads, d_model=hidden)
 
-        self.feed_forward = PositionwiseFeedForward(d_model=hidden, d_ff=feed_forward_hidden, dropout=dropout)
+        self.feed_forward = PositionwiseFeedForward(
+            d_model=hidden, d_ff=feed_forward_hidden, dropout=dropout
+        )
         self.input_sublayer = SublayerConnection(size=hidden, dropout=dropout)
         self.output_sublayer = SublayerConnection(size=hidden, dropout=dropout)
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x, mask):
         # x[batch_size,seq_len,embedding_size]
-        x = self.input_sublayer(x, lambda _x: self.attention.forward(_x, _x, _x, mask))  # 输入经过attention层后，再进行残差计算
+        x = self.input_sublayer(
+            x, lambda _x: self.attention.forward(_x, _x, _x, mask)
+        )  # 输入经过attention层后，再进行残差计算
         x = self.output_sublayer(x, self.feed_forward)  # 对残差后的结果进过前馈层后，进行残差
         return self.dropout(x)  # 残差结果再进行dropout

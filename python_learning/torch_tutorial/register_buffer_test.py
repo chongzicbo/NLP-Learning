@@ -16,7 +16,13 @@ class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
         self.param_nn = nn.Sequential(
-            OrderedDict([("conv", nn.Conv2d(1, 1, 3, bias=False)), ("fc", nn.Linear(1, 2, bias=False))]))
+            OrderedDict(
+                [
+                    ("conv", nn.Conv2d(1, 1, 3, bias=False)),
+                    ("fc", nn.Linear(1, 2, bias=False)),
+                ]
+            )
+        )
 
         self.register_buffer("param_buf", torch.randn(1, 2))
         self.register_parameter("param_reg", nn.Parameter(torch.randn(1, 2)))
@@ -25,9 +31,9 @@ class Model(nn.Module):
 
     def forward(self, x):
         return x
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
     net = Model()
     for p in net.named_parameters():
         print(p)
-
-

@@ -6,7 +6,7 @@
 import os
 import sys
 
-REPO_PATH="/".join(os.path.realpath(__file__).split("/")[:-2])
+REPO_PATH = "/".join(os.path.realpath(__file__).split("/")[:-2])
 print(REPO_PATH)
 if REPO_PATH not in sys.path:
     sys.path.insert(0, REPO_PATH)
@@ -18,11 +18,12 @@ from tokenizers import BertWordPieceTokenizer
 from datasets.mrc_ner_dataset import MRCNERDataset
 
 
-
 def main():
     # en datasets
     bert_path = "/data/xiaoya/models/bert_cased_large"
-    json_path = "/data/xiaoya/datasets/mrc_ner_datasets/en_conll03_truecase_sent/mrc-ner.train"
+    json_path = (
+        "/data/xiaoya/datasets/mrc_ner_datasets/en_conll03_truecase_sent/mrc-ner.train"
+    )
     is_chinese = False
     # [test]
     # max length is 227
@@ -39,15 +40,28 @@ def main():
 
     vocab_file = os.path.join(bert_path, "vocab.txt")
     tokenizer = BertWordPieceTokenizer(vocab_file)
-    dataset = MRCNERDataset(json_path=json_path, tokenizer=tokenizer,
-                            is_chinese=is_chinese, max_length=10000)
+    dataset = MRCNERDataset(
+        json_path=json_path,
+        tokenizer=tokenizer,
+        is_chinese=is_chinese,
+        max_length=10000,
+    )
 
-    dataloader = DataLoader(dataset, batch_size=1,
-                            collate_fn=collate_to_max_length)
+    dataloader = DataLoader(dataset, batch_size=1, collate_fn=collate_to_max_length)
 
     length_lst = []
     for batch in dataloader:
-        for tokens, token_type_ids, start_labels, end_labels, start_label_mask, end_label_mask, match_labels, sample_idx, label_idx in zip(*batch):
+        for (
+            tokens,
+            token_type_ids,
+            start_labels,
+            end_labels,
+            start_label_mask,
+            end_label_mask,
+            match_labels,
+            sample_idx,
+            label_idx,
+        ) in zip(*batch):
             tokens = tokens.tolist()
             length_lst.append(len(tokens))
     print(f"max length is {max(length_lst)}")
@@ -55,5 +69,5 @@ def main():
     print(f"avg length is {sum(length_lst)/len(length_lst)}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -22,7 +22,12 @@ tqdm.pandas()
 
 from datasets import load_dataset
 from transformers import AutoTokenizer, pipeline
-from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead, create_reference_model
+from trl import (
+    PPOTrainer,
+    PPOConfig,
+    AutoModelForCausalLMWithValueHead,
+    create_reference_model,
+)
 
 seed = 123
 np.random.seed(seed)
@@ -32,7 +37,7 @@ config = PPOConfig(
     steps=51200,
     learning_rate=1.41e-5,
     remove_unused_columns=False,
-    log_with="wandb"
+    log_with="wandb",
 )
 
 txt_in_len = 5
@@ -59,7 +64,9 @@ print(dataset)
 
 
 def tokenize(sample):
-    sample["input_ids"] = gpt2_tokenizer.encode(sample["review"], add_special_tokens=False)[:txt_in_len]
+    sample["input_ids"] = gpt2_tokenizer.encode(
+        sample["review"], add_special_tokens=False
+    )[:txt_in_len]
     sample["query"] = "".join(gpt2_tokenizer.decode(sample["input_ids"]).split(" "))
     return sample
 
@@ -67,7 +74,9 @@ def tokenize(sample):
 dataset = dataset.map(tokenize, batched=False)
 print(dataset)
 # 将指定的列名转换为torch的格式
-dataset.set_format(type="torch", columns=["input_ids", "label"], output_all_columns=True)
+dataset.set_format(
+    type="torch", columns=["input_ids", "label"], output_all_columns=True
+)
 
 
 # ==================================
@@ -81,12 +90,8 @@ def collator(data):
 
 
 ppo_trainer = PPOTrainer(
-    config,
-    gpt2_model,
-    gpt2_model_ref,
-    gpt2_tokenizer,
-    dataset,
-    data_collator=collator)
+    config, gpt2_model, gpt2_model_ref, gpt2_tokenizer, dataset, data_collator=collator
+)
 
 if ppo_trainer.accelerator.num_processes == 1:
     device = 0 if torch.cuda.is_available() else "cpu"  # to avoid a `pipeline` bug
@@ -95,10 +100,8 @@ else:
 
 # 构建reward模型
 sentiment_pipe = pipeline(
-    "sentiment-analysis",
-    "./roberta-chinese",
-    tokenizer=gpt2_tokenizer,
-    device=device)
+    "sentiment-analysis", "./roberta-chinese", tokenizer=gpt2_tokenizer, device=device
+)
 
 
 # 提取出正面的分数
@@ -114,7 +117,14 @@ def extract_pipe_output(outputs):
 # 加入prompt
 ctrl_str = ["正面：", "负面："]
 ctrl_tokens = dict(
-    (s, gpt2_tokenizer.encode(s, add_special_tokens=False, return_tensors="pt").squeeze().to(device)) for s in ctrl_str)
+    (
+        s,
+        gpt2_tokenizer.encode(s, add_special_tokens=False, return_tensors="pt")
+        .squeeze()
+        .to(device),
+    )
+    for s in ctrl_str
+)
 # ctrl_tokens
 
 # 定义生成模型参数
@@ -133,8 +143,7 @@ sentiment_pipe_kwargs = {"top_k": None, "function_to_apply": "none"}
 
 
 def pos_logit_to_reward(logit, task):
-    """如果prompt是正面，则奖励为正，否则，奖励为负
-    """
+    """如果prompt是正面，则奖励为正，否则，奖励为负"""
     for i in range(len(logit)):
         if task[i] == "负面：":
             logit[i] = -logit[i]
@@ -145,7 +154,10 @@ def pos_logit_to_reward(logit, task):
 
 for epoch in range(2):
     for batch in tqdm(ppo_trainer.dataloader):
-        logs, game_data, = (
+        (
+            logs,
+            game_data,
+        ) = (
             dict(),
             dict(),
         )
@@ -153,7 +165,10 @@ for epoch in range(2):
         #### 为每一个样本随机选一个prompt
         task_list = choices(ctrl_str, k=config.batch_size)
         game_data["query"] = [t + q for t, q in zip(task_list, batch["query"])]
-        query_tensors = [torch.cat((ctrl_tokens[t], input_ids)) for t, input_ids in zip(task_list, batch["input_ids"])]
+        query_tensors = [
+            torch.cat((ctrl_tokens[t], input_ids))
+            for t, input_ids in zip(task_list, batch["input_ids"])
+        ]
 
         #### 使用GPT2生成结果
         response_tensors = []
@@ -165,10 +180,15 @@ for epoch in range(2):
             # 这里使用的模型从前往后解码
             response_tensors.append(response.squeeze()[query_length:txt_out_len])
 
-        game_data["response"] = [gpt2_tokenizer.decode(r.squeeze()) for r in response_tensors]
+        game_data["response"] = [
+            gpt2_tokenizer.decode(r.squeeze()) for r in response_tensors
+        ]
 
         #### 使用奖励模型对输出结果进行评分
-        texts = [q + "".join(r.split(" ")) for q, r in zip(batch["query"], game_data["response"])]
+        texts = [
+            q + "".join(r.split(" "))
+            for q, r in zip(batch["query"], game_data["response"])
+        ]
         # print(texts[0])
         # 提取出LABEL_1(正面)对应的分数
         logits = extract_pipe_output(sentiment_pipe(texts, **sentiment_pipe_kwargs))
@@ -180,7 +200,9 @@ for epoch in range(2):
 
         for cs in ctrl_str:
             key = "env/reward_" + cs.strip("[]")
-            stats[key] = np.mean([r.cpu().numpy() for r, t in zip(rewards, task_list) if t == cs])
+            stats[key] = np.mean(
+                [r.cpu().numpy() for r, t in zip(rewards, task_list) if t == cs]
+            )
         ppo_trainer.log_stats(stats, game_data, rewards)
 
     gpt2_model.save_pretrained(f"./ppo-chinese/epoch-{epoch}/")

@@ -9,4 +9,4 @@
 """
 from ttskit import sdk_api
 
-wav = sdk_api.tts_sdk('文本', audio='24')
+wav = sdk_api.tts_sdk("文本", audio="24")

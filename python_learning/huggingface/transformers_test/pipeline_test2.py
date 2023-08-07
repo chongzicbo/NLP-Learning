@@ -12,5 +12,7 @@ from transformers import pipeline
 
 generator = pipeline(task="automatic-speech-recognition")
 
-text=generator("https://huggingface.co/datasets/Narsil/asr_dummy/resolve/main/mlk.flac")
+text = generator(
+    "https://huggingface.co/datasets/Narsil/asr_dummy/resolve/main/mlk.flac"
+)
 print(text)

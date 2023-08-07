@@ -25,13 +25,13 @@ from tqdm import tqdm
 loggers = {}
 
 log_config = {
-    'DEBUG': {'level': 10, 'color': 'purple'},
-    'INFO': {'level': 20, 'color': 'green'},
-    'TRAIN': {'level': 21, 'color': 'cyan'},
-    'EVAL': {'level': 22, 'color': 'blue'},
-    'WARNING': {'level': 30, 'color': 'yellow'},
-    'ERROR': {'level': 40, 'color': 'red'},
-    'CRITICAL': {'level': 50, 'color': 'bold_red'}
+    "DEBUG": {"level": 10, "color": "purple"},
+    "INFO": {"level": 20, "color": "green"},
+    "TRAIN": {"level": 21, "color": "cyan"},
+    "EVAL": {"level": 22, "color": "blue"},
+    "WARNING": {"level": 30, "color": "yellow"},
+    "ERROR": {"level": 40, "color": "red"},
+    "CRITICAL": {"level": 50, "color": "bold_red"},
 }
 
 
@@ -111,33 +111,31 @@ def get_bool_ids_greater_than(probs, limit=0.5, return_prob=False):
 
 
 class Logger(object):
-    '''
+    """
     Deafult logger in UIE
     Args:
         name(str) : Logger name, default is 'UIE'
-    '''
+    """
 
     def __init__(self, name: str = None):
-        name = 'UIE' if not name else name
+        name = "UIE" if not name else name
         self.logger = logging.getLogger(name)
 
         for key, conf in log_config.items():
-            logging.addLevelName(conf['level'], key)
-            self.__dict__[key] = functools.partial(
-                self.__call__, conf['level'])
-            self.__dict__[key.lower()] = functools.partial(
-                self.__call__, conf['level'])
+            logging.addLevelName(conf["level"], key)
+            self.__dict__[key] = functools.partial(self.__call__, conf["level"])
+            self.__dict__[key.lower()] = functools.partial(self.__call__, conf["level"])
 
         self.format = colorlog.ColoredFormatter(
-            '%(log_color)s[%(asctime)-15s] [%(levelname)8s]%(reset)s - %(message)s',
-            log_colors={key: conf['color']
-                        for key, conf in log_config.items()})
+            "%(log_color)s[%(asctime)-15s] [%(levelname)8s]%(reset)s - %(message)s",
+            log_colors={key: conf["color"] for key, conf in log_config.items()},
+        )
 
         self.handler = logging.StreamHandler()
         self.handler.setFormatter(self.format)
 
         self.logger.addHandler(self.handler)
-        self.logLevel = 'DEBUG'
+        self.logLevel = "DEBUG"
         self.logger.setLevel(logging.DEBUG)
         self.logger.propagate = False
         self._is_enable = True
@@ -167,21 +165,21 @@ class Logger(object):
 
     @contextlib.contextmanager
     def processing(self, msg: str, interval: float = 0.1):
-        '''
+        """
         Continuously print a progress bar with rotating special effects.
         Args:
             msg(str): Message to be printed.
             interval(float): Rotation interval. Default to 0.1.
-        '''
+        """
         end = False
 
         def _printer():
             index = 0
-            flags = ['\\', '|', '/', '-']
+            flags = ["\\", "|", "/", "-"]
             while not end:
                 flag = flags[index % len(flags)]
-                with self.use_terminator('\r'):
-                    self.info('{}: {}'.format(msg, flag))
+                with self.use_terminator("\r"):
+                    self.info("{}: {}".format(msg, flag))
                 time.sleep(interval)
                 index += 1
 
@@ -193,17 +191,9 @@ class Logger(object):
 
 logger = Logger()
 
-BAR_FORMAT = f'{{desc}}: {Fore.GREEN}{{percentage:3.0f}}%{Fore.RESET} {Fore.BLUE}{{bar}}{Fore.RESET}  {Fore.GREEN}{{n_fmt}}/{{total_fmt}} {Fore.RED}{{rate_fmt}}{{postfix}}{Fore.RESET} eta {Fore.CYAN}{{remaining}}{Fore.RESET}'
-BAR_FORMAT_NO_TIME = f'{{desc}}: {Fore.GREEN}{{percentage:3.0f}}%{Fore.RESET} {Fore.BLUE}{{bar}}{Fore.RESET}  {Fore.GREEN}{{n_fmt}}/{{total_fmt}}{Fore.RESET}'
-BAR_TYPE = [
-    "░▝▗▖▘▚▞▛▙█",
-    "░▖▘▝▗▚▞█",
-    " ▖▘▝▗▚▞█",
-    "░▒█",
-    " >=",
-    " ▏▎▍▌▋▊▉█"
-    "░▏▎▍▌▋▊▉█"
-]
+BAR_FORMAT = f"{{desc}}: {Fore.GREEN}{{percentage:3.0f}}%{Fore.RESET} {Fore.BLUE}{{bar}}{Fore.RESET}  {Fore.GREEN}{{n_fmt}}/{{total_fmt}} {Fore.RED}{{rate_fmt}}{{postfix}}{Fore.RESET} eta {Fore.CYAN}{{remaining}}{Fore.RESET}"
+BAR_FORMAT_NO_TIME = f"{{desc}}: {Fore.GREEN}{{percentage:3.0f}}%{Fore.RESET} {Fore.BLUE}{{bar}}{Fore.RESET}  {Fore.GREEN}{{n_fmt}}/{{total_fmt}}{Fore.RESET}"
+BAR_TYPE = ["░▝▗▖▘▚▞▛▙█", "░▖▘▝▗▚▞█", " ▖▘▝▗▚▞█", "░▒█", " >=", " ▏▎▍▌▋▊▉█" "░▏▎▍▌▋▊▉█"]
 
 tqdm = partial(tqdm, bar_format=BAR_FORMAT, ascii=BAR_TYPE[0], leave=False)
 
@@ -217,15 +207,14 @@ def get_id_and_prob(spans, offset_map):
             break
 
     for i in range(1, prompt_length + 1):
-        offset_map[i][0] -= (prompt_length + 1)
-        offset_map[i][1] -= (prompt_length + 1)
+        offset_map[i][0] -= prompt_length + 1
+        offset_map[i][1] -= prompt_length + 1
 
     sentence_id = []
     prob = []
     for start, end in spans:
         prob.append(start[1] * end[1])
-        sentence_id.append(
-            (offset_map[start[0]][0], offset_map[end[0]][1]))
+        sentence_id.append((offset_map[start[0]][0], offset_map[end[0]][1]))
     return sentence_id, prob
 
 
@@ -234,10 +223,10 @@ def cut_chinese_sent(para):
     Cut the Chinese sentences more precisely, reference to
     "https://blog.csdn.net/blmoistawinde/article/details/82379256".
     """
-    para = re.sub(r'([。！？\?])([^”’])', r'\1\n\2', para)
-    para = re.sub(r'(\.{6})([^”’])', r'\1\n\2', para)
-    para = re.sub(r'(\…{2})([^”’])', r'\1\n\2', para)
-    para = re.sub(r'([。！？\?][”’])([^，。！？\?])', r'\1\n\2', para)
+    para = re.sub(r"([。！？\?])([^”’])", r"\1\n\2", para)
+    para = re.sub(r"(\.{6})([^”’])", r"\1\n\2", para)
+    para = re.sub(r"(\…{2})([^”’])", r"\1\n\2", para)
+    para = re.sub(r"([。！？\?][”’])([^，。！？\?])", r"\1\n\2", para)
     para = para.rstrip()
     return para.split("\n")
 
@@ -249,8 +238,8 @@ def dbc2sbc(s):
         if code == 0x3000:
             code = 0x0020
         else:
-            code -= 0xfee0
-        if not (0x0021 <= code and code <= 0x7e):
+            code -= 0xFEE0
+        if not (0x0021 <= code and code <= 0x7E):
             rs += char
             continue
         rs += chr(code)
@@ -277,11 +266,7 @@ def convert_cls_examples(raw_examples, prompt_prefix, options):
             prompt = prompt_prefix + "[" + prompt.rstrip(sep) + "]"
 
             result_list = []
-            example = {
-                "content": text,
-                "result_list": result_list,
-                "prompt": prompt
-            }
+            example = {"content": text, "result_list": result_list, "prompt": prompt}
             for label in labels:
                 start = prompt.rfind(label[0]) - len(prompt) - 1
                 end = start + len(label)
@@ -311,14 +296,14 @@ def add_negative_example(examples, texts, prompts, label_set, negative_ratio):
                 idxs = [k for k in range(len(redundants_list))]
             else:
                 idxs = random.sample(
-                    range(0, len(redundants_list)),
-                    negative_ratio * num_positive)
+                    range(0, len(redundants_list)), negative_ratio * num_positive
+                )
 
             for idx in idxs:
                 negative_result = {
                     "content": texts[i],
                     "result_list": [],
-                    "prompt": redundants_list[idx]
+                    "prompt": redundants_list[idx],
                 }
                 negative_examples.append(negative_result)
             positive_examples.extend(examples[i])
@@ -326,8 +311,9 @@ def add_negative_example(examples, texts, prompts, label_set, negative_ratio):
     return positive_examples, negative_examples
 
 
-def add_full_negative_example(examples, texts, relation_prompts, predicate_set,
-                              subject_goldens):
+def add_full_negative_example(
+    examples, texts, relation_prompts, predicate_set, subject_goldens
+):
     with tqdm(total=len(relation_prompts)) as pbar:
         for i, relation_prompt in enumerate(relation_prompts):
             negative_sample = []
@@ -340,7 +326,7 @@ def add_full_negative_example(examples, texts, relation_prompts, predicate_set,
                         negative_result = {
                             "content": texts[i],
                             "result_list": [],
-                            "prompt": prompt
+                            "prompt": prompt,
                         }
                         negative_sample.append(negative_result)
             examples[i].extend(negative_sample)
@@ -377,8 +363,10 @@ def convert_ext_examples(raw_examples, negative_ratio, is_train=True):
             entity_id = 0
             if "data" in items.keys():
                 relation_mode = False
-                if isinstance(items["label"],
-                              dict) and "entities" in items["label"].keys():
+                if (
+                    isinstance(items["label"], dict)
+                    and "entities" in items["label"].keys()
+                ):
                     relation_mode = True
                 text = items["data"]
                 entities = []
@@ -389,7 +377,7 @@ def convert_ext_examples(raw_examples, negative_ratio, is_train=True):
                             "id": entity_id,
                             "start_offset": item[0],
                             "end_offset": item[1],
-                            "label": item[2]
+                            "label": item[2],
                         }
                         entities.append(entity)
                         entity_id += 1
@@ -400,7 +388,7 @@ def convert_ext_examples(raw_examples, negative_ratio, is_train=True):
                             "id": entity_id,
                             "start_offset": item["start_offset"],
                             "end_offset": item["end_offset"],
-                            "label": item["label"]
+                            "label": item["label"],
                         }
                         entities.append(entity)
                         entity_id += 1
@@ -415,15 +403,18 @@ def convert_ext_examples(raw_examples, negative_ratio, is_train=True):
                             "id": entity_id,
                             "start_offset": item[0],
                             "end_offset": item[1],
-                            "label": item[2]
+                            "label": item[2],
                         }
                         entities.append(entity)
                         entity_id += 1
                     relations = []
                 else:
                     # Export file in JSONL (relation) format
-                    text, relations, entities = items["text"], items[
-                        "relations"], items["entities"]
+                    text, relations, entities = (
+                        items["text"],
+                        items["relations"],
+                        items["entities"],
+                    )
             texts.append(text)
 
             entity_example = []
@@ -431,28 +422,27 @@ def convert_ext_examples(raw_examples, negative_ratio, is_train=True):
             entity_example_map = {}
             entity_map = {}  # id to entity name
             for entity in entities:
-                entity_name = text[entity["start_offset"]:entity["end_offset"]]
+                entity_name = text[entity["start_offset"] : entity["end_offset"]]
                 entity_map[entity["id"]] = {
                     "name": entity_name,
                     "start": entity["start_offset"],
-                    "end": entity["end_offset"]
+                    "end": entity["end_offset"],
                 }
 
                 entity_label = entity["label"]
                 result = {
                     "text": entity_name,
                     "start": entity["start_offset"],
-                    "end": entity["end_offset"]
+                    "end": entity["end_offset"],
                 }
                 if entity_label not in entity_example_map.keys():
                     entity_example_map[entity_label] = {
                         "content": text,
                         "result_list": [result],
-                        "prompt": entity_label
+                        "prompt": entity_label,
                     }
                 else:
-                    entity_example_map[entity_label]["result_list"].append(
-                        result)
+                    entity_example_map[entity_label]["result_list"].append(result)
 
                 if entity_label not in entity_label_set:
                     entity_label_set.append(entity_label)
@@ -482,13 +472,13 @@ def convert_ext_examples(raw_examples, negative_ratio, is_train=True):
                 result = {
                     "text": entity_map[object_id]["name"],
                     "start": entity_map[object_id]["start"],
-                    "end": entity_map[object_id]["end"]
+                    "end": entity_map[object_id]["end"],
                 }
                 if prompt not in relation_example_map.keys():
                     relation_example_map[prompt] = {
                         "content": text,
                         "result_list": [result],
-                        "prompt": prompt
+                        "prompt": prompt,
                     }
                 else:
                     relation_example_map[prompt]["result_list"].append(result)
@@ -507,14 +497,14 @@ def convert_ext_examples(raw_examples, negative_ratio, is_train=True):
 
     def concat_examples(positive_examples, negative_examples, negative_ratio):
         examples = []
-        if math.ceil(len(negative_examples) /
-                     len(positive_examples)) <= negative_ratio:
+        if math.ceil(len(negative_examples) / len(positive_examples)) <= negative_ratio:
             examples = positive_examples + negative_examples
         else:
             # Random sampling the negative examples to ensure overall negative ratio unchanged.
             idxs = random.sample(
                 range(0, len(negative_examples)),
-                negative_ratio * len(positive_examples))
+                negative_ratio * len(positive_examples),
+            )
             negative_examples_sampled = []
             for idx in idxs:
                 negative_examples_sampled.append(negative_examples[idx])
@@ -523,13 +513,14 @@ def convert_ext_examples(raw_examples, negative_ratio, is_train=True):
 
     logger.info(f"Adding negative samples for first stage prompt...")
     positive_examples, negative_examples = add_negative_example(
-        entity_examples, texts, entity_prompts, entity_label_set,
-        negative_ratio)
+        entity_examples, texts, entity_prompts, entity_label_set, negative_ratio
+    )
     if len(positive_examples) == 0:
         all_entity_examples = []
     elif is_train:
-        all_entity_examples = concat_examples(positive_examples,
-                                              negative_examples, negative_ratio)
+        all_entity_examples = concat_examples(
+            positive_examples, negative_examples, negative_ratio
+        )
     else:
         all_entity_examples = positive_examples + negative_examples
 
@@ -537,31 +528,36 @@ def convert_ext_examples(raw_examples, negative_ratio, is_train=True):
     if len(predicate_set) != 0:
         if is_train:
             logger.info(f"Adding negative samples for second stage prompt...")
-            relation_prompt_set = construct_relation_prompt_set(entity_name_set,
-                                                                predicate_set)
+            relation_prompt_set = construct_relation_prompt_set(
+                entity_name_set, predicate_set
+            )
             positive_examples, negative_examples = add_negative_example(
-                relation_examples, texts, relation_prompts, relation_prompt_set,
-                negative_ratio)
+                relation_examples,
+                texts,
+                relation_prompts,
+                relation_prompt_set,
+                negative_ratio,
+            )
             all_relation_examples = concat_examples(
-                positive_examples, negative_examples, negative_ratio)
+                positive_examples, negative_examples, negative_ratio
+            )
         else:
             logger.info(f"Adding negative samples for second stage prompt...")
             relation_examples = add_full_negative_example(
-                relation_examples, texts, relation_prompts, predicate_set,
-                subject_goldens)
+                relation_examples,
+                texts,
+                relation_prompts,
+                predicate_set,
+                subject_goldens,
+            )
             all_relation_examples = [
-                r
-                for r in relation_example
-                for relation_example in relation_examples
+                r for r in relation_example for relation_example in relation_examples
             ]
     return all_entity_examples, all_relation_examples
 
 
-def get_path_from_url(url,
-                      root_dir,
-                      check_exist=True,
-                      decompress=True):
-    """ Download from given url to root_dir.
+def get_path_from_url(url, root_dir, check_exist=True, decompress=True):
+    """Download from given url to root_dir.
     if file or directory specified by url is exists under
     root_dir, return the path directly, otherwise download
     from url and decompress it, return the path.
@@ -585,7 +581,7 @@ def get_path_from_url(url,
         Args:
             path (string): URL string or not.
         """
-        return path.startswith('http://') or path.startswith('https://')
+        return path.startswith("http://") or path.startswith("https://")
 
     def _map_path(url, root_dir):
         # parse path after download under root_dir
@@ -595,27 +591,33 @@ def get_path_from_url(url,
 
     def _get_download(url, fullname):
         import requests
+
         # using requests.get method
         fname = os.path.basename(fullname)
         try:
             req = requests.get(url, stream=True)
         except Exception as e:  # requests.exceptions.ConnectionError
-            logger.info("Downloading {} from {} failed with exception {}".format(
-                fname, url, str(e)))
+            logger.info(
+                "Downloading {} from {} failed with exception {}".format(
+                    fname, url, str(e)
+                )
+            )
             return False
 
         if req.status_code != 200:
-            raise RuntimeError("Downloading from {} failed with code "
-                               "{}!".format(url, req.status_code))
+            raise RuntimeError(
+                "Downloading from {} failed with code "
+                "{}!".format(url, req.status_code)
+            )
 
         # For protecting download interupted, download to
         # tmp_fullname firstly, move tmp_fullname to fullname
         # after download finished
         tmp_fullname = fullname + "_tmp"
-        total_size = req.headers.get('content-length')
-        with open(tmp_fullname, 'wb') as f:
+        total_size = req.headers.get("content-length")
+        with open(tmp_fullname, "wb") as f:
             if total_size:
-                with tqdm(total=(int(total_size) + 1023) // 1024, unit='KB') as pbar:
+                with tqdm(total=(int(total_size) + 1023) // 1024, unit="KB") as pbar:
                     for chunk in req.iter_content(chunk_size=1024):
                         f.write(chunk)
                         pbar.update(1)
@@ -647,8 +649,9 @@ def get_path_from_url(url,
             if retry_cnt < DOWNLOAD_RETRY_LIMIT:
                 retry_cnt += 1
             else:
-                raise RuntimeError("Download from {} failed. "
-                                   "Retry limit reached".format(url))
+                raise RuntimeError(
+                    "Download from {} failed. " "Retry limit reached".format(url)
+                )
 
             if not _get_download(url, fullname):
                 time.sleep(1)
@@ -657,7 +660,7 @@ def get_path_from_url(url,
         return fullname
 
     def _uncompress_file_zip(filepath):
-        with zipfile.ZipFile(filepath, 'r') as files:
+        with zipfile.ZipFile(filepath, "r") as files:
             file_list = files.namelist()
 
             file_dir = os.path.dirname(filepath)
@@ -670,7 +673,8 @@ def get_path_from_url(url,
             elif _is_a_single_dir(file_list):
                 # `strip(os.sep)` to remove `os.sep` in the tail of path
                 rootpath = os.path.splitext(file_list[0].strip(os.sep))[0].split(
-                    os.sep)[-1]
+                    os.sep
+                )[-1]
                 uncompressed_path = os.path.join(file_dir, rootpath)
 
                 files.extractall(file_dir)
@@ -691,10 +695,10 @@ def get_path_from_url(url,
     def _is_a_single_dir(file_list):
         new_file_list = []
         for file_path in file_list:
-            if '/' in file_path:
-                file_path = file_path.replace('/', os.sep)
-            elif '\\' in file_path:
-                file_path = file_path.replace('\\', os.sep)
+            if "/" in file_path:
+                file_path = file_path.replace("/", os.sep)
+            elif "\\" in file_path:
+                file_path = file_path.replace("\\", os.sep)
             new_file_list.append(file_path)
 
         file_name = new_file_list[0].split(os.sep)[0]
@@ -715,7 +719,8 @@ def get_path_from_url(url,
                 files.extractall(file_dir)
             elif _is_a_single_dir(file_list):
                 rootpath = os.path.splitext(file_list[0].strip(os.sep))[0].split(
-                    os.sep)[-1]
+                    os.sep
+                )[-1]
                 uncompressed_path = os.path.join(file_dir, rootpath)
                 files.extractall(file_dir)
             else:
@@ -755,8 +760,7 @@ def get_path_from_url(url,
     else:
         fullpath = _download(url, root_dir)
 
-    if decompress and (tarfile.is_tarfile(fullpath) or
-                       zipfile.is_zipfile(fullpath)):
+    if decompress and (tarfile.is_tarfile(fullpath) or zipfile.is_zipfile(fullpath)):
         fullpath = _decompress(fullpath)
 
     return fullpath

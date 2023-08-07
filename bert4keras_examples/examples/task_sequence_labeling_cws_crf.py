@@ -31,9 +31,9 @@ learning_rate = 1e-5  # bert_layers越小，学习率应该要越大
 crf_lr_multiplier = 1  # 必要时扩大CRF层的学习率
 
 # bert配置
-config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
-dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
+config_path = "/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json"
+checkpoint_path = "/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt"
+dict_path = "/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt"
 
 
 def load_data(filename):
@@ -41,22 +41,22 @@ def load_data(filename):
     单条格式：[词1, 词2, 词3, ...]
     """
     D = []
-    with open(filename, encoding='utf-8') as f:
+    with open(filename, encoding="utf-8") as f:
         for l in f:
-            D.append(re.split(' +', l.strip()))
+            D.append(re.split(" +", l.strip()))
     return D
 
 
 # 标注数据
-data = load_data('/root/icwb2-data/training/pku_training.utf8')
+data = load_data("/root/icwb2-data/training/pku_training.utf8")
 
 # 保存一个随机序（供划分valid用）
-if not os.path.exists('../random_order.json'):
+if not os.path.exists("../random_order.json"):
     random_order = list(range(len(data)))
     np.random.shuffle(random_order)
-    json.dump(random_order, open('../random_order.json', 'w'), indent=4)
+    json.dump(random_order, open("../random_order.json", "w"), indent=4)
 else:
-    random_order = json.load(open('../random_order.json'))
+    random_order = json.load(open("../random_order.json"))
 
 # 划分valid
 train_data = [data[j] for i, j in enumerate(random_order) if i % 10 != 0]
@@ -67,8 +67,7 @@ tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
 
 class data_generator(DataGenerator):
-    """数据生成器
-    """
+    """数据生成器"""
 
     def __iter__(self, random=False):
         """标签含义
@@ -117,7 +116,7 @@ model = build_transformer_model(
     checkpoint_path,
 )
 
-output_layer = 'Transformer-%s-FeedForward-Norm' % (bert_layers - 1)
+output_layer = "Transformer-%s-FeedForward-Norm" % (bert_layers - 1)
 output = model.get_layer(output_layer).output
 output = Dense(num_labels)(output)
 CRF = ConditionalRandomField(lr_multiplier=crf_lr_multiplier)
@@ -127,15 +126,12 @@ model = Model(model.input, output)
 model.summary()
 
 model.compile(
-    loss=CRF.sparse_loss,
-    optimizer=Adam(learning_rate),
-    metrics=[CRF.sparse_accuracy]
+    loss=CRF.sparse_loss, optimizer=Adam(learning_rate), metrics=[CRF.sparse_accuracy]
 )
 
 
 class WordSegmenter(ViterbiDecoder):
-    """基本分词器
-    """
+    """基本分词器"""
 
     def tokenize(self, text):
         tokens = tokenizer.tokenize(text)
@@ -153,7 +149,7 @@ class WordSegmenter(ViterbiDecoder):
                 words.append([i + 1])
             else:
                 words[-1].append(i + 1)
-        return [text[mapping[w[0]][0]:mapping[w[-1]][-1] + 1] for w in words]
+        return [text[mapping[w[0]][0] : mapping[w[-1]][-1] + 1] for w in words]
 
 
 segmenter = WordSegmenter(trans=K.eval(CRF.trans), starts=[0], ends=[0])
@@ -164,9 +160,9 @@ def simple_evaluate(data):
     该评测指标不等价于官方的评测指标，但基本呈正相关关系，
     可以用来快速筛选模型。
     """
-    total, right = 0., 0.
+    total, right = 0.0, 0.0
     for w_true in tqdm(data):
-        w_pred = segmenter.tokenize(''.join(w_true))
+        w_pred = segmenter.tokenize("".join(w_true))
         w_pred = set(w_pred)
         w_true = set(w_true)
         total += len(w_true)
@@ -183,19 +179,18 @@ def predict_to_file(in_file, out_file):
     $data_dir/scripts/score $data_dir/gold/pku_training_words.utf8 $data_dir/gold/pku_test_gold.utf8 myresult.txt > myscore.txt
     （执行完毕后查看myscore.txt的内容末尾）
     """
-    fw = open(out_file, 'w', encoding='utf-8')
-    with open(in_file, encoding='utf-8') as fr:
+    fw = open(out_file, "w", encoding="utf-8")
+    with open(in_file, encoding="utf-8") as fr:
         for l in tqdm(fr):
             l = l.strip()
             if l:
-                l = ' '.join(segmenter.tokenize(l))
-            fw.write(l + '\n')
+                l = " ".join(segmenter.tokenize(l))
+            fw.write(l + "\n")
     fw.close()
 
 
 class Evaluator(keras.callbacks.Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
         self.best_val_acc = 0
@@ -208,12 +203,11 @@ class Evaluator(keras.callbacks.Callback):
         # 保存最优
         if acc >= self.best_val_acc:
             self.best_val_acc = acc
-            model.save_weights('./best_model.weights')
-        print('acc: %.5f, best acc: %.5f' % (acc, self.best_val_acc))
+            model.save_weights("./best_model.weights")
+        print("acc: %.5f, best acc: %.5f" % (acc, self.best_val_acc))
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
     train_generator = data_generator(train_data, batch_size)
 
@@ -221,10 +215,9 @@ if __name__ == '__main__':
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=epochs,
-        callbacks=[evaluator]
+        callbacks=[evaluator],
     )
 
 else:
-
-    model.load_weights('./best_model.weights')
+    model.load_weights("./best_model.weights")
     segmenter.trans = K.eval(CRF.trans)

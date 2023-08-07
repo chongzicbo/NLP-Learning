@@ -60,7 +60,12 @@ def predict(model, data_loader):
 
     with paddle.no_grad():
         for batch_data in data_loader:
-            query_input_ids, query_token_type_ids, title_input_ids, title_token_type_ids = batch_data
+            (
+                query_input_ids,
+                query_token_type_ids,
+                title_input_ids,
+                title_token_type_ids,
+            ) = batch_data
 
             query_input_ids = paddle.to_tensor(query_input_ids)
             query_token_type_ids = paddle.to_tensor(query_token_type_ids)
@@ -71,7 +76,8 @@ def predict(model, data_loader):
                 query_input_ids=query_input_ids,
                 title_input_ids=title_input_ids,
                 query_token_type_ids=query_token_type_ids,
-                title_token_type_ids=title_token_type_ids).numpy()
+                title_token_type_ids=title_token_type_ids,
+            ).numpy()
 
             cosine_sims.append(batch_cosine_sim)
 
@@ -83,11 +89,11 @@ def predict(model, data_loader):
 if __name__ == "__main__":
     paddle.set_device(args.device)
 
-    tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained('ernie-1.0')
+    tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained("ernie-1.0")
 
-    trans_func = partial(convert_example,
-                         tokenizer=tokenizer,
-                         max_seq_length=args.max_seq_length)
+    trans_func = partial(
+        convert_example, tokenizer=tokenizer, max_seq_length=args.max_seq_length
+    )
 
     batchify_fn = lambda samples, fn=Tuple(
         Pad(axis=0, pad_val=tokenizer.pad_token_id),  # query_input
@@ -96,34 +102,35 @@ if __name__ == "__main__":
         Pad(axis=0, pad_val=tokenizer.pad_token_type_id),  # tilte_segment
     ): [data for data in fn(samples)]
 
-    valid_ds = load_dataset(read_text_pair,
-                            data_path=args.text_pair_file,
-                            lazy=False,
-                            is_test=True)
+    valid_ds = load_dataset(
+        read_text_pair, data_path=args.text_pair_file, lazy=False, is_test=True
+    )
 
-    valid_data_loader = create_dataloader(valid_ds,
-                                          mode='predict',
-                                          batch_size=args.batch_size,
-                                          batchify_fn=batchify_fn,
-                                          trans_fn=trans_func)
+    valid_data_loader = create_dataloader(
+        valid_ds,
+        mode="predict",
+        batch_size=args.batch_size,
+        batchify_fn=batchify_fn,
+        trans_fn=trans_func,
+    )
 
-    pretrained_model = ppnlp.transformers.ErnieModel.from_pretrained(
-        "ernie-1.0")
+    pretrained_model = ppnlp.transformers.ErnieModel.from_pretrained("ernie-1.0")
 
-    model = SimCSE(pretrained_model,
-                   margin=args.margin,
-                   scale=args.scale,
-                   output_emb_size=args.output_emb_size)
+    model = SimCSE(
+        pretrained_model,
+        margin=args.margin,
+        scale=args.scale,
+        output_emb_size=args.output_emb_size,
+    )
 
     if args.params_path and os.path.isfile(args.params_path):
         state_dict = paddle.load(args.params_path)
         model.set_dict(state_dict)
         print("Loaded parameters from %s" % args.params_path)
     else:
-        raise ValueError(
-            "Please set --params_path with correct pretrained model file")
+        raise ValueError("Please set --params_path with correct pretrained model file")
 
     cosin_sim = predict(model, valid_data_loader)
 
     for idx, cosine in enumerate(cosin_sim):
-        print('{}'.format(cosine))
+        print("{}".format(cosine))

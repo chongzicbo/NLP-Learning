@@ -19,7 +19,7 @@ def add(procname, n):
     print(f"sum:{sum}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     start = time.time()
     n = 500000000
     p1 = Process(target=add, args=("Proc-1", n // 2))

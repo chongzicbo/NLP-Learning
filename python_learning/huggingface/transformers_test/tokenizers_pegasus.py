@@ -11,7 +11,8 @@ from fengshen.examples.pegasus.data_utils import (
     _is_control,
     _is_punctuation,
     _is_whitespace,
-    _is_chinese_char)
+    _is_chinese_char,
+)
 from transformers import PreTrainedTokenizer
 from transformers import logging
 from typing import List, Optional, Tuple, Union
@@ -100,24 +101,26 @@ class PegasusTokenizer(PreTrainedTokenizer):
     #     pretrained_init_configuration = PRETRAINED_INIT_CONFIGURATION
     #     max_model_input_sizes = PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES
 
-    def __init__(self,
-                 vocab_file,
-                 do_lower_case=True,
-                 do_basic_tokenize=True,
-                 never_split=None,
-                 pad_token="<pad>",
-                 eos_token="</s>",
-                 unk_token="<unk>",
-                 mask_token="<mask_2>",
-                 mask_token_sent="<mask_1>",
-                 additional_special_tokens=None,
-                 sep_token="[SEP]",
-                 cls_token="[CLS]",
-                 tokenize_chinese_chars=True,
-                 strip_accents=None,
-                 offset=100,
-                 pre_tokenizer=lambda x: jieba.cut(x, HMM=False),
-                 **kwargs):
+    def __init__(
+        self,
+        vocab_file,
+        do_lower_case=True,
+        do_basic_tokenize=True,
+        never_split=None,
+        pad_token="<pad>",
+        eos_token="</s>",
+        unk_token="<unk>",
+        mask_token="<mask_2>",
+        mask_token_sent="<mask_1>",
+        additional_special_tokens=None,
+        sep_token="[SEP]",
+        cls_token="[CLS]",
+        tokenize_chinese_chars=True,
+        strip_accents=None,
+        offset=100,
+        pre_tokenizer=lambda x: jieba.cut(x, HMM=False),
+        **kwargs,
+    ):
         self.offset = offset
 
         if additional_special_tokens is not None:
@@ -130,16 +133,19 @@ class PegasusTokenizer(PreTrainedTokenizer):
             additional_special_tokens_extended = (
                 ([mask_token_sent] + additional_special_tokens)
                 if mask_token_sent not in additional_special_tokens
-                and mask_token_sent is not None else additional_special_tokens)
+                and mask_token_sent is not None
+                else additional_special_tokens
+            )
 
             # fill additional tokens with ..., <unk_token_102> in case not all additional tokens are already taken
             additional_special_tokens_extended += [
-                f"<unk_{i}>" for i in range(
-                    len(additional_special_tokens_extended), self.offset - 1)
+                f"<unk_{i}>"
+                for i in range(len(additional_special_tokens_extended), self.offset - 1)
             ]
 
             if len(set(additional_special_tokens_extended)) != len(
-                    additional_special_tokens_extended):
+                additional_special_tokens_extended
+            ):
                 raise ValueError(
                     f"Please make sure that the provided additional_special_tokens \
                         do not contain an incorrectly shifted list of <unk_x> tokens. \
@@ -147,9 +153,9 @@ class PegasusTokenizer(PreTrainedTokenizer):
                 )
             additional_special_tokens = additional_special_tokens_extended
         else:
-            additional_special_tokens = [
-                mask_token_sent
-            ] if mask_token_sent is not None else []
+            additional_special_tokens = (
+                [mask_token_sent] if mask_token_sent is not None else []
+            )
             # additional_special_tokens += [f"<unk_{i}>" for i in range(3, self.offset)]
 
         # print("additional_special_tokens: ", additional_special_tokens)
@@ -190,9 +196,9 @@ class PegasusTokenizer(PreTrainedTokenizer):
             self.vocab[self.mask_token] = self.vocab.pop("[unused3]")
             self.vocab[self.mask_token_sent] = self.vocab.pop("[unused2]")
 
-        self.ids_to_tokens = collections.OrderedDict([
-            (ids, tok) for tok, ids in self.vocab.items()
-        ])
+        self.ids_to_tokens = collections.OrderedDict(
+            [(ids, tok) for tok, ids in self.vocab.items()]
+        )
         self.do_basic_tokenize = do_basic_tokenize
         if do_basic_tokenize:
             self.basic_tokenizer = BasicTokenizer(
@@ -201,8 +207,9 @@ class PegasusTokenizer(PreTrainedTokenizer):
                 tokenize_chinese_chars=tokenize_chinese_chars,
                 strip_accents=strip_accents,
             )
-        self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab,
-                                                      unk_token=self.unk_token)
+        self.wordpiece_tokenizer = WordpieceTokenizer(
+            vocab=self.vocab, unk_token=self.unk_token
+        )
 
     @property
     def do_lower_case(self):
@@ -224,14 +231,13 @@ class PegasusTokenizer(PreTrainedTokenizer):
             else:
                 if self.do_basic_tokenize:
                     for token in self.basic_tokenizer.tokenize(
-                            text, never_split=self.all_special_tokens):
-
+                        text, never_split=self.all_special_tokens
+                    ):
                         # If the token is part of the never_split set
                         if token in self.basic_tokenizer.never_split:
                             split_tokens.append(token)
                         else:
-                            split_tokens += self.wordpiece_tokenizer.tokenize(
-                                token)
+                            split_tokens += self.wordpiece_tokenizer.tokenize(token)
                 else:
                     split_tokens = self.wordpiece_tokenizer.tokenize(text)
         return split_tokens
@@ -246,16 +252,15 @@ class PegasusTokenizer(PreTrainedTokenizer):
 
     @staticmethod
     def _cjk_punctuation():
-        return u'\uff02\uff03\uff04\uff05\uff06\uff07\uff08\uff09\uff0a\uff0b\uff0c\uff0d\uff0f\uff1a\uff1b\uff1c\uff1d\
+        return "\uff02\uff03\uff04\uff05\uff06\uff07\uff08\uff09\uff0a\uff0b\uff0c\uff0d\uff0f\uff1a\uff1b\uff1c\uff1d\
             \uff1e\uff20\uff3b\uff3c\uff3d\uff3e\uff3f\uff40\uff5b\uff5c\uff5d\uff5e\uff5f\uff60\uff62\
             \uff63\uff64\u3000\u3001\u3003\u3008\u3009\u300a\u300b\u300c\u300d\u300e\u300f\u3010\u3011\u3014\
             \u3015\u3016\u3017\u3018\u3019\u301a\u301b\u301c\u301d\u301e\u301f\u3030\u303e\u303f\u2013\u2014\
-            \u2018\u2019\u201b\u201c\u201d\u201e\u201f\u2026\u2027\ufe4f\ufe51\ufe54\u00b7\uff01\uff1f\uff61\u3002'
+            \u2018\u2019\u201b\u201c\u201d\u201e\u201f\u2026\u2027\ufe4f\ufe51\ufe54\u00b7\uff01\uff1f\uff61\u3002"
 
     def convert_ids_to_tokens(
-            self,
-            ids: Union[int, List[int]],
-            skip_special_tokens: bool = False) -> Union[str, List[str]]:
+        self, ids: Union[int, List[int]], skip_special_tokens: bool = False
+    ) -> Union[str, List[str]]:
         """
         Converts a single index or a sequence of indices in a token or a sequence of tokens, using the vocabulary and
         added tokens.
@@ -289,38 +294,37 @@ class PegasusTokenizer(PreTrainedTokenizer):
         # tokens = tokens or self.ids_to_tokens(ids)
         # tokens = [token for token in tokens if not self._is_special(token)]
 
-        text = ''
+        text = ""
         for i, token in enumerate(tokens):
-            if token[:2] == '##':
+            if token[:2] == "##":
                 text += token[2:]
             elif len(token) == 1 and _is_chinese_char(ord(token)):
                 text += token
             elif len(token) == 1 and _is_punctuation(token):
                 text += token
-                text += ' '
+                text += " "
             elif i > 0 and _is_chinese_char(ord(text[-1])):
                 text += token
             elif tokens == "</s>":
                 continue
             else:
-                text += ' '
+                text += " "
                 text += token
 
-        text = re.sub(' +', ' ', text)
-        text = re.sub('\' (re|m|s|t|ve|d|ll) ', '\'\\1 ', text)
-        punctuation = re.sub(' +', '', self._cjk_punctuation()).strip() + '+-/={(<['
-        punctuation_regex = '|'.join([re.escape(p) for p in punctuation])
-        punctuation_regex = '(%s) ' % punctuation_regex
-        text = re.sub(punctuation_regex, '\\1', text)
-        text = re.sub(r'(\d\.) (\d)', '\\1\\2', text)
+        text = re.sub(" +", " ", text)
+        text = re.sub("' (re|m|s|t|ve|d|ll) ", "'\\1 ", text)
+        punctuation = re.sub(" +", "", self._cjk_punctuation()).strip() + "+-/={(<["
+        punctuation_regex = "|".join([re.escape(p) for p in punctuation])
+        punctuation_regex = "(%s) " % punctuation_regex
+        text = re.sub(punctuation_regex, "\\1", text)
+        text = re.sub(r"(\d\.) (\d)", "\\1\\2", text)
 
         return text.strip()
         # out_string = " ".join(tokens).replace(" ##", "").strip()
 
     def build_inputs_with_special_tokens(
-            self,
-            token_ids_0: List[int],
-            token_ids_1: Optional[List[int]] = None) -> List[int]:
+        self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
+    ) -> List[int]:
         """
         Build model inputs from a sequence or a pair of sequences for sequence classification tasks by concatenating
         and adding special tokens. A PEGASUS sequence has the following format, where `X` represents the sequence:
@@ -342,16 +346,18 @@ class PegasusTokenizer(PreTrainedTokenizer):
 
     def _special_token_mask(self, seq):
         all_special_ids = set(
-            self.all_special_ids)  # call it once instead of inside list comp
+            self.all_special_ids
+        )  # call it once instead of inside list comp
         # all_special_ids.remove(self.unk_token_id)  # <unk> is only sometimes special
 
         return [1 if x in all_special_ids else 0 for x in seq]
 
     def get_special_tokens_mask(
-            self,
-            token_ids_0: List[int],
-            token_ids_1: Optional[List[int]] = None,
-            already_has_special_tokens: bool = False) -> List[int]:
+        self,
+        token_ids_0: List[int],
+        token_ids_1: Optional[List[int]] = None,
+        already_has_special_tokens: bool = False,
+    ) -> List[int]:
         """
         Retrieve sequence ids from a token list that has no special tokens added. This method is called when adding
         special tokens using the tokenizer `prepare_for_model` method.
@@ -371,36 +377,39 @@ class PegasusTokenizer(PreTrainedTokenizer):
         elif token_ids_1 is None:
             return self._special_token_mask(token_ids_0) + [self.eos_token_id]
         else:
-            return self._special_token_mask(token_ids_0 +
-                                            token_ids_1) + [self.eos_token_id]
+            return self._special_token_mask(token_ids_0 + token_ids_1) + [
+                self.eos_token_id
+            ]
 
     def num_special_tokens_to_add(self, pair=False):
         """Just EOS"""
         return 1
 
-    def save_vocabulary(self,
-                        save_directory: str,
-                        filename_prefix: Optional[str] = None) -> Tuple[str]:
+    def save_vocabulary(
+        self, save_directory: str, filename_prefix: Optional[str] = None
+    ) -> Tuple[str]:
         index = 0
         if os.path.isdir(save_directory):
             vocab_file = os.path.join(
                 save_directory,
-                (filename_prefix + "-" if filename_prefix else "") +
-                VOCAB_FILES_NAMES["vocab_file"])
+                (filename_prefix + "-" if filename_prefix else "")
+                + VOCAB_FILES_NAMES["vocab_file"],
+            )
         else:
-            vocab_file = (filename_prefix +
-                          "-" if filename_prefix else "") + save_directory
+            vocab_file = (
+                filename_prefix + "-" if filename_prefix else ""
+            ) + save_directory
         with open(vocab_file, "w", encoding="utf-8") as writer:
-            for token, token_index in sorted(self.vocab.items(),
-                                             key=lambda kv: kv[1]):
+            for token, token_index in sorted(self.vocab.items(), key=lambda kv: kv[1]):
                 if index != token_index:
                     logger.warning(
                         f"Saving vocabulary to {vocab_file}: vocabulary indices are not consecutive."
-                        " Please check that the vocabulary is not corrupted!")
+                        " Please check that the vocabulary is not corrupted!"
+                    )
                     index = token_index
                 writer.write(token + "\n")
                 index += 1
-        return (vocab_file, )
+        return (vocab_file,)
 
 
 class BasicTokenizer(object):
@@ -421,11 +430,13 @@ class BasicTokenizer(object):
             value for `lowercase` (as in the original BERT).
     """
 
-    def __init__(self,
-                 do_lower_case=True,
-                 never_split=None,
-                 tokenize_chinese_chars=True,
-                 strip_accents=None):
+    def __init__(
+        self,
+        do_lower_case=True,
+        never_split=None,
+        tokenize_chinese_chars=True,
+        strip_accents=None,
+    ):
         if never_split is None:
             never_split = []
         self.do_lower_case = do_lower_case
@@ -443,8 +454,11 @@ class BasicTokenizer(object):
                 [`PreTrainedTokenizer.tokenize`]) List of token not to split.
         """
         # union() returns a new set by concatenating the two sets.
-        never_split = self.never_split.union(
-            set(never_split)) if never_split else self.never_split
+        never_split = (
+            self.never_split.union(set(never_split))
+            if never_split
+            else self.never_split
+        )
         text = self._clean_text(text)
 
         # This was added on November 1st, 2018 for the multilingual and Chinese
@@ -526,14 +540,16 @@ class BasicTokenizer(object):
         # as is Japanese Hiragana and Katakana. Those alphabets are used to write
         # space-separated words, so they are not treated specially and handled
         # like the all of the other languages.
-        if ((cp >= 0x4E00 and cp <= 0x9FFF)
+        if (
+            (cp >= 0x4E00 and cp <= 0x9FFF)
             or (cp >= 0x3400 and cp <= 0x4DBF)  #
             or (cp >= 0x20000 and cp <= 0x2A6DF)  #
             or (cp >= 0x2A700 and cp <= 0x2B73F)  #
             or (cp >= 0x2B740 and cp <= 0x2B81F)  #
             or (cp >= 0x2B820 and cp <= 0x2CEAF)  #
             or (cp >= 0xF900 and cp <= 0xFAFF)
-                or (cp >= 0x2F800 and cp <= 0x2FA1F)):  #
+            or (cp >= 0x2F800 and cp <= 0x2FA1F)
+        ):  #
             return True
 
         return False

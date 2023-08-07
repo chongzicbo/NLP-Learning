@@ -14,24 +14,23 @@ from bert4keras.tokenizers import Tokenizer
 from bert4keras.snippets import AutoRegressiveDecoder
 from bert4keras.snippets import uniout
 
-config_path = '/root/kg/bert/gpt2_ml/config.json'
-checkpoint_path = '/root/kg/bert/gpt2_ml/model.ckpt-100000'
-dict_path = '/root/kg/bert/gpt2_ml/vocab.txt'
+config_path = "/root/kg/bert/gpt2_ml/config.json"
+checkpoint_path = "/root/kg/bert/gpt2_ml/model.ckpt-100000"
+dict_path = "/root/kg/bert/gpt2_ml/vocab.txt"
 
 tokenizer = Tokenizer(
     dict_path, token_start=None, token_end=None, do_lower_case=True
 )  # 建立分词器
 
 model = build_transformer_model(
-    config_path=config_path, checkpoint_path=checkpoint_path, model='gpt2_ml'
+    config_path=config_path, checkpoint_path=checkpoint_path, model="gpt2_ml"
 )  # 建立模型，加载权重
 
 
 class ArticleCompletion(AutoRegressiveDecoder):
-    """基于随机采样的文章续写
-    """
+    """基于随机采样的文章续写"""
 
-    @AutoRegressiveDecoder.wraps(default_rtype='probas')
+    @AutoRegressiveDecoder.wraps(default_rtype="probas")
     def predict(self, inputs, output_ids, states):
         token_ids = np.concatenate([inputs[0], output_ids], 1)
         return self.last_token(model).predict(token_ids)
@@ -43,13 +42,10 @@ class ArticleCompletion(AutoRegressiveDecoder):
 
 
 article_completion = ArticleCompletion(
-    start_id=None,
-    end_id=511,  # 511是中文句号
-    maxlen=256,
-    minlen=128
+    start_id=None, end_id=511, maxlen=256, minlen=128  # 511是中文句号
 )
 
-print(article_completion.generate(u'今天天气不错'))
+print(article_completion.generate("今天天气不错"))
 """
 部分结果：
 >>> article_completion.generate(u'今天天气不错')

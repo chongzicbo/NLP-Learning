@@ -9,8 +9,9 @@
 """
 
 from transformers import BlenderbotTokenizer
-model_path="facebook/blenderbot-400M-distill"
-tokenizer=BlenderbotTokenizer.from_pretrained(model_path)
+
+model_path = "facebook/blenderbot-400M-distill"
+tokenizer = BlenderbotTokenizer.from_pretrained(model_path)
 
 print(tokenizer.num_special_tokens_to_add())
 print(tokenizer.all_special_tokens)

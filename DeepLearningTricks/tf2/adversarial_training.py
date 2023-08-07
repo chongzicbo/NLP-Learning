@@ -35,7 +35,9 @@ def fgsm(model, optimizer, loss_func, esp=0.1):
             loss1 = loss_func(y, y_predict1)
         gradients = tape1.gradient(loss1, model.trainable_variables)
         model.trainable_variables[0].assign_sub(esp * embedding_gradient)
-        optimizer.apply_gradients(zip(gradients + gradients_bak, model.trainable_variables))
+        optimizer.apply_gradients(
+            zip(gradients + gradients_bak, model.trainable_variables)
+        )
         return {m.name: m.result() for m in self.metrics}
 
     return train_step
@@ -71,13 +73,17 @@ def pgd(model, optimizer, loss_func, alpha=0.1, esp=1.0, k=3):
             if norm <= esp:
                 model.trainable_variables[0].assign_add(alpha * embedding_gradient)
             else:
-                model.trainable_variables[0].assign_add(alpha * embedding_gradient / norm)
+                model.trainable_variables[0].assign_add(
+                    alpha * embedding_gradient / norm
+                )
         with tf.GradientTape() as tape1:
             y_predict1 = model(x, training=True)
             loss1 = loss_func(y, y_predict1)
         gradients = tape1.gradient(loss1, model.trainable_variables)
         model.trainable_variables[0] = embedding_bak
-        optimizer.apply_gradients(zip(gradients + gradient_bak, model.trainable_variables))
+        optimizer.apply_gradients(
+            zip(gradients + gradient_bak, model.trainable_variables)
+        )
         return {m.name: m.result() for m in self.metrics}
 
     return train_step
@@ -100,7 +106,9 @@ def free_LB(model, optimizer, loss_func, init_mag=2e-2, alpha=0.1, k=3):
         for i in range(k):
             with tf.GradientTape() as tape:
                 if i == 0:
-                    model.trainable_variables[0] += tf.random.uniform(model.trainable_variables[0].shape(), -init_mag, init_mag)
+                    model.trainable_variables[0] += tf.random.uniform(
+                        model.trainable_variables[0].shape(), -init_mag, init_mag
+                    )
                 y_predict = model(x, training=True)
                 loss = loss_func(y, y_predict)
             embedding = model.trainable_variables[0]
@@ -119,7 +127,9 @@ def free_LB(model, optimizer, loss_func, init_mag=2e-2, alpha=0.1, k=3):
         gradients_last_step = tape1.gradient(loss1, model.trainable_variables)
         gradients += gradients_last_step
         # model.trainable_variables[0] = embedding_bak
-        gradients_div = [gradient / (tf.ones_like(gradient) * (k + 1)) for gradient in gradients]
+        gradients_div = [
+            gradient / (tf.ones_like(gradient) * (k + 1)) for gradient in gradients
+        ]
         # gradients = tf.divide(gradients, k+1)
         optimizer.apply_gradients(zip(gradients_div, model.trainable_variables))
         return {m.name: m.result() for m in self.metrics}

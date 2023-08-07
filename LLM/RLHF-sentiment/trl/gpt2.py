@@ -7,7 +7,12 @@
 # version    ：python 3.8
 # Description：
 """
-__all__ = ['CausalLMOutputWithCrossAttentions', 'ValueHead', 'GPT2HeadWithValueModel', 'respond_to_batch']
+__all__ = [
+    "CausalLMOutputWithCrossAttentions",
+    "ValueHead",
+    "GPT2HeadWithValueModel",
+    "respond_to_batch",
+]
 
 # Cell
 from transformers import GPT2LMHeadModel, GPT2Tokenizer, GPT2Model, GPT2PreTrainedModel
@@ -40,24 +45,36 @@ class ValueHead(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.detach_head = False
-        self.summary_type = config.summary_type if hasattr(config, "summary_type") else "last"
+        self.summary_type = (
+            config.summary_type if hasattr(config, "summary_type") else "last"
+        )
         if self.summary_type == "attn":
             raise NotImplementedError
 
         self.summary = Identity()
         if hasattr(config, "summary_use_proj") and config.summary_use_proj:
-            if hasattr(config, "summary_proj_to_labels") and config.summary_proj_to_labels and config.num_labels > 0:
+            if (
+                hasattr(config, "summary_proj_to_labels")
+                and config.summary_proj_to_labels
+                and config.num_labels > 0
+            ):
                 num_classes = config.num_labels
             else:
                 num_classes = config.hidden_size
             self.summary = nn.Linear(config.hidden_size, num_classes)
 
         self.activation = Identity()
-        if hasattr(config, "summary_activation") and config.summary_activation == "tanh":
+        if (
+            hasattr(config, "summary_activation")
+            and config.summary_activation == "tanh"
+        ):
             self.activation = nn.Tanh()
 
         self.first_dropout = Identity()
-        if hasattr(config, "summary_first_dropout") and config.summary_first_dropout > 0:
+        if (
+            hasattr(config, "summary_first_dropout")
+            and config.summary_first_dropout > 0
+        ):
             self.first_dropout = nn.Dropout(config.summary_first_dropout)
 
         self.last_dropout = Identity()
@@ -98,21 +115,21 @@ class GPT2HeadWithValueModel(GPT2PreTrainedModel):
         self.v_head.detach_head = True
 
     def forward(
-            self,
-            input_ids=None,
-            past_key_values=None,
-            attention_mask=None,
-            token_type_ids=None,
-            position_ids=None,
-            head_mask=None,
-            inputs_embeds=None,
-            mc_token_ids=None,
-            lm_labels=None,
-            mc_labels=None,
-            return_dict=False,
-            output_attentions=False,
-            output_hidden_states=False,
-            use_cache=True,
+        self,
+        input_ids=None,
+        past_key_values=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        inputs_embeds=None,
+        mc_token_ids=None,
+        lm_labels=None,
+        mc_labels=None,
+        return_dict=False,
+        output_attentions=False,
+        output_hidden_states=False,
+        use_cache=True,
     ):
         loss = None
         transformer_outputs = self.transformer(
@@ -130,7 +147,11 @@ class GPT2HeadWithValueModel(GPT2PreTrainedModel):
         value = self.v_head(hidden_states).squeeze(-1)  # (batch, seq_len)
 
         if not return_dict:
-            outputs = (lm_logits, loss, value,)
+            outputs = (
+                lm_logits,
+                loss,
+                value,
+            )
             return outputs
 
         return CausalLMOutputWithCrossAttentions(
@@ -180,7 +201,9 @@ def respond_to_batch(model, queries, txt_len=20, top_k=0, top_p=1.0):
         # Get Logits
         outputs = model(input_ids)
         next_token_logits = outputs[0][:, -1, :]
-        next_token_logits = top_k_top_p_filtering(next_token_logits, top_k=top_k, top_p=top_p)
+        next_token_logits = top_k_top_p_filtering(
+            next_token_logits, top_k=top_k, top_p=top_p
+        )
         # Sample
         probs = F.softmax(next_token_logits, dim=-1)
         next_token = torch.multinomial(probs, num_samples=1).squeeze(1)

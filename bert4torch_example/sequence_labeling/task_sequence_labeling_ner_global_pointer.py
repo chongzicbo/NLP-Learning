@@ -31,10 +31,12 @@ ner_vocab_size = len(categories_label2id)
 ner_head_size = 64
 
 # BERT base
-config_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/pytorch_model.bin'
-dict_path = 'F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/vocab.txt'
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+config_path = "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/bert_config.json"
+checkpoint_path = "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/pytorch_model.bin"
+dict_path = (
+    "F:/Projects/pretrain_ckpt/bert/[google_tf_base]--chinese_L-12_H-768_A-12/vocab.txt"
+)
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # 固定seed
 seed_everything(42)
@@ -45,18 +47,18 @@ class MyDataset(ListDataset):
     @staticmethod
     def load_data(filename):
         data = []
-        with open(filename, encoding='utf-8') as f:
+        with open(filename, encoding="utf-8") as f:
             f = f.read()
-            for l in f.split('\n\n'):
+            for l in f.split("\n\n"):
                 if not l:
                     continue
-                text, label = '', []
-                for i, c in enumerate(l.split('\n')):
-                    char, flag = c.split(' ')
+                text, label = "", []
+                for i, c in enumerate(l.split("\n")):
+                    char, flag = c.split(" ")
                     text += char
-                    if flag[0] == 'B':
+                    if flag[0] == "B":
                         label.append([i, i, flag[2:]])
-                    elif flag[0] == 'I':
+                    elif flag[0] == "I":
                         label[-1][1] = i
                 data.append((text, label))  # label为[[start, end, entity], ...]
         return data
@@ -83,26 +85,44 @@ def collate_fn(batch):
                 labels[label, start, end] = 1
 
         batch_token_ids.append(token_ids)  # 前面已经限制了长度
-        batch_labels.append(labels[:, :len(token_ids), :len(token_ids)])
-    batch_token_ids = torch.tensor(sequence_padding(batch_token_ids), dtype=torch.long, device=device)
-    batch_labels = torch.tensor(sequence_padding(batch_labels, seq_dims=3), dtype=torch.long, device=device)
+        batch_labels.append(labels[:, : len(token_ids), : len(token_ids)])
+    batch_token_ids = torch.tensor(
+        sequence_padding(batch_token_ids), dtype=torch.long, device=device
+    )
+    batch_labels = torch.tensor(
+        sequence_padding(batch_labels, seq_dims=3), dtype=torch.long, device=device
+    )
     return batch_token_ids, batch_labels
 
 
 # 转换数据集
-train_dataloader = DataLoader(MyDataset('F:/Projects/data/corpus/ner/china-people-daily-ner-corpus/example.train'),
-                              batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
-valid_dataloader = DataLoader(MyDataset('F:/Projects/data/corpus/ner/china-people-daily-ner-corpus/example.dev'),
-                              batch_size=batch_size, collate_fn=collate_fn)
+train_dataloader = DataLoader(
+    MyDataset(
+        "F:/Projects/data/corpus/ner/china-people-daily-ner-corpus/example.train"
+    ),
+    batch_size=batch_size,
+    shuffle=True,
+    collate_fn=collate_fn,
+)
+valid_dataloader = DataLoader(
+    MyDataset("F:/Projects/data/corpus/ner/china-people-daily-ner-corpus/example.dev"),
+    batch_size=batch_size,
+    collate_fn=collate_fn,
+)
 
 
 # 定义bert上的模型结构
 class Model(BaseModel):
     def __init__(self):
         super().__init__()
-        self.bert = build_transformer_model(config_path=config_path, checkpoint_path=checkpoint_path,
-                                            segment_vocab_size=0)
-        self.global_pointer = GlobalPointer(hidden_size=768, heads=ner_vocab_size, head_size=ner_head_size)
+        self.bert = build_transformer_model(
+            config_path=config_path,
+            checkpoint_path=checkpoint_path,
+            segment_vocab_size=0,
+        )
+        self.global_pointer = GlobalPointer(
+            hidden_size=768, heads=ner_vocab_size, head_size=ner_head_size
+        )
 
     def forward(self, token_ids):
         sequence_output = self.bert([token_ids])  # [btz, seq_len, hdsz]
@@ -118,8 +138,12 @@ class MyLoss(MultilabelCategoricalCrossentropy):
         super().__init__(**kwargs)
 
     def forward(self, y_pred, y_true):
-        y_true = y_true.view(y_true.shape[0] * y_true.shape[1], -1)  # [btz*ner_vocab_size, seq_len*seq_len]
-        y_pred = y_pred.view(y_pred.shape[0] * y_pred.shape[1], -1)  # [btz*ner_vocab_size, seq_len*seq_len]
+        y_true = y_true.view(
+            y_true.shape[0] * y_true.shape[1], -1
+        )  # [btz*ner_vocab_size, seq_len*seq_len]
+        y_pred = y_pred.view(
+            y_pred.shape[0] * y_pred.shape[1], -1
+        )  # [btz*ner_vocab_size, seq_len*seq_len]
         return super().forward(y_pred, y_true)
 
 
@@ -146,26 +170,25 @@ def evaluate(data, threshold=0):
 
 
 class Evaluator(Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
-        self.best_val_f1 = 0.
+        self.best_val_f1 = 0.0
 
     def on_epoch_end(self, steps, epoch, logs=None):
         f1, precision, recall = evaluate(valid_dataloader)
         if f1 > self.best_val_f1:
             self.best_val_f1 = f1
             # model.save_weights('best_model.pt')
-        print(f'[val] f1: {f1:.5f}, p: {precision:.5f} r: {recall:.5f} best_f1: {self.best_val_f1:.5f}')
+        print(
+            f"[val] f1: {f1:.5f}, p: {precision:.5f} r: {recall:.5f} best_f1: {self.best_val_f1:.5f}"
+        )
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
 
     model.fit(train_dataloader, epochs=20, steps_per_epoch=None, callbacks=[evaluator])
 
 else:
-
-    model.load_weights('best_model.pt')
+    model.load_weights("best_model.pt")

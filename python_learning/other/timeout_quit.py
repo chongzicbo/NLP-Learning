@@ -21,8 +21,8 @@ def error_back_func():
 
 
 def warp(*args, **kwargs):
-    q = kwargs.pop('queue')
-    f = kwargs.pop('function')
+    q = kwargs.pop("queue")
+    f = kwargs.pop("function")
     result = f(*args, **kwargs)
     q.put(result)
 
@@ -31,12 +31,12 @@ def time_out(interval, call_back=None, error_back=None):
     def decorator(func):
         def wrapper(*args, **kwargs):
             q = queue.Queue()
-            if 'function' in kwargs:
+            if "function" in kwargs:
                 raise ValueError('不允许有名为"function"的参数')
-            kwargs['function'] = func
-            if 'queue' in kwargs:
+            kwargs["function"] = func
+            if "queue" in kwargs:
                 raise ValueError('不允许有名为"queue"的参数')
-            kwargs['queue'] = q
+            kwargs["queue"] = q
             t = threading.Thread(target=warp, args=args, kwargs=kwargs)
             t.setDaemon(True)  # 设置主线程技术子线程立刻结束
             t.start()
@@ -46,9 +46,9 @@ def time_out(interval, call_back=None, error_back=None):
                     threading.Timer(0, call_back, args=(result,)).start()
                 return result
             except queue.Empty:
-                kwargs.pop('function')
-                kwargs.pop('queue')
-                print(f'运行超时，func:{func.__name__},args:{args}, kwargs:{kwargs}')
+                kwargs.pop("function")
+                kwargs.pop("queue")
+                print(f"运行超时，func:{func.__name__},args:{args}, kwargs:{kwargs}")
 
         return wrapper
 
@@ -57,21 +57,21 @@ def time_out(interval, call_back=None, error_back=None):
 
 @time_out(2, call_back=call_back_func, error_back=error_back_func)
 def task1(name):
-    print('**********task1****************')
+    print("**********task1****************")
     time.sleep(1)
-    return name + '你好'
+    return name + "你好"
 
 
 @time_out(2, call_back=call_back_func, error_back=error_back_func)
 def task2(name):
-    print('**********task****************')
+    print("**********task****************")
     time.sleep(3)
-    return name + '你好'
+    return name + "你好"
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # a = task1('小明')
     # print(a)
 
-    b = task2('小红')
+    b = task2("小红")
     print(b)

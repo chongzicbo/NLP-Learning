@@ -13,7 +13,9 @@ from bert4torch.models import build_transformer_model
 from bert4torch.tokenizers import Tokenizer, load_vocab
 import torch
 
-root_model_path = "/mnt/e/working/huada_bgi/data/pretrained_model/huggingface/bert-base-chinese"
+root_model_path = (
+    "/mnt/e/working/huada_bgi/data/pretrained_model/huggingface/bert-base-chinese"
+)
 vocab_path = root_model_path + "/vocab.txt"
 config_path = root_model_path + "/config.json"
 checkpoint_path = root_model_path + "/bert4torch_pytorch_model.bin"
@@ -28,7 +30,7 @@ for t, i in sorted(token_dict.items(), key=lambda s: s[1]):
     tokens = []
     if t.isalpha():
         tokens.extend([t[:1].upper() + t[1:], t.upper()])
-    elif t[:2] == '##' and t[2:].isalpha():
+    elif t[:2] == "##" and t[2:].isalpha():
         tokens.append(t.upper())
     for token in tokens:
         if token not in new_token_dict:
@@ -36,9 +38,11 @@ for t, i in sorted(token_dict.items(), key=lambda s: s[1]):
             new_token_dict[token] = len(new_token_dict)
 
 tokenizer = Tokenizer(new_token_dict, do_lower_case=False)
-model = build_transformer_model(config_path, checkpoint_path, compound_tokens=compound_tokens)
+model = build_transformer_model(
+    config_path, checkpoint_path, compound_tokens=compound_tokens
+)
 
-text = u"Welcome to BEIJING."
+text = "Welcome to BEIJING."
 
 print(text)
 

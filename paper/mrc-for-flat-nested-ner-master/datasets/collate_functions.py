@@ -24,7 +24,9 @@ def tagger_collate_to_max_length(batch: List[List[torch.Tensor]]) -> List[torch.
         # 0 -> tokens
         # 1 -> token_type_ids
         # 2 -> attention_mask
-        pad_output = torch.full([batch_size, max_length], 0, dtype=batch[0][field_idx].dtype)
+        pad_output = torch.full(
+            [batch_size, max_length], 0, dtype=batch[0][field_idx].dtype
+        )
         for sample_idx in range(batch_size):
             data = batch[sample_idx][field_idx]
             pad_output[sample_idx][: data.shape[0]] = data
@@ -62,13 +64,17 @@ def collate_to_max_length(batch: List[List[torch.Tensor]]) -> List[torch.Tensor]
     output = []
 
     for field_idx in range(6):
-        pad_output = torch.full([batch_size, max_length], 0, dtype=batch[0][field_idx].dtype)
+        pad_output = torch.full(
+            [batch_size, max_length], 0, dtype=batch[0][field_idx].dtype
+        )
         for sample_idx in range(batch_size):
             data = batch[sample_idx][field_idx]
             pad_output[sample_idx][: data.shape[0]] = data
         output.append(pad_output)
 
-    pad_match_labels = torch.zeros([batch_size, max_length, max_length], dtype=torch.long)
+    pad_match_labels = torch.zeros(
+        [batch_size, max_length, max_length], dtype=torch.long
+    )
     for sample_idx in range(batch_size):
         data = batch[sample_idx][6]
         pad_match_labels[sample_idx, : data.shape[1], : data.shape[1]] = data

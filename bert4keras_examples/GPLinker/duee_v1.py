@@ -25,17 +25,19 @@ from tqdm import tqdm
 maxlen = 128
 batch_size = 32
 epochs = 200
-config_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_config.json'
-checkpoint_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt'
-dict_path = '/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/vocab.txt'
+config_path = "/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_config.json"
+checkpoint_path = (
+    "/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/bert_model.ckpt"
+)
+dict_path = "/root/kg/bert/chinese_roberta_wwm_ext_L-12_H-768_A-12/vocab.txt"
 
 # 读取schema
 labels = []
-with open('../datasets/duee_event_schema.json') as f:
+with open("../datasets/duee_event_schema.json") as f:
     for l in f:
         l = json.loads(l)
-        t = l['event_type']
-        for r in [u'触发词'] + [s['role'] for s in l['role_list']]:
+        t = l["event_type"]
+        for r in ["触发词"] + [s["role"] for s in l["role_list"]]:
             labels.append((t, r))
 
 
@@ -44,49 +46,51 @@ def load_data(filename):
     单条格式：{'text': text, 'events': [[(type, role, argument, start_index)]]}
     """
     D = []
-    with open(filename, encoding='utf-8') as f:
+    with open(filename, encoding="utf-8") as f:
         for l in f:
             l = json.loads(l)
-            d = {'text': l['text'], 'events': []}
-            for e in l['event_list']:
-                d['events'].append([(
-                    e['event_type'], u'触发词', e['trigger'],
-                    e['trigger_start_index']
-                )])
-                for a in e['arguments']:
-                    d['events'][-1].append((
-                        e['event_type'], a['role'], a['argument'],
-                        a['argument_start_index']
-                    ))
+            d = {"text": l["text"], "events": []}
+            for e in l["event_list"]:
+                d["events"].append(
+                    [(e["event_type"], "触发词", e["trigger"], e["trigger_start_index"])]
+                )
+                for a in e["arguments"]:
+                    d["events"][-1].append(
+                        (
+                            e["event_type"],
+                            a["role"],
+                            a["argument"],
+                            a["argument_start_index"],
+                        )
+                    )
             D.append(d)
     return D
 
 
 # 加载数据集
-train_data = load_data('../datasets/duee_train.json')
-valid_data = load_data('../datasets/duee_dev.json')
+train_data = load_data("../datasets/duee_train.json")
+valid_data = load_data("../datasets/duee_dev.json")
 
 # 建立分词器
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
 
 class data_generator(DataGenerator):
-    """数据生成器
-    """
+    """数据生成器"""
 
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids = [], []
         batch_argu_labels, batch_head_labels, batch_tail_labels = [], [], []
         for is_end, d in self.sample(random):
-            tokens = tokenizer.tokenize(d['text'], maxlen=maxlen)
-            mapping = tokenizer.rematch(d['text'], tokens)
+            tokens = tokenizer.tokenize(d["text"], maxlen=maxlen)
+            mapping = tokenizer.rematch(d["text"], tokens)
             start_mapping = {j[0]: i for i, j in enumerate(mapping) if j}
             end_mapping = {j[-1]: i for i, j in enumerate(mapping) if j}
             token_ids = tokenizer.tokens_to_ids(tokens)
             segment_ids = [0] * len(token_ids)
             # 整理事件
             events = []
-            for e in d['events']:
+            for e in d["events"]:
                 events.append([])
                 for t, r, a, i in e:
                     label = labels.index((t, r))
@@ -120,25 +124,20 @@ class data_generator(DataGenerator):
             if len(batch_token_ids) == self.batch_size or is_end:
                 batch_token_ids = sequence_padding(batch_token_ids)
                 batch_segment_ids = sequence_padding(batch_segment_ids)
-                batch_argu_labels = sequence_padding(
-                    batch_argu_labels, seq_dims=2
-                )
-                batch_head_labels = sequence_padding(
-                    batch_head_labels, seq_dims=2
-                )
-                batch_tail_labels = sequence_padding(
-                    batch_tail_labels, seq_dims=2
-                )
+                batch_argu_labels = sequence_padding(batch_argu_labels, seq_dims=2)
+                batch_head_labels = sequence_padding(batch_head_labels, seq_dims=2)
+                batch_tail_labels = sequence_padding(batch_tail_labels, seq_dims=2)
                 yield [batch_token_ids, batch_segment_ids], [
-                    batch_argu_labels, batch_head_labels, batch_tail_labels
+                    batch_argu_labels,
+                    batch_head_labels,
+                    batch_tail_labels,
                 ]
                 batch_token_ids, batch_segment_ids = [], []
                 batch_argu_labels, batch_head_labels, batch_tail_labels = [], [], []
 
 
 def globalpointer_crossentropy(y_true, y_pred):
-    """给GlobalPointer设计的交叉熵
-    """
+    """给GlobalPointer设计的交叉熵"""
     shape = K.shape(y_pred)
     y_true = y_true[..., 0] * K.cast(shape[2], K.floatx()) + y_true[..., 1]
     y_pred = K.reshape(y_pred, (shape[0], -1, K.prod(shape[2:])))
@@ -148,9 +147,7 @@ def globalpointer_crossentropy(y_true, y_pred):
 
 # 加载预训练模型
 base = build_transformer_model(
-    config_path=config_path,
-    checkpoint_path=checkpoint_path,
-    return_keras_model=False
+    config_path=config_path, checkpoint_path=checkpoint_path, return_keras_model=False
 )
 output = base.model.output
 
@@ -167,8 +164,7 @@ model.summary()
 
 
 class DedupList(list):
-    """定义去重的list
-    """
+    """定义去重的list"""
 
     def append(self, x):
         if x not in self:
@@ -176,8 +172,7 @@ class DedupList(list):
 
 
 def neighbors(host, argus, links):
-    """构建邻集（host节点与其所有邻居的集合）
-    """
+    """构建邻集（host节点与其所有邻居的集合）"""
     results = [host]
     for argu in argus:
         if host[2:] + argu[2:] in links:
@@ -207,8 +202,7 @@ def clique_search(argus, links):
 
 
 def extract_events(text, threshold=0, trigger=True):
-    """抽取输入text所包含的所有事件
-    """
+    """抽取输入text所包含的所有事件"""
     tokens = tokenizer.tokenize(text, maxlen=maxlen)
     mapping = tokenizer.rematch(text, tokens)
     token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
@@ -238,24 +232,23 @@ def extract_events(text, threshold=0, trigger=True):
             for argu in event:
                 start, end = mapping[argu[2]][0], mapping[argu[3]][-1] + 1
                 events[-1].append(argu[:2] + (text[start:end], start))
-            if trigger and all([argu[1] != u'触发词' for argu in event]):
+            if trigger and all([argu[1] != "触发词" for argu in event]):
                 events.pop()
     return events
 
 
 def evaluate(data, threshold=0):
-    """评估函数，计算f1、precision、recall
-    """
+    """评估函数，计算f1、precision、recall"""
     ex, ey, ez = 1e-10, 1e-10, 1e-10  # 事件级别
     ax, ay, az = 1e-10, 1e-10, 1e-10  # 论元级别
     for d in tqdm(data, ncols=0):
-        pred_events = extract_events(d['text'], threshold, False)
+        pred_events = extract_events(d["text"], threshold, False)
         # 事件级别
         R, T = DedupList(), DedupList()
         for event in pred_events:
-            if any([argu[1] == u'触发词' for argu in event]):
+            if any([argu[1] == "触发词" for argu in event]):
                 R.append(list(sorted(event)))
-        for event in d['events']:
+        for event in d["events"]:
             T.append(list(sorted(event)))
         for event in R:
             if event in T:
@@ -266,11 +259,11 @@ def evaluate(data, threshold=0):
         R, T = DedupList(), DedupList()
         for event in pred_events:
             for argu in event:
-                if argu[1] != u'触发词':
+                if argu[1] != "触发词":
                     R.append(argu)
-        for event in d['events']:
+        for event in d["events"]:
             for argu in event:
-                if argu[1] != u'触发词':
+                if argu[1] != "触发词":
                     T.append(argu)
         for argu in R:
             if argu in T:
@@ -283,75 +276,66 @@ def evaluate(data, threshold=0):
 
 
 class Evaluator(keras.callbacks.Callback):
-    """评估与保存
-    """
+    """评估与保存"""
 
     def __init__(self):
-        self.best_val_e_f1 = 0.
-        self.best_val_a_f1 = 0.
+        self.best_val_e_f1 = 0.0
+        self.best_val_a_f1 = 0.0
 
     def on_epoch_end(self, epoch, logs=None):
         e_f1, e_pr, e_rc, a_f1, a_pr, a_rc = evaluate(valid_data)
         if e_f1 >= self.best_val_e_f1:
             self.best_val_e_f1 = e_f1
-            model.save_weights('best_model.e.weights')
+            model.save_weights("best_model.e.weights")
         if a_f1 >= self.best_val_a_f1:
             self.best_val_a_f1 = a_f1
-            model.save_weights('best_model.a.weights')
+            model.save_weights("best_model.a.weights")
         print(
-            '[event level] f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f'
+            "[event level] f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f"
             % (e_f1, e_pr, e_rc, self.best_val_e_f1)
         )
         print(
-            '[argument level] f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f\n'
+            "[argument level] f1: %.5f, precision: %.5f, recall: %.5f, best f1: %.5f\n"
             % (a_f1, a_pr, a_rc, self.best_val_a_f1)
         )
 
 
 def isin(event_a, event_b):
-    """判断event_a是否event_b的一个子集
-    """
-    if event_a['event_type'] != event_b['event_type']:
+    """判断event_a是否event_b的一个子集"""
+    if event_a["event_type"] != event_b["event_type"]:
         return False
-    for argu in event_a['arguments']:
-        if argu not in event_b['arguments']:
+    for argu in event_a["arguments"]:
+        if argu not in event_b["arguments"]:
             return False
     return True
 
 
 def predict_to_file(in_file, out_file):
-    """预测结果到文件，方便提交
-    """
-    fw = open(out_file, 'w', encoding='utf-8')
+    """预测结果到文件，方便提交"""
+    fw = open(out_file, "w", encoding="utf-8")
     with open(in_file) as fr:
         for l in tqdm(fr):
             l = json.loads(l)
             event_list = DedupList()
-            for event in extract_events(l['text']):
-                final_event = {
-                    'event_type': event[0][0],
-                    'arguments': DedupList()
-                }
+            for event in extract_events(l["text"]):
+                final_event = {"event_type": event[0][0], "arguments": DedupList()}
                 for argu in event:
-                    if argu[1] != u'触发词':
-                        final_event['arguments'].append({
-                            'role': argu[1],
-                            'argument': argu[2]
-                        })
+                    if argu[1] != "触发词":
+                        final_event["arguments"].append(
+                            {"role": argu[1], "argument": argu[2]}
+                        )
                 event_list = [
-                    event for event in event_list
-                    if not isin(event, final_event)
+                    event for event in event_list if not isin(event, final_event)
                 ]
                 if not any([isin(final_event, event) for event in event_list]):
                     event_list.append(final_event)
-            l['event_list'] = event_list
+            l["event_list"] = event_list
             l = json.dumps(l, ensure_ascii=False)
-            fw.write(l + '\n')
+            fw.write(l + "\n")
     fw.close()
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     train_generator = data_generator(train_data, batch_size)
     evaluator = Evaluator()
 
@@ -359,10 +343,9 @@ if __name__ == '__main__':
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=epochs,
-        callbacks=[evaluator]
+        callbacks=[evaluator],
     )
 
 else:
-
-    model.load_weights('best_model.e.weights')
+    model.load_weights("best_model.e.weights")
     # predict_to_file('../datasets/duee_test2.json', 'duee.json')

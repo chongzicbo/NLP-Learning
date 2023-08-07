@@ -58,26 +58,33 @@ tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
 # from openvino.runtime import serialize
 # serialize(model_onnx,xml_path='/home/bocheng/data/model_saved/test.xml')
 
-model_onnx = ie.read_model(model='/home/bocheng/data/model_saved/test.onnx')
-
+model_onnx = ie.read_model(model="/home/bocheng/data/model_saved/test.onnx")
 
 
 new_shape = PartialShape([-1, 512])
 print(model_onnx.output(0).any_name)
-model_onnx.reshape({model_onnx.input(0).any_name: new_shape, model_onnx.input(1).any_name: new_shape,
-                    model_onnx.input(2).any_name: new_shape})
+model_onnx.reshape(
+    {
+        model_onnx.input(0).any_name: new_shape,
+        model_onnx.input(1).any_name: new_shape,
+        model_onnx.input(2).any_name: new_shape,
+    }
+)
 
 compiled_model_onnx = ie.compile_model(model=model_onnx, device_name="CPU")
 
 text = ["Text from the news article", "today is a good day"]
 
-inputs = tokenizer(text, padding='max_length', truncation=True)
-input_ids, token_type_ids, attention_mask = torch.tensor(inputs["input_ids"]),torch.tensor(
-        inputs['token_type_ids']), torch.tensor(inputs['attention_mask'])
+inputs = tokenizer(text, padding="max_length", truncation=True)
+input_ids, token_type_ids, attention_mask = (
+    torch.tensor(inputs["input_ids"]),
+    torch.tensor(inputs["token_type_ids"]),
+    torch.tensor(inputs["attention_mask"]),
+)
 inputs = {
-    'input_ids': input_ids.numpy(),
-    'token_type_ids': token_type_ids.numpy(),
-    'attention_mask': attention_mask.numpy()
+    "input_ids": input_ids.numpy(),
+    "token_type_ids": token_type_ids.numpy(),
+    "attention_mask": attention_mask.numpy(),
 }
 print(input_ids.shape)
 

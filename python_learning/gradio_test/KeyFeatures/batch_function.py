@@ -9,12 +9,16 @@
 """
 import time
 import gradio as gr
+
+
 def trim_words(words, lens):
     trimmed_words = []
     time.sleep(5)
     for w, l in zip(words, lens):
-        trimmed_words.append(w[:int(l)])
+        trimmed_words.append(w[: int(l)])
     return [trimmed_words]
+
+
 #
 # demo = gr.Interface(trim_words, ["textbox", "number"], ["output"],
 #                     batch=True, max_batch_size=16)
@@ -30,4 +34,4 @@ with gr.Blocks() as demo:
     event = run.click(trim_words, [word, leng], output, batch=True, max_batch_size=16)
 
 demo.queue()
-demo.launch(server_name='188.188.1.250',server_port=9988)
+demo.launch(server_name="188.188.1.250", server_port=9988)

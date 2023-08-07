@@ -30,16 +30,24 @@ import random
 def str2bool(v):
     if isinstance(v, bool):
         return v
-    if v.lower() in ('yes', 'true'):
+    if v.lower() in ("yes", "true"):
         return True
-    elif v.lower() in ('no', 'false'):
+    elif v.lower() in ("no", "false"):
         return False
     else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
+        raise argparse.ArgumentTypeError("Boolean value expected.")
 
 
 class ArgenPlanFewShotS2sDataset(Dataset):
-    def __init__(self, tokenizer, data_path, few_shot_rate, max_len=512, batch_first=True, is_mtl=True):
+    def __init__(
+        self,
+        tokenizer,
+        data_path,
+        few_shot_rate,
+        max_len=512,
+        batch_first=True,
+        is_mtl=True,
+    ):
         self.tokenizer = tokenizer
         self.data_path = data_path
         self.is_mtl = is_mtl
@@ -71,8 +79,8 @@ class ArgenPlanFewShotS2sDataset(Dataset):
         tgt_id = self.tokenizer.encode(response)
 
         instance = {}
-        instance["input_ids"] = src_id[:self.max_len]
-        instance["lm_labels"] = tgt_id[:self.max_len]
+        instance["input_ids"] = src_id[: self.max_len]
+        instance["lm_labels"] = tgt_id[: self.max_len]
         instance["original_json"] = line_json
         return instance
 
@@ -101,17 +109,29 @@ class ArgenPlanFewShotS2sDataset(Dataset):
 
     def collate(self, batch):
         input_ids = pad_sequence(
-            [torch.tensor(instance["input_ids"], dtype=torch.long) for instance in batch],
-            batch_first=self.batch_first, padding_value=self.pad_id)
+            [
+                torch.tensor(instance["input_ids"], dtype=torch.long)
+                for instance in batch
+            ],
+            batch_first=self.batch_first,
+            padding_value=self.pad_id,
+        )
         labels = pad_sequence(
-            [torch.tensor(instance["lm_labels"], dtype=torch.long) for instance in batch],
-            batch_first=self.batch_first, padding_value=self.pad_id)
+            [
+                torch.tensor(instance["lm_labels"], dtype=torch.long)
+                for instance in batch
+            ],
+            batch_first=self.batch_first,
+            padding_value=self.pad_id,
+        )
         original_json = [instance["original_json"] for instance in batch]
         return input_ids, labels, original_json
 
 
 class ArgenPlanS2sDataset(Dataset):
-    def __init__(self, tokenizer, data_path, max_len=512, batch_first=True, is_mtl=True):
+    def __init__(
+        self, tokenizer, data_path, max_len=512, batch_first=True, is_mtl=True
+    ):
         self.tokenizer = tokenizer
         self.data_path = data_path
         self.is_mtl = is_mtl
@@ -141,8 +161,8 @@ class ArgenPlanS2sDataset(Dataset):
         tgt_id = self.tokenizer.encode(response)
 
         instance = {}
-        instance["input_ids"] = src_id[:self.max_len]
-        instance["lm_labels"] = tgt_id[:self.max_len]
+        instance["input_ids"] = src_id[: self.max_len]
+        instance["lm_labels"] = tgt_id[: self.max_len]
         instance["original_json"] = line_json
         return instance
 
@@ -173,19 +193,37 @@ class ArgenPlanS2sDataset(Dataset):
 
     def collate(self, batch):
         input_ids = pad_sequence(
-            [torch.tensor(instance["input_ids"], dtype=torch.long) for instance in batch],
-            batch_first=self.batch_first, padding_value=self.pad_id)
+            [
+                torch.tensor(instance["input_ids"], dtype=torch.long)
+                for instance in batch
+            ],
+            batch_first=self.batch_first,
+            padding_value=self.pad_id,
+        )
         labels = pad_sequence(
-            [torch.tensor(instance["lm_labels"], dtype=torch.long) for instance in batch],
-            batch_first=self.batch_first, padding_value=self.pad_id)
+            [
+                torch.tensor(instance["lm_labels"], dtype=torch.long)
+                for instance in batch
+            ],
+            batch_first=self.batch_first,
+            padding_value=self.pad_id,
+        )
         original_json = [instance["original_json"] for instance in batch]
         return input_ids, labels, original_json
 
 
-def generate(batch_size, model_path, tokenizer_path, test_path, write_path, max_length, fp16=False,
-             fp16_opt_level='O1'):
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    print('using device:', device)
+def generate(
+    batch_size,
+    model_path,
+    tokenizer_path,
+    test_path,
+    write_path,
+    max_length,
+    fp16=False,
+    fp16_opt_level="O1",
+):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print("using device:", device)
 
     print("load model from: ", model_path)
     tokenizer = T5Tokenizer.from_pretrained(tokenizer_path)
@@ -200,10 +238,7 @@ def generate(batch_size, model_path, tokenizer_path, test_path, write_path, max_
     f_w = open(write_path, "w")
 
     eval_data = ArgenPlanS2sDataset(
-        tokenizer=tokenizer,
-        data_path=test_path,
-        batch_first=True,
-        is_mtl=False
+        tokenizer=tokenizer, data_path=test_path, batch_first=True, is_mtl=False
     )
     eval_dataloader = DataLoader(
         eval_data,
@@ -211,7 +246,7 @@ def generate(batch_size, model_path, tokenizer_path, test_path, write_path, max_
         drop_last=False,
         collate_fn=eval_data.collate,
         shuffle=False,
-        num_workers=8
+        num_workers=8,
     )
 
     print("number of test: {}".format(eval_data.__len__()))
@@ -220,10 +255,12 @@ def generate(batch_size, model_path, tokenizer_path, test_path, write_path, max_
         try:
             from apex import amp
         except ImportError:
-            raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
+            raise ImportError(
+                "Please install apex from https://www.github.com/nvidia/apex to use fp16 training."
+            )
         model = amp.initialize(model, opt_level=fp16_opt_level)
 
-    print('starting decoding')
+    print("starting decoding")
     for cur_epoch in range(1):
         for batch_step, cur_batch in enumerate(eval_dataloader):
             batch_input_ids = cur_batch[0].to("cuda")
@@ -280,47 +317,58 @@ def eval_model_loss(model, tokenizer, eval_dataloader, device, epoch_id):
             tot_sample.append(n_sample)
     print("eval: ", len(tot_loss))
     print(
-        f"Step {epoch_id}: Val loss {np.sum(tot_loss) / np.sum(tot_sample)} Val ppl {np.sum(tot_ppl) / np.sum(tot_sample)}")
+        f"Step {epoch_id}: Val loss {np.sum(tot_loss) / np.sum(tot_sample)} Val ppl {np.sum(tot_ppl) / np.sum(tot_sample)}"
+    )
     return np.sum(tot_loss) / np.sum(tot_sample)
 
 
 def train():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--seed', default=1001, type=int, required=False)
-    parser.add_argument('--epochs', default=15, type=int, required=False)
-    parser.add_argument("--num_optim_steps", type=int, default=10000,
-                        help="new API specifies num update steps")
-    parser.add_argument('--batch_size', default=8, type=int, required=False, help='batch size')
-    parser.add_argument('--lr', default=5e-5, type=float, required=False)
-    parser.add_argument('--warmup_steps', default=500, type=int, required=False)
-    parser.add_argument('--save_step', default=2000, type=int, required=False)
-    parser.add_argument('--log_step', default=100, type=int, required=False)
-    parser.add_argument('--gradient_accumulation', default=1, type=int, required=False)
-    parser.add_argument('--fp16', action='store_true')
-    parser.add_argument('--fp16_opt_level', default='O1', type=str, required=False)
-    parser.add_argument('--max_grad_norm', default=1.0, type=float, required=False)
+    parser.add_argument("--seed", default=1001, type=int, required=False)
+    parser.add_argument("--epochs", default=15, type=int, required=False)
+    parser.add_argument(
+        "--num_optim_steps",
+        type=int,
+        default=10000,
+        help="new API specifies num update steps",
+    )
+    parser.add_argument(
+        "--batch_size", default=8, type=int, required=False, help="batch size"
+    )
+    parser.add_argument("--lr", default=5e-5, type=float, required=False)
+    parser.add_argument("--warmup_steps", default=500, type=int, required=False)
+    parser.add_argument("--save_step", default=2000, type=int, required=False)
+    parser.add_argument("--log_step", default=100, type=int, required=False)
+    parser.add_argument("--gradient_accumulation", default=1, type=int, required=False)
+    parser.add_argument("--fp16", action="store_true")
+    parser.add_argument("--fp16_opt_level", default="O1", type=str, required=False)
+    parser.add_argument("--max_grad_norm", default=1.0, type=float, required=False)
     # for task
-    parser.add_argument('--output_dir', default=f'save_model/cmv_mtl', type=str, required=False)
-    parser.add_argument('--tokenizer_path', default=f'./model_card/t5',
-                        type=str, required=False)
-    parser.add_argument('--model_path', default=f'./model_card/t5',
-                        type=str, required=False)
-    parser.add_argument('--task', default=f'cmv', type=str, required=False)
-    parser.add_argument('--is_mtl', default=False, type=str2bool, required=False)
-    parser.add_argument('--few_shot_rate', default=-1, type=float, required=False)
+    parser.add_argument(
+        "--output_dir", default=f"save_model/cmv_mtl", type=str, required=False
+    )
+    parser.add_argument(
+        "--tokenizer_path", default=f"./model_card/t5", type=str, required=False
+    )
+    parser.add_argument(
+        "--model_path", default=f"./model_card/t5", type=str, required=False
+    )
+    parser.add_argument("--task", default=f"cmv", type=str, required=False)
+    parser.add_argument("--is_mtl", default=False, type=str2bool, required=False)
+    parser.add_argument("--few_shot_rate", default=-1, type=float, required=False)
 
     parser.add_argument("--local_rank", type=int, default=0)
     args = parser.parse_args()
 
-    is_distributed = (args.local_rank != -1)
+    is_distributed = args.local_rank != -1
     if is_distributed:
         torch.cuda.set_device(args.local_rank)
         args.device = torch.device("cuda", args.local_rank)
-        torch.distributed.init_process_group(backend='nccl', init_method='env://')
+        torch.distributed.init_process_group(backend="nccl", init_method="env://")
 
     print(args)
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    print('using device:', device)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print("using device:", device)
 
     batch_size = args.batch_size
 
@@ -378,10 +426,7 @@ def train():
 
     if args.few_shot_rate == -1:  # full shot training
         train_data = ArgenPlanS2sDataset(
-            tokenizer=tokenizer,
-            data_path=train_path,
-            batch_first=True,
-            is_mtl=is_mtl
+            tokenizer=tokenizer, data_path=train_path, batch_first=True, is_mtl=is_mtl
         )
     else:  # few shot training
         train_data = ArgenPlanFewShotS2sDataset(
@@ -389,7 +434,7 @@ def train():
             data_path=train_path,
             batch_first=True,
             is_mtl=is_mtl,
-            few_shot_rate=args.few_shot_rate
+            few_shot_rate=args.few_shot_rate,
         )
         log_step = int(log_step * args.few_shot_rate)
         if save_step != -1:
@@ -397,10 +442,7 @@ def train():
         print(f"log step: {log_step}, save step: {save_step}")
 
     eval_data = ArgenPlanS2sDataset(
-        tokenizer=tokenizer,
-        data_path=dev_path,
-        batch_first=True,
-        is_mtl=is_mtl
+        tokenizer=tokenizer, data_path=dev_path, batch_first=True, is_mtl=is_mtl
     )
 
     data_sampler = DistributedSampler(train_data)
@@ -411,7 +453,7 @@ def train():
         drop_last=True,
         collate_fn=train_data.collate,
         sampler=data_sampler,
-        num_workers=8
+        num_workers=8,
     )
 
     eval_dataloader = DataLoader(
@@ -420,15 +462,12 @@ def train():
         drop_last=True,
         collate_fn=eval_data.collate,
         shuffle=True,
-        num_workers=4
+        num_workers=4,
     )
 
     if is_mtl:
         eval_gen_data = ArgenPlanS2sDataset(
-            tokenizer=tokenizer,
-            data_path=dev_path,
-            batch_first=True,
-            is_mtl=False
+            tokenizer=tokenizer, data_path=dev_path, batch_first=True, is_mtl=False
         )
         eval_gen_dataloader = DataLoader(
             eval_gen_data,
@@ -436,12 +475,16 @@ def train():
             drop_last=True,
             collate_fn=eval_data.collate,
             shuffle=True,
-            num_workers=4
+            num_workers=4,
         )
 
     if args.local_rank == 0:
         print("load data from: ", train_path)
-        print("number of train: {} dev: {}".format(train_data.__len__(), eval_data.__len__()))
+        print(
+            "number of train: {} dev: {}".format(
+                train_data.__len__(), eval_data.__len__()
+            )
+        )
 
     multi_gpu = False
     optimizer = transformers.AdamW(model.parameters(), lr=lr, correct_bias=True)
@@ -450,19 +493,25 @@ def train():
         try:
             from apex import amp
         except ImportError:
-            raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
+            raise ImportError(
+                "Please install apex from https://www.github.com/nvidia/apex to use fp16 training."
+            )
         model, optimizer = amp.initialize(model, optimizer, opt_level=fp16_opt_level)
 
     if is_distributed:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
-        model = DistributedDataParallel(model, device_ids=[args.local_rank], output_device=args.local_rank,
-                                        find_unused_parameters=True)
+        model = DistributedDataParallel(
+            model,
+            device_ids=[args.local_rank],
+            output_device=args.local_rank,
+            find_unused_parameters=True,
+        )
         multi_gpu = True
 
     ##############################
     # training
     ##############################
-    print('starting training')
+    print("starting training")
     running_loss = 0
     running_ppl = 0
 
@@ -501,7 +550,9 @@ def train():
             if fp16:
                 with amp.scale_loss(loss, optimizer) as scaled_loss:
                     scaled_loss.backward()
-                    torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), max_grad_norm)
+                    torch.nn.utils.clip_grad_norm_(
+                        amp.master_params(optimizer), max_grad_norm
+                    )
             else:
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
@@ -518,16 +569,22 @@ def train():
                 continue
 
             if current_step % log_step == 0:
-                cur_lr = optimizer.param_groups[0]['lr']
-                print('now time: {}:{}. Step {} of of epoch {}, lr: {:.7f}, loss {:.3f}, ppl {:.3f}'.format(
-                    datetime.now().hour,
-                    datetime.now().minute,
-                    current_step,
-                    cur_epoch,
-                    cur_lr,
-                    running_loss * gradient_accumulation / (log_step / gradient_accumulation),
-                    running_ppl * gradient_accumulation / (log_step / gradient_accumulation),
-                ))
+                cur_lr = optimizer.param_groups[0]["lr"]
+                print(
+                    "now time: {}:{}. Step {} of of epoch {}, lr: {:.7f}, loss {:.3f}, ppl {:.3f}".format(
+                        datetime.now().hour,
+                        datetime.now().minute,
+                        current_step,
+                        cur_epoch,
+                        cur_lr,
+                        running_loss
+                        * gradient_accumulation
+                        / (log_step / gradient_accumulation),
+                        running_ppl
+                        * gradient_accumulation
+                        / (log_step / gradient_accumulation),
+                    )
+                )
                 running_loss = 0
                 running_ppl = 0
 
@@ -535,68 +592,83 @@ def train():
             if save_step != -1 and current_step % save_step == 0:
                 print("start evaluation")
                 model.eval()
-                eval_loss = eval_model_loss(model, tokenizer, eval_dataloader, device, current_step)
+                eval_loss = eval_model_loss(
+                    model, tokenizer, eval_dataloader, device, current_step
+                )
                 if is_mtl:
-                    eval_gen_loss = eval_model_loss(model, tokenizer, eval_gen_dataloader, device, current_step)
+                    eval_gen_loss = eval_model_loss(
+                        model, tokenizer, eval_gen_dataloader, device, current_step
+                    )
                 model.train()
 
-                print('saving model for step {}'.format(current_step))
-                if not os.path.exists(output_dir + '/model_step{}'.format(current_step)):
-                    os.mkdir(output_dir + '/model_step{}'.format(current_step))
-                model_to_save = model.module if hasattr(model, 'module') else model
-                model_to_save.save_pretrained(output_dir + '/model_step{}'.format(current_step))
+                print("saving model for step {}".format(current_step))
+                if not os.path.exists(
+                    output_dir + "/model_step{}".format(current_step)
+                ):
+                    os.mkdir(output_dir + "/model_step{}".format(current_step))
+                model_to_save = model.module if hasattr(model, "module") else model
+                model_to_save.save_pretrained(
+                    output_dir + "/model_step{}".format(current_step)
+                )
 
                 if eval_loss < best_eval_loss:
                     print("save best.....")
-                    if not os.path.exists(output_dir + '/best_eval'):
-                        os.mkdir(output_dir + '/best_eval')
-                    model_to_save = model.module if hasattr(model, 'module') else model
-                    model_to_save.save_pretrained(output_dir + '/best_eval')
+                    if not os.path.exists(output_dir + "/best_eval"):
+                        os.mkdir(output_dir + "/best_eval")
+                    model_to_save = model.module if hasattr(model, "module") else model
+                    model_to_save.save_pretrained(output_dir + "/best_eval")
                     best_eval_loss = eval_loss
 
                 if is_mtl:
                     if eval_gen_loss < best_eval_gen_loss:
                         print("save best gen model.....")
-                        if not os.path.exists(output_dir + '/best_eval_gen'):
-                            os.mkdir(output_dir + '/best_eval_gen')
-                        model_to_save = model.module if hasattr(model, 'module') else model
-                        model_to_save.save_pretrained(output_dir + '/best_eval_gen')
+                        if not os.path.exists(output_dir + "/best_eval_gen"):
+                            os.mkdir(output_dir + "/best_eval_gen")
+                        model_to_save = (
+                            model.module if hasattr(model, "module") else model
+                        )
+                        model_to_save.save_pretrained(output_dir + "/best_eval_gen")
                         best_eval_gen_loss = eval_gen_loss
 
         if args.local_rank == 0 and save_step == -1:
             # do validation & save
             print("start evaluation")
             model.eval()
-            eval_loss = eval_model_loss(model, tokenizer, eval_dataloader, device, current_step)
+            eval_loss = eval_model_loss(
+                model, tokenizer, eval_dataloader, device, current_step
+            )
             if is_mtl:
-                eval_gen_loss = eval_model_loss(model, tokenizer, eval_gen_dataloader, device, current_step)
+                eval_gen_loss = eval_model_loss(
+                    model, tokenizer, eval_gen_dataloader, device, current_step
+                )
             model.train()
 
             if eval_loss < best_eval_loss:
                 print("save best.....")
-                if not os.path.exists(output_dir + '/best_eval'):
-                    os.mkdir(output_dir + '/best_eval')
-                model_to_save = model.module if hasattr(model, 'module') else model
-                model_to_save.save_pretrained(output_dir + '/best_eval')
+                if not os.path.exists(output_dir + "/best_eval"):
+                    os.mkdir(output_dir + "/best_eval")
+                model_to_save = model.module if hasattr(model, "module") else model
+                model_to_save.save_pretrained(output_dir + "/best_eval")
                 best_eval_loss = eval_loss
 
-    print('training finished')
+    print("training finished")
 
     ##############################
     # decoding
     ##############################
     del model
     print("##############################")
-    print('starting decoding')
+    print("starting decoding")
     print("##############################")
 
     if args.local_rank == 0:
         generate(
             batch_size=150,
-            model_path=output_dir + '/best_eval',
+            model_path=output_dir + "/best_eval",
             tokenizer_path=args.tokenizer_path,
             test_path=test_path,
-            write_path=output_dir + f"/{task}_{is_mtl}_{args.few_shot_rate}_{args.seed}_output_best.jsonl",
+            write_path=output_dir
+            + f"/{task}_{is_mtl}_{args.few_shot_rate}_{args.seed}_output_best.jsonl",
             max_length=max_length,
         )
 

@@ -35,25 +35,26 @@ class DataArguments:
 
     dataset: str = field(
         default="cail2018_small",
-        metadata={"help": "Dataset for multi label classfication."})
+        metadata={"help": "Dataset for multi label classfication."},
+    )
 
     task_name: str = field(
         default="charges",
-        metadata={"help": "Task name for multi label classfication dataset."})
+        metadata={"help": "Task name for multi label classfication dataset."},
+    )
 
     dataset_dir: str = field(
         default=None,
         metadata={
-            "help":
-                "Local dataset directory should include train.txt, dev.txt and label.txt."
-        })
+            "help": "Local dataset directory should include train.txt, dev.txt and label.txt."
+        },
+    )
 
     max_seq_length: int = field(
         default=512,
         metadata={
-            "help":
-                "The maximum total input sequence length after tokenization. Sequences longer "
-                "than this will be truncated, sequences shorter will be padded."
+            "help": "The maximum total input sequence length after tokenization. Sequences longer "
+            "than this will be truncated, sequences shorter will be padded."
         },
     )
 
@@ -63,17 +64,17 @@ class ModelArguments:
     """
     Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.
     """
+
     params_dir: str = field(
-        default='./checkpoint/',
+        default="./checkpoint/",
         metadata={
-            "help":
-                "The output directory where the model checkpoints are written."
-        })
+            "help": "The output directory where the model checkpoints are written."
+        },
+    )
 
 
 def main():
-    parser = PdArgumentParser(
-        (ModelArguments, DataArguments, TrainingArguments))
+    parser = PdArgumentParser((ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
     f = open("prune_config.json")
@@ -89,36 +90,39 @@ def main():
     training_args.print_config(data_args, "Data")
     if data_args.dataset_dir is not None:
         label_list = {}
-        with open(os.path.join(data_args.dataset_dir, 'label.txt'),
-                  'r',
-                  encoding='utf-8') as f:
+        with open(
+            os.path.join(data_args.dataset_dir, "label.txt"), "r", encoding="utf-8"
+        ) as f:
             for i, line in enumerate(f):
                 l = line.strip()
                 label_list[l] = i
-        train_ds = load_dataset(read_local_dataset,
-                                path=os.path.join(data_args.dataset_dir,
-                                                  'train.txt'),
-                                label_list=label_list,
-                                lazy=False)
-        dev_ds = load_dataset(read_local_dataset,
-                              path=os.path.join(data_args.dataset_dir,
-                                                'dev.txt'),
-                              label_list=label_list,
-                              lazy=False)
+        train_ds = load_dataset(
+            read_local_dataset,
+            path=os.path.join(data_args.dataset_dir, "train.txt"),
+            label_list=label_list,
+            lazy=False,
+        )
+        dev_ds = load_dataset(
+            read_local_dataset,
+            path=os.path.join(data_args.dataset_dir, "dev.txt"),
+            label_list=label_list,
+            lazy=False,
+        )
     else:
-        train_ds, dev_ds = load_dataset(data_args.dataset,
-                                        name=data_args.task_name,
-                                        splits=["train", "dev"])
+        train_ds, dev_ds = load_dataset(
+            data_args.dataset, name=data_args.task_name, splits=["train", "dev"]
+        )
         label_list = train_ds.label_list
 
-    model = AutoModelForSequenceClassification.from_pretrained(
-        model_args.params_dir)
+    model = AutoModelForSequenceClassification.from_pretrained(model_args.params_dir)
     tokenizer = AutoTokenizer.from_pretrained(model_args.params_dir)
 
-    trans_func = functools.partial(preprocess_function,
-                                   tokenizer=tokenizer,
-                                   max_seq_length=data_args.max_seq_length,
-                                   label_nums=len(label_list))
+    trans_func = functools.partial(
+        preprocess_function,
+        tokenizer=tokenizer,
+        max_seq_length=data_args.max_seq_length,
+        label_nums=len(label_list),
+    )
     train_dataset = train_ds.map(trans_func)
     dev_dataset = dev_ds.map(trans_func)
 
@@ -126,13 +130,15 @@ def main():
     data_collator = DataCollatorWithPadding(tokenizer)
     criterion = paddle.nn.BCEWithLogitsLoss()
 
-    trainer = Trainer(model=model,
-                      args=training_args,
-                      data_collator=data_collator,
-                      train_dataset=train_dataset,
-                      eval_dataset=dev_dataset,
-                      tokenizer=tokenizer,
-                      criterion=criterion)
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        data_collator=data_collator,
+        train_dataset=train_dataset,
+        eval_dataset=dev_dataset,
+        tokenizer=tokenizer,
+        criterion=criterion,
+    )
 
     output_dir = training_args.output_dir
     if not os.path.exists(output_dir):

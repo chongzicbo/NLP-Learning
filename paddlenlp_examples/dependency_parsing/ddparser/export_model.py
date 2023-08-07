@@ -24,14 +24,15 @@ args = parser.parse_args()
 # yapf: enable
 
 if __name__ == "__main__":
-
     # Load pretrained model if encoding model is ernie-1.0, ernie-tiny or ernie-gram-zh
     if args.encoding_model in ["ernie-1.0", "ernie-tiny"]:
         pretrained_model = ppnlp.transformers.ErnieModel.from_pretrained(
-            args.encoding_model)
+            args.encoding_model
+        )
     elif args.encoding_model == "ernie-gram-zh":
         pretrained_model = ppnlp.transformers.ErnieGramModel.from_pretrained(
-            args.encoding_model)
+            args.encoding_model
+        )
     else:
         pretrained_model = None
 
@@ -71,13 +72,13 @@ if __name__ == "__main__":
     model.eval()
 
     # Convert to static graph with specific input description
-    model = paddle.jit.to_static(model,
-                                 input_spec=[
-                                     paddle.static.InputSpec(shape=[None, None],
-                                                             dtype="int64"),
-                                     paddle.static.InputSpec(shape=[None, None],
-                                                             dtype="int64"),
-                                 ])
+    model = paddle.jit.to_static(
+        model,
+        input_spec=[
+            paddle.static.InputSpec(shape=[None, None], dtype="int64"),
+            paddle.static.InputSpec(shape=[None, None], dtype="int64"),
+        ],
+    )
     # Save in static graph model.
     save_path = os.path.join(args.output_path, "inference")
     paddle.jit.save(model, save_path)

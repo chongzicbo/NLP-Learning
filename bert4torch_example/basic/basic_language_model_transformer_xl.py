@@ -25,18 +25,18 @@ with torch.no_grad():
     # 这里只能断点进去看
     outputs = model(**inputs, labels=inputs["input_ids"])
     loss = outputs.losses
-print('transforms loss: ', loss)
+print("transforms loss: ", loss)
 
 # ----------------------bert4torch配置----------------------
 from bert4torch.models import build_transformer_model
 
-config_path = f'{pretrained_model}/bert4torch_config.json'
-checkpoint_path = f'{pretrained_model}/bert4torch_pytorch_model.bin'
+config_path = f"{pretrained_model}/bert4torch_config.json"
+checkpoint_path = f"{pretrained_model}/bert4torch_pytorch_model.bin"
 
 model = build_transformer_model(
     config_path,
     checkpoint_path=checkpoint_path,
-    model='transformer_xl',
+    model="transformer_xl",
 )
 
-print('bert4torch last_hidden_state: ', model.predict([inputs['input_ids']]))
+print("bert4torch last_hidden_state: ", model.predict([inputs["input_ids"]]))

@@ -19,24 +19,24 @@ from keras.layers import Lambda, Dense
 
 maxlen = 128
 batch_size = 32
-config_path = '/root/kg/bert/chinese_nezha_gpt_L-12_H-768_A-12/config.json'
-checkpoint_path = '/root/kg/bert/chinese_nezha_gpt_L-12_H-768_A-12/gpt.ckpt'
-dict_path = '/root/kg/bert/chinese_nezha_gpt_L-12_H-768_A-12/vocab.txt'
+config_path = "/root/kg/bert/chinese_nezha_gpt_L-12_H-768_A-12/config.json"
+checkpoint_path = "/root/kg/bert/chinese_nezha_gpt_L-12_H-768_A-12/gpt.ckpt"
+dict_path = "/root/kg/bert/chinese_nezha_gpt_L-12_H-768_A-12/vocab.txt"
 
 
 def load_data(filename):
     D = []
-    with open(filename, encoding='utf-8') as f:
+    with open(filename, encoding="utf-8") as f:
         for l in f:
-            text, label = l.strip().split('\t')
+            text, label = l.strip().split("\t")
             D.append((text, int(label)))
     return D
 
 
 # 加载数据集
-train_data = load_data('datasets/sentiment/sentiment.train.data')
-valid_data = load_data('datasets/sentiment/sentiment.valid.data')
-test_data = load_data('datasets/sentiment/sentiment.test.data')
+train_data = load_data("datasets/sentiment/sentiment.train.data")
+valid_data = load_data("datasets/sentiment/sentiment.valid.data")
+test_data = load_data("datasets/sentiment/sentiment.test.data")
 
 # 模拟标注和非标注数据
 train_frac = 0.01  # 标注数据的比例
@@ -49,15 +49,14 @@ train_data = train_data[:num_labeled]
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
 # 对应的任务描述
-desc = ['[unused%s]' % i for i in range(1, 9)]
+desc = ["[unused%s]" % i for i in range(1, 9)]
 desc_ids = [tokenizer.token_to_id(t) for t in desc]
-pos_id = tokenizer.token_to_id(u'很')
-neg_id = tokenizer.token_to_id(u'不')
+pos_id = tokenizer.token_to_id("很")
+neg_id = tokenizer.token_to_id("不")
 
 
 class data_generator(DataGenerator):
-    """数据生成器
-    """
+    """数据生成器"""
 
     def __iter__(self, random=False):
         batch_token_ids = []
@@ -77,8 +76,7 @@ class data_generator(DataGenerator):
 
 
 class CrossEntropy(Loss):
-    """交叉熵作为loss，并mask掉padding部分
-    """
+    """交叉熵作为loss，并mask掉padding部分"""
 
     def compute_loss(self, inputs, mask=None):
         y_true, y_pred = inputs
@@ -90,17 +88,16 @@ class CrossEntropy(Loss):
         y_pred = y_pred[:, :-1]  # 预测序列，错开一位
         accuracy = keras.metrics.sparse_categorical_accuracy(y_true, y_pred)
         accuracy = K.sum(accuracy * y_mask) / K.sum(y_mask)
-        self.add_metric(accuracy, name='accuracy')
+        self.add_metric(accuracy, name="accuracy")
         loss = K.sparse_categorical_crossentropy(y_true, y_pred)
         loss = K.sum(loss * y_mask) / K.sum(y_mask)
         return loss
 
 
 class PtuningEmbedding(Embedding):
-    """新定义Embedding层，只优化部分Token
-    """
+    """新定义Embedding层，只优化部分Token"""
 
-    def call(self, inputs, mode='embedding'):
+    def call(self, inputs, mode="embedding"):
         embeddings = self.embeddings
         embeddings_sg = K.stop_gradient(embeddings)
         mask = np.zeros((K.int_shape(embeddings)[0], 1))
@@ -112,14 +109,12 @@ class PtuningEmbedding(Embedding):
 
 
 class PtuningBERT(BERT):
-    """替换原来的Embedding
-    """
+    """替换原来的Embedding"""
 
     def apply(self, inputs=None, layer=None, arguments=None, **kwargs):
         if layer is Embedding:
             layer = PtuningEmbedding
-        return super(PtuningBERT,
-                     self).apply(inputs, layer, arguments, **kwargs)
+        return super(PtuningBERT, self).apply(inputs, layer, arguments, **kwargs)
 
 
 # 加载预训练模型
@@ -128,11 +123,11 @@ model = build_transformer_model(
     checkpoint_path=checkpoint_path,
     model=PtuningBERT,
     segment_vocab_size=0,  # 去掉segmeng_ids输入
-    application='lm',
+    application="lm",
 )  # 建立模型，加载权重
 
 for layer in model.layers:
-    if layer.name != 'Embedding-Token':
+    if layer.name != "Embedding-Token":
         layer.trainable = False
 
 output = CrossEntropy(1)([model.input, model.output])
@@ -149,27 +144,27 @@ test_generator = data_generator(test_data, batch_size)
 
 class Evaluator(keras.callbacks.Callback):
     def __init__(self):
-        self.best_val_acc = 0.
+        self.best_val_acc = 0.0
 
     def on_epoch_end(self, epoch, logs=None):
         val_acc = evaluate(valid_generator)
         if val_acc > self.best_val_acc:
             self.best_val_acc = val_acc
-            model.save_weights('best_model_gpt.weights')
+            model.save_weights("best_model_gpt.weights")
         test_acc = evaluate(test_generator)
         print(
-            u'val_acc: %.5f, best_val_acc: %.5f, test_acc: %.5f\n' %
-            (val_acc, self.best_val_acc, test_acc)
+            "val_acc: %.5f, best_val_acc: %.5f, test_acc: %.5f\n"
+            % (val_acc, self.best_val_acc, test_acc)
         )
 
 
 def evaluate(data):
-    total, right = 0., 0.
+    total, right = 0.0, 0.0
     for x_true, _ in data:
         y_pred = model.predict(x_true)
         for x, y in zip(x_true, y_pred):
             x = np.trim_zeros(x)
-            y = y[:len(x)][-2, [neg_id, pos_id]].argmax()
+            y = y[: len(x)][-2, [neg_id, pos_id]].argmax()
             y = [neg_id, pos_id][y]
             if y == x[-1]:
                 right += 1
@@ -177,17 +172,15 @@ def evaluate(data):
     return right / total
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     evaluator = Evaluator()
 
     model.fit_generator(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator) * 50,
         epochs=1000,
-        callbacks=[evaluator]
+        callbacks=[evaluator],
     )
 
 else:
-
-    model.load_weights('best_model_gpt.weights')
+    model.load_weights("best_model_gpt.weights")

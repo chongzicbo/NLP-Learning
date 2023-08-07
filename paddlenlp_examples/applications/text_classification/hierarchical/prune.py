@@ -1,4 +1,3 @@
-
 import os
 import sys
 import yaml
@@ -29,24 +28,23 @@ class DataArguments:
 
     dataset: str = field(
         default="wos",
-        metadata={"help": "Dataset for hierarchical classfication tasks."})
+        metadata={"help": "Dataset for hierarchical classfication tasks."},
+    )
 
     dataset_dir: str = field(
         default=None,
         metadata={
-            "help":
-            "The dataset directory should include train.txt,"
+            "help": "The dataset directory should include train.txt,"
             "dev.txt and label.txt files."
-        })
+        },
+    )
 
-    depth: int = field(default=2,
-                       metadata={"help": "The maximum level of hierarchy."})
+    depth: int = field(default=2, metadata={"help": "The maximum level of hierarchy."})
 
     max_seq_length: int = field(
         default=512,
         metadata={
-            "help":
-            "The maximum total input sequence length after tokenization. Sequences longer "
+            "help": "The maximum total input sequence length after tokenization. Sequences longer "
             "than this will be truncated, sequences shorter will be padded."
         },
     )
@@ -57,17 +55,17 @@ class ModelArguments:
     """
     Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.
     """
+
     params_dir: str = field(
-        default='./checkpoint/',
+        default="./checkpoint/",
         metadata={
-            "help":
-            "The output directory where the model checkpoints are written."
-        })
+            "help": "The output directory where the model checkpoints are written."
+        },
+    )
 
 
 def main():
-    parser = PdArgumentParser(
-        (ModelArguments, DataArguments, TrainingArguments))
+    parser = PdArgumentParser((ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
     f = open("prune_config.json")
@@ -89,39 +87,40 @@ def main():
         label_dir = os.path.join(data_args.dataset_dir, "label.txt")
         train_ds, dev_ds = load_dataset("wos", data_files=(train_dir, dev_dir))
         label_list = {}
-        with open(label_dir, 'r', encoding='utf-8') as f:
+        with open(label_dir, "r", encoding="utf-8") as f:
             for i, line in enumerate(f):
                 label_list[line.strip()] = i
     else:
-        train_ds, dev_ds = load_dataset(data_args.dataset,
-                                        splits=["train", "dev"])
+        train_ds, dev_ds = load_dataset(data_args.dataset, splits=["train", "dev"])
         label_list = {
-            train_ds.label_list[i]: i
-            for i in range(len(train_ds.label_list))
+            train_ds.label_list[i]: i for i in range(len(train_ds.label_list))
         }
 
-    model = AutoModelForSequenceClassification.from_pretrained(
-        model_args.params_dir)
+    model = AutoModelForSequenceClassification.from_pretrained(model_args.params_dir)
     tokenizer = AutoTokenizer.from_pretrained(model_args.params_dir)
 
-    trans_func = functools.partial(preprocess_function,
-                                   tokenizer=tokenizer,
-                                   max_seq_length=data_args.max_seq_length,
-                                   label_list=label_list,
-                                   depth=data_args.depth)
+    trans_func = functools.partial(
+        preprocess_function,
+        tokenizer=tokenizer,
+        max_seq_length=data_args.max_seq_length,
+        label_list=label_list,
+        depth=data_args.depth,
+    )
     train_dataset = train_ds.map(trans_func)
     dev_dataset = dev_ds.map(trans_func)
     # Define data collector， criterion
     data_collator = DataCollatorWithPadding(tokenizer)
     criterion = paddle.nn.BCEWithLogitsLoss()
 
-    trainer = Trainer(model=model,
-                      args=training_args,
-                      data_collator=data_collator,
-                      train_dataset=train_dataset,
-                      eval_dataset=dev_dataset,
-                      tokenizer=tokenizer,
-                      criterion=criterion)
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        data_collator=data_collator,
+        train_dataset=train_dataset,
+        eval_dataset=dev_dataset,
+        tokenizer=tokenizer,
+        criterion=criterion,
+    )
 
     output_dir = training_args.output_dir
     if not os.path.exists(output_dir):

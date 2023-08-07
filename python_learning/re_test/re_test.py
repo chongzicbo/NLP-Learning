@@ -16,20 +16,22 @@ print(re.search(re_text, text))
 print(re.findall(re_text, text))
 
 
-text="\na\n"
+text = "\na\n"
 print(text)
-print(re.findall("\n",text))
+print(re.findall("\n", text))
 
 import re
+
 re_str_patt = "\\\\"
 reObj = re.compile(re_str_patt)
 str_test = "abc\\cd\\hh"
-print (reObj.findall(str_test))
+print(reObj.findall(str_test))
 import re
+
 re_str_patt = "\\\\"
 reObj = re.compile(re_str_patt)
 str_test = "abc\\cd\\hh"
-print (reObj.findall(str_test))
+print(reObj.findall(str_test))
 
-text="\\2345"
-print(re.findall(r"\\|\d",text))
+text = "\\2345"
+print(re.findall(r"\\|\d", text))

@@ -28,7 +28,7 @@ def task2():
     lock.release()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("这里是主线程")
     t1 = Thread(target=task1)
     t2 = Thread(target=task2)

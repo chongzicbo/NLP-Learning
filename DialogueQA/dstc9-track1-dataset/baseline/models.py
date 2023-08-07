@@ -23,19 +23,18 @@ class GPT2ClsDoubleHeadsModel(GPT2PreTrainedModel):
         return self.lm_head
 
     def forward(
-            self,
-            input_ids=None,
-            past_key_values=None,
-            attention_mask=None,
-            token_type_ids=None,
-            position_ids=None,
-            head_mask=None,
-            inputs_embeds=None,
-            mc_token_ids=None,
-            lm_labels=None,
-            labels=None,
+        self,
+        input_ids=None,
+        past_key_values=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        inputs_embeds=None,
+        mc_token_ids=None,
+        lm_labels=None,
+        labels=None,
     ):
-
         transformer_outputs = self.transformer(
             input_ids,
             past_key_values=past_key_values,
@@ -60,7 +59,9 @@ class GPT2ClsDoubleHeadsModel(GPT2PreTrainedModel):
             shift_logits = lm_logits[..., :-1, :].contiguous()
             shift_labels = lm_labels[..., 1:].contiguous()
             loss_fct = CrossEntropyLoss()
-            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+            loss = loss_fct(
+                shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)
+            )
             outputs = (loss,) + outputs
 
         return outputs  # (lm loss), (mc loss), lm logits, mc logits, presents, (all hidden_states), (attentions)

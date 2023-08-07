@@ -15,7 +15,9 @@ from transformers.utils import logging
 logging.set_verbosity_info()
 
 
-def convert_tf_checkpoint_to_pytorch(tf_checkpoint_path, bert_config_file, pytorch_dump_path):
+def convert_tf_checkpoint_to_pytorch(
+    tf_checkpoint_path, bert_config_file, pytorch_dump_path
+):
     # Initialise PyTorch model
     config = BertConfig.from_json_file(bert_config_file)
     print(f"Building PyTorch model from configuration: {config}")
@@ -51,7 +53,9 @@ if __name__ == "__main__":
     # args = parser.parse_args()
     # convert_tf_checkpoint_to_pytorch(args.tf_checkpoint_path, args.bert_config_file, args.pytorch_dump_path)
 
-    tf_checkpoint_path = '/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_nezha_gpt_L-12_H-768_A-12/chinese_nezha_gpt_L-12_H-768_A-12/gpt.ckpt'
-    bert_config_file = '/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_nezha_gpt_L-12_H-768_A-12/chinese_nezha_gpt_L-12_H-768_A-12/config.json'
+    tf_checkpoint_path = "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_nezha_gpt_L-12_H-768_A-12/chinese_nezha_gpt_L-12_H-768_A-12/gpt.ckpt"
+    bert_config_file = "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_nezha_gpt_L-12_H-768_A-12/chinese_nezha_gpt_L-12_H-768_A-12/config.json"
     pytorch_dump_path = "/mnt/e/working/huada_bgi/data/pretrained_model/bert/chinese_nezha_gpt_L-12_H-768_A-12/chinese_nezha_gpt_L-12_H-768_A-12/pytorch_model.bin"
-    convert_tf_checkpoint_to_pytorch(tf_checkpoint_path, bert_config_file, pytorch_dump_path)
+    convert_tf_checkpoint_to_pytorch(
+        tf_checkpoint_path, bert_config_file, pytorch_dump_path
+    )
