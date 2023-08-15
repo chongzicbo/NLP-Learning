@@ -16,3 +16,5 @@ events.*
 *.pyc
 *.src
 *.tgt
+*.docx
+*.tiff
