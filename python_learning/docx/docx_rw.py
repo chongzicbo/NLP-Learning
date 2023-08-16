@@ -95,16 +95,39 @@ for block in iter_block_items(src_doc):
                     print(f"image {image_path} has been added to dst document")
         else:
             if block.text.strip():
-                # style = style_dic["text"]
-                # style = ParagraphStyle()
-                # style.font.size = Pt(10)
-                # style.font.name = "Times New Roman"  # 字体类型
-                p = dst_doc.add_paragraph(block.text, style=normal_text_style)
-                p.alignment = WD_ALIGN_PARAGRAPH.LEFT  # 段落右对齐
-                p.paragraph_format.first_line_indent = p.style.font.size * 2  # 首行缩进两个字符
-                p.paragraph_format.left_indent = Inches(1.5)
-                p.paragraph_format.line_spacing = 1.5
-                dst_doc.add_section(start_type=WD_SECTION.CONTINUOUS)
+                if "heading 1" in block.style.name.lower():
+                    head1 = dst_doc.add_heading(level=1)
+                    head1.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    head1_title = head1.add_run(block.text)
+                    head1_title.font.size = Pt(10)
+                    head1_title.font.bold = True
+                    head1_title.font.name = "Palatino Linotype"
+                    head1.paragraph_format.left_indent = Inches(1)
+                elif "heading 2" in block.style.name.lower():
+                    head2 = dst_doc.add_heading(level=2)
+                    head2.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    head2_title = head2.add_run(block.text)
+                    head2_title.font.size = Pt(10)
+                    head2_title.font.italic = True
+                    head2_title.font.name = "Palatino Linotype"
+                    head2.paragraph_format.left_indent = Inches(1)
+                elif "heading 3" in block.style.name.lower():
+                    head3 = dst_doc.add_heading(level=3)
+                    head3.paragraph_format.left_indent = Inches(1)
+                    head3.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+                    head3_title = head3.add_run(block.text)
+                    head3_title.font.size = Pt(10)
+                    head3_title.font.name = "Palatino Linotype"
+                else:
+                    p = dst_doc.add_paragraph(block.text, style=normal_text_style)
+                    p.alignment = WD_ALIGN_PARAGRAPH.LEFT  # 段落右对齐
+                    p.paragraph_format.first_line_indent = (
+                        p.style.font.size * 2
+                    )  # 首行缩进两个字符
+                    p.paragraph_format.left_indent = Inches(1)
+                    p.paragraph_format.line_spacing = 1.5
+                    dst_doc.add_section(start_type=WD_SECTION.CONTINUOUS)
     elif isinstance(block, Table):
         # Read and process the Table
         para1 = dst_doc.paragraphs[-1]
@@ -118,7 +141,7 @@ for block in iter_block_items(src_doc):
 image_header1 = "/home/bocheng/dev/mylearn/NLP-Learning/python_learning/docx/data/pageheader/page_header.png"
 image_header2 = "/home/bocheng/dev/mylearn/NLP-Learning/python_learning/docx/data/pageheader/page_header_02.png"
 sections = dst_doc.sections
-print(len(sections))
+# print(len(sections))
 section_0_header = sections[0].header
 htable = section_0_header.add_table(1, 2, Inches(6))
 htab_cells = htable.rows[0].cells
