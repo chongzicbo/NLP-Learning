@@ -7,34 +7,34 @@ import os
 import docx2txt
 
 docx_path = "/home/bocheng/data/pdf/document_parse/Word/random/atmosphere-2489382.docx"
-docx_path = "/home/bocheng/dev/mylearn/NLP-Learning/python_learning/docx/data/docx/hyperlink_test.docx"
+docx_path = "/home/bocheng/dev/mylearn/NLP-Learning/python_learning/docx/data/test.docx"
 document = Document(docx_path)
 # print(help(document._element))
 
 
-def getHyperlinksRuns(paragraph):
-    def _get(node, parent):
-        for child in node:
-            if child.tag == qn("w:hyperlink"):
-                yield from returnRun(child, parent)
+# def getHyperlinksRuns(paragraph):
+#     def _get(node, parent):
+#         for child in node:
+#             if child.tag == qn("w:hyperlink"):
+#                 yield from returnRun(child, parent)
 
-    def returnRun(node, parent):
-        for child in node:
-            if child.tag == qn("w:r"):
-                yield Run(child, parent)
+#     def returnRun(node, parent):
+#         for child in node:
+#             if child.tag == qn("w:r"):
+#                 yield Run(child, parent)
 
-    return list(_get(paragraph._element, paragraph))
+#     return list(_get(paragraph._element, paragraph))
 
 
-def getParagraphRuns(paragraph):
-    def _get(node, parent):
-        for child in node:
-            if child.tag == qn("w:r"):
-                yield Run(child, parent)
-            if child.tag == qn("w:hyperlink"):
-                yield from _get(child, parent)
+# def getParagraphRuns(paragraph):
+#     def _get(node, parent):
+#         for child in node:
+#             if child.tag == qn("w:r"):
+#                 yield Run(child, parent)
+#             if child.tag == qn("w:hyperlink"):
+#                 yield from _get(child, parent)
 
-    return list(_get(paragraph._element, paragraph))
+#     return list(_get(paragraph._element, paragraph))
 
 
 # for paragraph in document.paragraphs:
@@ -85,12 +85,12 @@ def getParagraphRuns(paragraph):
 # print(style_dic)
 from docx.oxml.ns import qn
 
-for p in document.paragraphs:
-    runs = getParagraphRuns(p)
-    # runs = getHyperlinksRuns(p)
-    for run in runs:
-        run.font.name = "Palatino Linotype"
-        run.font.size = Pt(10)
+# for p in document.paragraphs:
+#     runs = getParagraphRuns(p)
+#     # runs = getHyperlinksRuns(p)
+#     for run in runs:
+#         run.font.name = "Palatino Linotype"
+#         run.font.size = Pt(10)
 
 # for paragraph in document.paragraphs:
 #     for run in paragraph.runs:
@@ -119,3 +119,6 @@ import re
 #     for rel in rels:
 #         if rels[rel].reltype == RT.HYPERLINK:
 #             print("\n 超链接文本为", rels[rel], " 超链接网址为: ", rels[rel]._target)
+
+for p in document.paragraphs:
+    print(p.text)
