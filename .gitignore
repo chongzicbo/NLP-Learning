@@ -18,3 +18,4 @@ events.*
 *.tgt
 *.docx
 *.tiff
+*db.*
