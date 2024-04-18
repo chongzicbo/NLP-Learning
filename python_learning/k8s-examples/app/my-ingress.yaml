@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-ingress
+spec:
+  rules:
+  - host: 188.188.1.250
+    http:
+      paths:
+      - path: /myapp
+        pathType: Prefix
+        backend:
+          service:
+            name: myapp-service
+            port:
+              number: 5001
