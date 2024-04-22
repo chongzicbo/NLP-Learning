@@ -16,6 +16,7 @@ from transformers import (
 )
 from peft import PeftModel, LoraConfig, prepare_model_for_kbit_training, get_peft_model
 
+
 ### config ###
 model_id = "NousResearch/Llama-2-7b-hf"  # optional meta-llama/Llama-2–7b-chat-hf
 max_length = 512
@@ -37,13 +38,13 @@ model = AutoModelForCausalLM.from_pretrained(
     model_id, quantization_config=bnb_config, use_cache=False, device_map=device_map
 )
 
+
 # load tokenizer from huggingface
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 tokenizer.pad_token = tokenizer.eos_token
 tokenizer.padding_side = "right"
 
 
-# 输出可训练参数量
 def print_number_of_trainable_model_parameters(model):
     trainable_model_params = 0
     all_model_params = 0
@@ -52,19 +53,17 @@ def print_number_of_trainable_model_parameters(model):
         if param.requires_grad:
             trainable_model_params += param.numel()
     print(
-        f"trainable model parameters: {trainable_model_params}. All model parameters: {all_model_params}"
+        f"trainable model parameters: {trainable_model_params}. All model parameters: {all_model_params} "
     )
     return trainable_model_params
 
 
 ori_p = print_number_of_trainable_model_parameters(model)
-
-# 配置LoRa参数
+# LoRA config
 model = prepare_model_for_kbit_training(model)
-
 peft_config = LoraConfig(
-    r=8,
-    lora_alpha=32,
+    r=16,
+    lora_alpha=64,
     lora_dropout=0.1,
     target_modules=["q_proj", "v_proj"],
     bias="none",
@@ -72,13 +71,13 @@ peft_config = LoraConfig(
 )
 model = get_peft_model(model, peft_config)
 
+### compare trainable parameters #
 peft_p = print_number_of_trainable_model_parameters(model)
 print(
-    f"# Trainable Parameter \n Before: {ori_p} \n After :{peft_p} \n Percentage: {round(peft_p/ori_p * 100,2)}"
+    f"# Trainable Parameter \nBefore: {ori_p} \nAfter: {peft_p} \nPercentage: {round(peft_p / ori_p * 100, 2)}"
 )
-
-## 看看原始LLaMA2的生成效果
-prompt = "Write me a poem about Singapore"
+### generate ###
+prompt = "Write me a poem about Singapore."
 inputs = tokenizer(prompt, return_tensors="pt")
 generate_ids = model.generate(inputs.input_ids, max_length=64)
 print("\nAnswer: ", tokenizer.decode(generate_ids[0]))
@@ -87,9 +86,9 @@ res = tokenizer.batch_decode(
 )[0]
 print(res)
 
-# 微调
 max_length = 256
 dataset = datasets.load_dataset("databricks/databricks-dolly-15k", split="train")
+
 ### generate prompt based on template ###
 prompt_template = {
     "prompt_input": "Below is an instruction that describes a task, paired with an input that provides further context.\
@@ -113,7 +112,6 @@ def generate_prompt(
         res = prompt_template["prompt_no_input"].format(instruction=instruction)
     if label:
         res = f"{res}{label}"
-
     return res
 
 
@@ -125,13 +123,16 @@ def tokenize(tokenizer, prompt, max_length=max_length, add_eos_token=False):
         padding=False,
         return_tensors=None,
     )
+
     result["labels"] = result["input_ids"].copy()
     return result
 
 
 def generate_and_tokenize_prompt(data_point):
     full_prompt = generate_prompt(
-        data_point["instruction"], data_point["context"], data_point["response"]
+        data_point["instruction"],
+        data_point["context"],
+        data_point["response"],
     )
     tokenized_full_prompt = tokenize(tokenizer, full_prompt)
     user_prompt = generate_prompt(data_point["instruction"], data_point["context"])
@@ -150,28 +151,35 @@ train_data = (
     dataset["train"].shuffle().map(generate_and_tokenize_prompt, remove_columns=cols)
 )
 val_data = (
-    dataset["test"].shuffle().map(generate_and_tokenize_prompt, remove_columns=cols)
+    dataset["test"]
+    .shuffle()
+    .map(
+        generate_and_tokenize_prompt,
+        remove_columns=cols,
+    )
 )
 
-# 模型训练
+
 args = TrainingArguments(
     output_dir="./llama-7b-int4-dolly",
     num_train_epochs=20,
     max_steps=200,
-    fp16=True,
+    per_device_train_batch_size=4,
+    gradient_accumulation_steps=1,
     optim="paged_adamw_32bit",
+    save_steps=25,
+    logging_steps=25,
     learning_rate=2e-4,
+    weight_decay=0.001,
+    fp16=False,
+    bf16=False,
+    max_grad_norm=0.3,
+    max_steps=-1,
+    warmup_ratio=0.03,
+    group_by_length=True,
     lr_scheduler_type="constant",
-    per_device_train_batch_size=micro_batch_size,
-    gradient_accumulation_steps=gradient_accumulation_steps,
-    gradient_checkpointing=True,
-    group_by_length=False,
-    logging_steps=10,
-    save_strategy="epoch",
-    save_total_limit=3,
-    disable_tqdm=False,
+    report_to="tensorboard",
 )
-
 
 trainer = Trainer(
     model=model,
@@ -179,17 +187,15 @@ trainer = Trainer(
     eval_dataset=val_data,
     args=args,
     data_collator=DataCollatorForSeq2Seq(
-        tokenizer,
-        pad_to_multiple_of=8,
-        return_tensors="pt",
-        padding=True,
+        tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
     ),
 )
+
+# silence the warnings. re-enable for inference!
 model.config.use_cache = False
 trainer.train()
 model.save_pretrained("llama-7b-int4-dolly")
 
-# model path and weight
 model_id = "NousResearch/Llama-2-7b-hf"
 peft_path = "./llama-7b-int4-dolly"
 
@@ -208,9 +214,10 @@ model.eval()
 
 # generation config
 generation_config = GenerationConfig(
+    do_sample=True,
     temperature=0.1,
     top_p=0.75,
-    top_k=40,
+    # top_k=40,
     num_beams=4,  # beam search
 )
 
@@ -219,7 +226,7 @@ with torch.no_grad():
     prompt = "Write me a poem about Singapore."
     inputs = tokenizer(prompt, return_tensors="pt")
     generation_output = model.generate(
-        input_ids=inputs.input_ids,
+        input_ids=inputs.input_ids.cuda(),
         generation_config=generation_config,
         return_dict_in_generate=True,
         output_scores=True,
