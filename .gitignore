@@ -19,3 +19,4 @@ events.*
 *.docx
 *.tiff
 *db.*
+*ipynb_checkpoints/*
