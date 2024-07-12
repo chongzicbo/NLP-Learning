@@ -19,4 +19,7 @@ events.*
 *.docx
 *.tiff
 *db.*
-*ipynb_checkpoints/*
+*checkpoint*ipynb
+*.bin
+*.safetensors
+*.pth
