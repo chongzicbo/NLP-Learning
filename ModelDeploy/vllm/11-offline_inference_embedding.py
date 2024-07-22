@@ -14,7 +14,7 @@ prompts = [
 ]
 
 # Create an LLM.
-model = LLM(model="TheBloke/TinyLlama-1.1B-Chat-v0.3-AWQ", enforce_eager=True)
+model = LLM(model="intfloat/e5-mistral-7b-instruct", enforce_eager=True)
 # Generate embedding. The output is a list of EmbeddingRequestOutputs.
 outputs = model.encode(prompts)
 # Print the outputs.
