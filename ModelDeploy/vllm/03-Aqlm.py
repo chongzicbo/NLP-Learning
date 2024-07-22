@@ -1,3 +1,8 @@
+import os
+
+os.environ["XDG_CACHE_HOME"] = "/data/bocheng/data/.cache"
+os.environ["HUGGINGFACE_HUB_CACHE"] = "/data/bocheng/data/.cache/huggingface/hub/"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 from vllm import LLM, SamplingParams
 from vllm.utils import FlexibleArgumentParser
 
