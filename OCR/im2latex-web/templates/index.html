@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Image Upload and Process</title>
+</head>
+
+<body>
+    <h2>Upload Image</h2>
+    <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" id="file" accept="image/*" required>
+        <input type="submit" value="Upload Image" id="upload-btn">
+    </form>
+
+    <!-- Image display area -->
+    <div id="image-display-area">
+        <!-- After image upload, the image will be displayed here -->
+    </div>
+
+    <!-- Button to trigger pix2text processing -->
+    <button id="button1" onclick="processImage('pix2text')">Process with pix2text</button>
+
+    <!-- Button to trigger nougat processing -->
+    <button id="button2" onclick="processImage('nougat')">Process with nougat</button>
+
+    <!-- Displaying LaTeX output -->
+    <div id="latex-output">
+        <!-- LaTeX output will be displayed here -->
+    </div>
+
+    <script>
+        function processImage(method) {
+            var form = document.getElementById('upload-form');
+            var formData = new FormData(form);
+
+            fetch('/process/' + method, {
+                method: 'POST',
+                body: formData
+            }).then(function (response) {
+                return response.text();
+            }).then(function (latex) {
+                // Display LaTeX in the output div
+                document.getElementById('latex-output').textContent = latex;
+            });
+        }
+    </script>
+</body>
+
+</html>
