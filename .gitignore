@@ -23,3 +23,5 @@ events.*
 *.bin
 *.safetensors
 *.pth
+LLMTrain/deepspeed_test/data/*
+

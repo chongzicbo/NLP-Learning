@@ -1,0 +1,41 @@
+{
+    // 每个GPU的训练批次大小
+    "train_batch_size": 4,
+    // 每隔多少步打印一次训练状态，这里是2000步
+    "steps_per_print": 2000,
+    //优化器的配置
+    "optimizer": {
+        //优化器类型
+        "type": "Adam",
+        //Adam优化器的参数
+        "params": {
+            //学习率
+            "lr": 0.001,
+            // Adam的第一和第二动量参数
+            "betas": [
+                0.8,
+                0.999
+            ],
+            //优化器的稳定常数，防止除以零，这里是1e-8
+            "eps": 1e-8,
+            //权重衰减（L2正则化）
+            "weight_decay": 3e-7
+        }
+    },
+    // 学习率调度器的配置
+    "scheduler": {
+        //调度器类型
+        "type": "WarmupLR",
+        "params": {
+            //预热阶段的最小学习率，这里是0
+            "warmup_min_lr": 0,
+            // 预热阶段的最大学习率，这里是0.001
+            "warmup_max_lr": 0.001,
+            //预热阶段的步数，这里是1000
+            "warmup_num_steps": 1000
+        }
+    },
+    //是否开启时间分解功能，用于分析训练过程中的时间消耗。
+    //这里是false，表示不开启
+    "wall_clock_breakdown": false
+}
