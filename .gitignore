@@ -25,3 +25,4 @@ events.*
 *.pth
 LLMTrain/deepspeed_test/data/*
 
+data/*
