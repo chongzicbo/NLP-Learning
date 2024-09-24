@@ -110,7 +110,6 @@ def add_argument():
 
 
 deepspeed.init_distributed()  # 初始化分布式后端
-
 ########################################################################
 # The output of torchvision datasets are PILImage images of range [0, 1].
 # We transform them to Tensors of normalized range [-1, 1].
