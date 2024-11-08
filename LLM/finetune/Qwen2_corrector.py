@@ -118,4 +118,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    from transformers import Qwen2Config, Qwen2Tokenizer, Qwen2ForCausalLM
+
+    tokenizer = Qwen2Tokenizer.from_pretrained(
+        "Qwen/Qwen2.5-1.5B-Instruct", trust_remote_code=True, padding_side="left"
+    )
+    print(tokenizer.padding_side)
