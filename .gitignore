@@ -28,3 +28,4 @@ LLMTrain/deepspeed_test/data/*
 data/*
 LLMTrain/deepspeed_cifar/data/*
 LLMTrain/data/*
+python_learning/data/*
