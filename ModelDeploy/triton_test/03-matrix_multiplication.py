@@ -386,6 +386,7 @@ def matmul(a, b, activation=""):
 
 torch.manual_seed(0)
 a = torch.randn((512, 512), device="cuda", dtype=torch.float16)
+print(a.stride())  # (512, 1)
 b = torch.randn((512, 512), device="cuda", dtype=torch.float16)
 triton_output = matmul(a, b)
 torch_output = torch.matmul(a, b)

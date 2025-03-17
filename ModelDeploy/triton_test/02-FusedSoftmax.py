@@ -114,7 +114,7 @@ def softmax(x):
         BLOCK_SIZE=BLOCK_SIZE,
         num_stages=num_stages,
         num_warps=num_warps,
-        grid=(1,),
+        grid=(1, 1, 1),
     )
     kernel._init_handles()
     n_regs = kernel.n_regs
@@ -134,14 +134,7 @@ def softmax(x):
 
     # Create a number of persistent programs.
     kernel[(num_programs, 1, 1)](
-        y,
-        x,
-        x.stride(0),
-        y.stride(0),
-        n_rows,
-        n_cols,
-        BLOCK_SIZE,
-        num_stages
+        y, x, x.stride(0), y.stride(0), n_rows, n_cols, BLOCK_SIZE, num_stages
     )
     return y
 
