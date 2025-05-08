@@ -76,6 +76,6 @@ def process_pdf(pdf_path: str, api_key: str) -> None:
 if __name__ == "__main__":
     # 使用示例
     API_KEY = "9ckx4HLpVaFjJC4nf4TLepfRjbB8dEdF"
-    PDF_PATH = "/data/bocheng/dev/mylearn/NLP-Learning/python_learning/data/pdf/online-proofreading/Online-Proofreading-PDF editor-User-Guide(Internal)V1.0-202409 1.pdf"
+    PDF_PATH = "/data/bocheng/dev/mylearn/NLP-Learning/python_learning/data/pdf/online-proofreading/Online Proofreading HTML Editor User Guide-Internal-v2.pdf"
 
     process_pdf(PDF_PATH, API_KEY)
