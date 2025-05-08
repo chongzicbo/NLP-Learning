@@ -15,3 +15,4 @@ print(collections)
 #     if  utility.has_collection(collection):
 #         utility.drop_collection(collection_name=collection)
 #         print(f"{collection} has been deleted:", not utility.has_collection(collection))
+# utility.drop_collection(collection_name="test_collection")
